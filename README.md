@@ -10,7 +10,7 @@ A real-time news dashboard application with TweetDeck-style columns and persiste
 - **📊 Dashboard Management**: Create and organize multiple dashboards
 - **📑 Column-based Layout**: TweetDeck-style columns for organized content viewing
 - **⚡ Real-time Updates**: Auto-refresh every 5 seconds for live data
-- **💾 Persistent Storage**: Vercel KV (Redis) for reliable data persistence
+- **💾 Persistent Storage**: Vercel KV (Redis) or Upstash Redis for reliable data persistence
 - **🔧 Admin Interface**: Easy-to-use admin panel for data management
 - **🌐 API Integration**: RESTful API for external workflow integration
 - **📱 Responsive Design**: Works on desktop and mobile devices
@@ -50,6 +50,8 @@ A real-time news dashboard application with TweetDeck-style columns and persiste
 ### Deployment to Vercel
 
 See the complete deployment guide in [DEPLOYMENT.md](./DEPLOYMENT.md) for step-by-step instructions.
+
+**Note:** Vercel KV is now available through the [Vercel Marketplace](https://vercel.com/marketplace/category/storage). Alternative storage options like Upstash Redis, PlanetScale, and Supabase are also supported.
 
 ## 📋 API Documentation
 
@@ -118,7 +120,7 @@ GET /api/columns
 
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Styling**: TailwindCSS, PostCSS
-- **Database**: Vercel KV (Redis) with in-memory fallback
+- **Database**: Vercel KV/Upstash Redis with in-memory fallback
 - **Deployment**: Vercel with GitHub Actions
 - **API**: REST endpoints for external integrations
 

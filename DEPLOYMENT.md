@@ -29,16 +29,27 @@ Newsdeck uses a hybrid storage approach:
 
 ## Step 2: Set up Vercel KV Database
 
-1. **Create a KV Database:**
-   - In your Vercel project dashboard, go to the "Storage" tab
-   - Click "Create Database" 
-   - Choose "KV" (Redis)
+**Note:** Vercel KV is now available through the Vercel Marketplace.
+
+1. **Access the Vercel Marketplace:**
+   - Go to [Vercel Marketplace](https://vercel.com/marketplace/category/storage)
+   - Find "Vercel KV" in the storage category
+   - Click "Add Integration" or "Install"
+
+2. **Create a KV Database:**
+   - Follow the marketplace integration flow
+   - Choose your Vercel project
    - Give your database a name (e.g., "newsdeck-storage")
    - Select a region close to your users
+   - Complete the setup process
 
-2. **Get KV credentials:**
-   - After creating the database, you'll see the connection details
-   - Copy the `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+3. **Get KV credentials:**
+   - After creating the database, go to your project dashboard
+   - Navigate to "Settings" > "Environment Variables"
+   - The KV environment variables should be automatically added:
+     - `KV_REST_API_URL`
+     - `KV_REST_API_TOKEN`
+   - If not automatically added, you can find them in the KV dashboard
 
 ## Step 3: Configure Environment Variables
 
@@ -116,6 +127,34 @@ The following endpoints are available for external workflows:
      - Implementing data archiving for old news items
      - Adding pagination for large datasets
      - Moving to a full database solution (as planned for GCP migration)
+
+## Alternative Storage Solutions
+
+If you prefer not to use Vercel KV or want other options:
+
+### Option 1: Upstash Redis (Free tier available)
+1. Sign up at [upstash.com](https://upstash.com)
+2. Create a Redis database
+3. Get the `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+4. Replace `@vercel/kv` with `@upstash/redis` in the code
+5. Update the import in `lib/db-persistent.ts`
+
+### Option 2: PlanetScale MySQL (Free tier)
+1. Sign up at [planetscale.com](https://planetscale.com)
+2. Create a database
+3. Install `@planetscale/database`
+4. Update the database layer to use SQL instead of Redis
+
+### Option 3: Supabase (Free tier)
+1. Sign up at [supabase.com](https://supabase.com)
+2. Create a project
+3. Install `@supabase/supabase-js`
+4. Update the database layer to use PostgreSQL
+
+### Option 4: Railway PostgreSQL
+1. Sign up at [railway.app](https://railway.app)
+2. Deploy a PostgreSQL database
+3. Use with `pg` or `prisma` packages
 
 ## Future Migration to GCP
 
