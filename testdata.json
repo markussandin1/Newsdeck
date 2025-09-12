@@ -1,0 +1,181 @@
+{
+  "description": "Testdata för Breaking News Dashboard POC - Olika typer av nyhetshändelser med varierande prioritet och geografi",
+  "items": [
+    {
+      "id": "sos-001",
+      "workflowId": "workflow-emergency",
+      "source": "sos",
+      "timestamp": "2025-09-11T21:45:00Z",
+      "title": "Brand i flerfamiljshus i Sundsvall",
+      "description": "Räddningstjänst på plats med flera enheter. Två personer förda till sjukhus med rökskador.",
+      "newsValue": 5,
+      "category": "emergency",
+      "severity": "critical",
+      "location": {
+        "municipality": "Sundsvall",
+        "county": "Västernorrland",
+        "name": "Storgatan 45",
+        "coordinates": [62.3908, 17.3069]
+      }
+    },
+    {
+      "id": "police-002",
+      "workflowId": "workflow-police",
+      "source": "polisen",
+      "timestamp": "2025-09-11T21:40:00Z",
+      "title": "Trafikolycka E4 Rotebro",
+      "description": "Två bilar inblandade, långa köer i båda riktningar. Ambulans på plats.",
+      "newsValue": 3,
+      "category": "traffic",
+      "severity": "medium",
+      "location": {
+        "municipality": "Sollentuna",
+        "county": "Stockholm",
+        "name": "E4 Rotebro",
+        "coordinates": [59.4372, 17.9186]
+      }
+    },
+    {
+      "id": "smhi-003",
+      "workflowId": "workflow-weather",
+      "source": "smhi",
+      "timestamp": "2025-09-11T21:35:00Z",
+      "title": "Kraftig snöfall väntas i Norrland",
+      "description": "10-20 cm snö väntas under natten. Varning för halka på vägarna.",
+      "newsValue": 2,
+      "category": "weather",
+      "severity": "low",
+      "location": {
+        "county": "Västerbotten"
+      }
+    },
+    {
+      "id": "police-004",
+      "workflowId": "workflow-police",
+      "source": "polisen",
+      "timestamp": "2025-09-11T21:30:00Z",
+      "title": "Rån mot butik i Malmö centrum",
+      "description": "Maskerade personer rånande en livsmedelsbutik. Polis söker vittnen.",
+      "newsValue": 4,
+      "category": "crime",
+      "severity": "high",
+      "location": {
+        "municipality": "Malmö",
+        "county": "Skåne",
+        "name": "Södergatan 12",
+        "coordinates": [55.6059, 13.0007]
+      }
+    },
+    {
+      "id": "tt-005",
+      "workflowId": "workflow-news",
+      "source": "tt",
+      "timestamp": "2025-09-11T21:25:00Z",
+      "title": "Regeringen tillkännager nya miljöregler",
+      "description": "Nya regler för utsläpp från transportsektorn presenterades idag.",
+      "newsValue": 2,
+      "category": "politics",
+      "severity": "low",
+      "extra": {
+        "ministry": "Klimat- och miljödepartementet",
+        "effectiveDate": "2025-01-01"
+      }
+    },
+    {
+      "id": "sos-006",
+      "workflowId": "workflow-emergency",
+      "source": "sos",
+      "timestamp": "2025-09-11T21:20:00Z",
+      "title": "Större vattenläcka i Göteborg",
+      "description": "Huvudvattenledning bruten på Avenyn. Flera kvarter utan vatten.",
+      "newsValue": 3,
+      "category": "infrastructure",
+      "severity": "medium",
+      "location": {
+        "municipality": "Göteborg",
+        "county": "Västra Götaland",
+        "name": "Kungsportsavenyen",
+        "coordinates": [57.7089, 11.9746]
+      }
+    },
+    {
+      "id": "police-007",
+      "workflowId": "workflow-police",
+      "source": "polisen",
+      "timestamp": "2025-09-11T21:15:00Z",
+      "title": "Bilolycka med personskador på E6",
+      "description": "Tre bilar inblandade norr om Helsingborg. Vägen delvis avstängd.",
+      "newsValue": 4,
+      "category": "traffic",
+      "severity": "high",
+      "location": {
+        "municipality": "Helsingborg",
+        "county": "Skåne",
+        "name": "E6 Helsingborg",
+        "coordinates": [56.0465, 12.6945]
+      }
+    },
+    {
+      "id": "custom-008",
+      "workflowId": "workflow-sports",
+      "source": "sportbladet",
+      "timestamp": "2025-09-11T21:10:00Z",
+      "title": "IFK Göteborg vinner derbyt",
+      "description": "Sent avgörande i Göteborg-derbyt. 2-1 efter förlängning.",
+      "newsValue": 1,
+      "category": "sports",
+      "severity": null,
+      "location": {
+        "municipality": "Göteborg",
+        "county": "Västra Götaland",
+        "name": "Gamla Ullevi"
+      },
+      "extra": {
+        "sport": "fotboll",
+        "homeTeam": "IFK Göteborg",
+        "awayTeam": "GAIS",
+        "score": "2-1"
+      }
+    },
+    {
+      "id": "smhi-009",
+      "workflowId": "workflow-weather",
+      "source": "smhi",
+      "timestamp": "2025-09-11T21:05:00Z",
+      "title": "Stormvarning för västkusten",
+      "description": "Vindbyar upp till 25 m/s väntas imorgon. Varning för träd över vägar.",
+      "newsValue": 3,
+      "category": "weather",
+      "severity": "medium",
+      "location": {
+        "county": "Västra Götaland"
+      },
+      "extra": {
+        "windSpeed": "25 m/s",
+        "validFrom": "2025-09-12T06:00:00Z",
+        "validTo": "2025-09-12T18:00:00Z"
+      }
+    },
+    {
+      "id": "emergency-010",
+      "workflowId": "workflow-emergency",
+      "source": "sos",
+      "timestamp": "2025-09-11T21:00:00Z",
+      "title": "Gasläcka i Stockholm centrum",
+      "description": "Akut insats pågår vid Sergels torg. Området evakuerat som säkerhetsåtgärd.",
+      "newsValue": 5,
+      "category": "emergency",
+      "severity": "critical",
+      "location": {
+        "municipality": "Stockholm",
+        "county": "Stockholm",
+        "name": "Sergels torg",
+        "coordinates": [59.3326, 18.0649]
+      },
+      "extra": {
+        "evacuationRadius": "200m",
+        "emergencyServices": ["polis", "räddningstjänst", "ambulans"]
+      }
+    }
+  ]
+}
