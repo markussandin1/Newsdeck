@@ -57,14 +57,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         body: JSON.stringify({ 
           title: title.trim(),
           description: description?.trim(),
-          order: dashboard.columns.length
+          order: dashboard?.columns?.length || 0
         })
       })
       
       const data = await response.json()
       if (data.success) {
         // Update the main dashboard with new column
-        const updatedColumns = [...dashboard.columns, data.column]
+        const updatedColumns = [...(dashboard?.columns || []), data.column]
         
         const dashboardResponse = await fetch('/api/dashboard/main', {
           method: 'PUT',
@@ -84,7 +84,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   }
 
   const removeColumn = async (columnId: string) => {
-    const updatedColumns = dashboard.columns.filter(col => col.id !== columnId)
+    const updatedColumns = (dashboard?.columns || []).filter(col => col.id !== columnId)
     
     try {
       const response = await fetch('/api/dashboard/main', {
@@ -111,7 +111,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             <div>
               <h1 className="text-2xl font-bold text-gray-800">{dashboard.name}</h1>
               <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                <span>{dashboard.columns.length} kolumner</span>
+                <span>{dashboard?.columns?.length || 0} kolumner</span>
                 <span>•</span>
                 <span>{getTotalNewsCount()} händelser</span>
                 <span>•</span>
@@ -151,7 +151,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
       {/* TweetDeck-style Columns */}
       <div className="flex overflow-x-auto h-[calc(100vh-100px)]">
-        {dashboard.columns
+        {(dashboard?.columns || [])
           .sort((a, b) => a.order - b.order)
           .map((column) => {
             const columnItems = columnData[column.id] || []

@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 
 export async function GET() {
   try {
-    const dashboard = db.getMainDashboard()
+    const dashboard = await db.getMainDashboard()
     
     return NextResponse.json({
       success: true,
@@ -22,7 +22,7 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json()
     
-    const updatedDashboard = db.updateDashboard('main-dashboard', body)
+    const updatedDashboard = await db.updateDashboard('main-dashboard', body)
     
     return NextResponse.json({
       success: true,

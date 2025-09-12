@@ -107,13 +107,26 @@ export const persistentDb = {
       const stored = isKVAvailable() 
         ? await kv.get<Dashboard>(KEYS.DASHBOARD('main-dashboard'))
         : fallbackDashboards.find(d => d.id === 'main-dashboard')
-      return stored || DEFAULT_DASHBOARD
+      const result = stored || DEFAULT_DASHBOARD
+      // Ensure columns array exists
+      if (!result.columns) {
+        result.columns = []
+      }
+      return result
     }
 
     if (isKVAvailable()) {
-      return await kv.get<Dashboard>(KEYS.DASHBOARD(id))
+      const result = await kv.get<Dashboard>(KEYS.DASHBOARD(id))
+      if (result && !result.columns) {
+        result.columns = []
+      }
+      return result
     } else {
-      return fallbackDashboards.find(d => d.id === id)
+      const result = fallbackDashboards.find(d => d.id === id)
+      if (result && !result.columns) {
+        result.columns = []
+      }
+      return result
     }
   },
 
