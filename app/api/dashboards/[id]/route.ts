@@ -26,13 +26,9 @@ export async function GET(
     const columnData: { [columnId: string]: any[] } = {}
     
     for (const column of dashboard.columns) {
-      // For POC, get data from the column-specific storage or fallback to workflow-based data
-      let columnItems = await db.getColumnData(column.id)
-      
-      if (columnItems.length === 0) {
-        // Fallback: get items from general storage filtered by workflowId
-        columnItems = await db.getNewsItemsByWorkflow(column.workflowId)
-      }
+      // Get data from the column-specific storage
+      // In the current design, data is stored by column ID, not workflowId
+      const columnItems = await db.getColumnData(column.id)
       
       columnData[column.id] = columnItems.slice(0, 20) // Limit to 20 items per column for performance
     }

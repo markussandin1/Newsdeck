@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Dashboard as DashboardType, NewsItem as NewsItemType } from '@/lib/types'
-import { getWorkflowById } from '@/lib/workflows'
 import NewsItem from './NewsItem'
 
 interface DashboardProps {
@@ -109,7 +108,6 @@ export default function Dashboard({ dashboard }: DashboardProps) {
         {dashboard.columns
           .sort((a, b) => a.order - b.order)
           .map((column) => {
-            const workflow = getWorkflowById(column.workflowId)
             const columnItems = columnData[column.id] || []
             
             return (
@@ -120,10 +118,10 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                 {/* Column Header */}
                 <div className="p-4 border-b bg-gray-50">
                   <h3 className="font-semibold text-gray-800 mb-1">
-                    {column.title || workflow?.name || column.workflowId}
+                    {column.title}
                   </h3>
                   <div className="text-xs text-gray-600 mb-2">
-                    {workflow?.description}
+                    {column.description}
                   </div>
                   <div className="text-xs text-gray-500">
                     {columnItems.length} händelser
@@ -136,7 +134,7 @@ export default function Dashboard({ dashboard }: DashboardProps) {
                     <div className="text-center py-8 text-gray-500 text-sm">
                       <div className="mb-2">Inga händelser</div>
                       <div className="text-xs text-gray-400">
-                        Data från {workflow?.name || column.workflowId}
+                        Data för {column.title}
                       </div>
                     </div>
                   ) : (

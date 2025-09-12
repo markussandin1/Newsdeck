@@ -19,7 +19,7 @@ export default function NewsItem({ item, compact = false }: NewsItemProps) {
     }
   }
 
-  const getSeverityBadge = (severity?: string) => {
+  const getSeverityBadge = (severity?: "critical" | "high" | "medium" | "low" | null) => {
     if (!severity) return null
     
     const styles = {

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const items = db.getNewsItems()
+    const items = await db.getNewsItems()
     return NextResponse.json({
       success: true,
       count: items.length,

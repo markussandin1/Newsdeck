@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Dashboard, DashboardColumn, WorkflowInfo } from '@/lib/types'
-import { FAKE_WORKFLOWS } from '@/lib/workflows'
+import { Dashboard, DashboardColumn } from '@/lib/types'
 
 interface CreateDashboardProps {
   isOpen: boolean
@@ -19,9 +18,10 @@ export default function CreateDashboard({ isOpen, onClose, onDashboardCreated }:
   const addColumn = () => {
     const newColumn: DashboardColumn = {
       id: `column-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      workflowId: '',
       title: '',
-      order: columns.length
+      description: '',
+      order: columns.length,
+      createdAt: new Date().toISOString()
     }
     setColumns([...columns, newColumn])
   }
@@ -36,11 +36,6 @@ export default function CreateDashboard({ isOpen, onClose, onDashboardCreated }:
     setColumns(columns.filter(col => col.id !== columnId))
   }
 
-  const getWorkflowName = (workflowId: string) => {
-    const workflow = FAKE_WORKFLOWS.find(w => w.id === workflowId)
-    return workflow ? workflow.name : workflowId
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) {
@@ -53,10 +48,10 @@ export default function CreateDashboard({ isOpen, onClose, onDashboardCreated }:
       return
     }
 
-    // Validera att alla kolumner har valt workflow
-    const invalidColumns = columns.filter(col => !col.workflowId)
+    // Validera att alla kolumner har titel
+    const invalidColumns = columns.filter(col => !col.title.trim())
     if (invalidColumns.length > 0) {
-      setError('Alla kolumner måste ha ett valt workflow')
+      setError('Alla kolumner måste ha en titel')
       return
     }
 
@@ -69,7 +64,7 @@ export default function CreateDashboard({ isOpen, onClose, onDashboardCreated }:
         columns: columns.map((col, index) => ({
           ...col,
           order: index,
-          title: col.title || getWorkflowName(col.workflowId)
+          title: col.title
         }))
       }
 
@@ -155,7 +150,7 @@ export default function CreateDashboard({ isOpen, onClose, onDashboardCreated }:
               {columns.length === 0 ? (
                 <div className="text-center py-8 border border-gray-200 rounded-lg bg-gray-50">
                   <p className="text-gray-500 mb-2">Inga kolumner tillagda ännu</p>
-                  <p className="text-sm text-gray-400">Varje kolumn visar ett workflow-flöde</p>
+                  <p className="text-sm text-gray-400">Varje kolumn kan ta emot data via API-anrop</p>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-64 overflow-y-auto">
@@ -175,42 +170,37 @@ export default function CreateDashboard({ isOpen, onClose, onDashboardCreated }:
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Workflow *
-                          </label>
-                          <select
-                            value={column.workflowId}
-                            onChange={(e) => updateColumn(column.id, { workflowId: e.target.value })}
-                            className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            required
-                          >
-                            <option value="">Välj workflow...</option>
-                            {FAKE_WORKFLOWS.map(workflow => (
-                              <option key={workflow.id} value={workflow.id}>
-                                {workflow.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Egen titel (valfritt)
+                            Kolumn-titel *
                           </label>
                           <input
                             type="text"
                             value={column.title || ''}
                             onChange={(e) => updateColumn(column.id, { title: e.target.value })}
                             className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder={column.workflowId ? getWorkflowName(column.workflowId) : 'Standardnamn'}
+                            placeholder="T.ex. Breaking News, Traffic, Weather"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Beskrivning (valfritt)
+                          </label>
+                          <input
+                            type="text"
+                            value={column.description || ''}
+                            onChange={(e) => updateColumn(column.id, { description: e.target.value })}
+                            className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Kort beskrivning av kolumnens innehåll"
                           />
                         </div>
                       </div>
-
-                      {column.workflowId && (
-                        <div className="mt-2 text-xs text-gray-600">
-                          {FAKE_WORKFLOWS.find(w => w.id === column.workflowId)?.description}
-                        </div>
-                      )}
+                      
+                      <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
+                        <strong>API Endpoint:</strong> POST /api/columns/{column.id}
+                        <br />
+                        Använd detta ID för att skicka data till kolumnen från dina workflows.
+                      </div>
                     </div>
                   ))}
                 </div>
