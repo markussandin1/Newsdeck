@@ -248,7 +248,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           .filter(col => !col.isArchived)
           .sort((a, b) => a.order - b.order)
           .map((column) => {
-            const columnItems = columnData[column.id] || []
+            const columnItems = (columnData[column.id] || [])
+              .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             
             return (
               <div 
