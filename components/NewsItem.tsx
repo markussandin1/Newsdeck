@@ -3,9 +3,10 @@ import { NewsItem as NewsItemType } from '@/lib/types'
 interface NewsItemProps {
   item: NewsItemType
   compact?: boolean
+  onClick?: () => void
 }
 
-export default function NewsItem({ item, compact = false }: NewsItemProps) {
+export default function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   const getNewsValueStyle = (newsValue: number) => {
     switch (newsValue) {
       case 5:
@@ -48,7 +49,10 @@ export default function NewsItem({ item, compact = false }: NewsItemProps) {
 
   if (compact) {
     return (
-      <div className={`rounded-lg p-3 shadow-sm ${getNewsValueStyle(item.newsValue)}`}>
+      <div 
+        className={`rounded-lg p-3 shadow-sm cursor-pointer transition-transform hover:scale-105 ${getNewsValueStyle(item.newsValue)}`}
+        onClick={onClick}
+      >
         <div className="flex justify-between items-start mb-2">
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-gray-800 text-sm leading-tight mb-1 line-clamp-2">

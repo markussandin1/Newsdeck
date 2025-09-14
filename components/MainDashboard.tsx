@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import NewsItem from './NewsItem'
+import NewsItemModal from './NewsItemModal'
 
 interface MainDashboardProps {
   dashboard: DashboardType
@@ -27,6 +28,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
+  const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemType | null>(null)
 
   const fetchColumnData = async () => {
     try {
@@ -346,7 +348,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   ) : (
                     columnItems.map((item) => (
                       <div key={item.id} className="mb-2">
-                        <NewsItem item={item} compact={true} />
+                        <NewsItem 
+                          item={item} 
+                          compact={true} 
+                          onClick={() => setSelectedNewsItem(item)}
+                        />
                       </div>
                     ))
                   )}
@@ -539,6 +545,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       <div className="fixed bottom-4 right-4 bg-white rounded-full shadow-lg px-3 py-2 text-xs text-gray-600 border">
         🔄 Auto-uppdatering var 5:e sekund
       </div>
+
+      {/* News Item Modal */}
+      <NewsItemModal 
+        item={selectedNewsItem}
+        onClose={() => setSelectedNewsItem(null)}
+      />
     </div>
   )
 }
