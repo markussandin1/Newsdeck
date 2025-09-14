@@ -60,22 +60,17 @@ export async function POST(request: NextRequest) {
     const existingItems = await db.getColumnData(columnId) || []
     const allItems = [...existingItems, ...validatedItems]
     
-    // Remove duplicates based on id
-    const uniqueItems = allItems.filter((item, index, self) => 
-      self.findIndex(i => i.id === item.id) === index
-    )
-    
-    await db.setColumnData(columnId, uniqueItems)
+    await db.setColumnData(columnId, allItems)
     
     // Also add to general news storage for admin/debugging
     await db.addNewsItems(validatedItems)
     
     return NextResponse.json({
       success: true,
-      message: `Added ${validatedItems.length} items to column ${columnId}. Total items in column: ${uniqueItems.length}`,
+      message: `Added ${validatedItems.length} items to column ${columnId}. Total items in column: ${allItems.length}`,
       columnId,
       itemsAdded: validatedItems.length,
-      totalItems: uniqueItems.length
+      totalItems: allItems.length
     })
     
   } catch (error) {
