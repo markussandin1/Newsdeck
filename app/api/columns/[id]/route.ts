@@ -33,6 +33,11 @@ export async function POST(
     const { id } = await params
     const body = await request.json()
     
+    // DEBUG: Log what we actually receive
+    console.log('🔍 DEBUG - Received body:', JSON.stringify(body, null, 2))
+    console.log('🔍 DEBUG - Body type:', typeof body)
+    console.log('🔍 DEBUG - Is array:', Array.isArray(body))
+    
     // Handle both single item and array of items
     const items = Array.isArray(body) ? body : [body]
     const validatedItems: NewsItem[] = []
