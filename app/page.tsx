@@ -1,57 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Dashboard as DashboardType } from '@/lib/types'
-import MainDashboard from '@/components/MainDashboard'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function HomePage() {
-  const [dashboard, setDashboard] = useState<DashboardType | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  const fetchMainDashboard = async () => {
-    try {
-      const response = await fetch('/api/dashboard/main')
-      const data = await response.json()
-      if (data.success) {
-        setDashboard(data.dashboard)
-      }
-    } catch (error) {
-      console.error('Failed to fetch main dashboard:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const router = useRouter()
 
   useEffect(() => {
-    fetchMainDashboard()
-  }, [])
+    // Redirect to main dashboard
+    router.push('/dashboard/main')
+  }, [router])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-500">Laddar Newsdeck...</p>
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mb-4 mx-auto">
+          📰
         </div>
+        <div className="text-slate-600">Laddar Newsdeck...</div>
       </div>
-    )
-  }
-
-  if (!dashboard) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-xl text-gray-700 mb-2">Kunde inte ladda dashboard</div>
-          <button 
-            onClick={fetchMainDashboard}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            Försök igen
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  return <MainDashboard dashboard={dashboard} onDashboardUpdate={setDashboard} />
+    </div>
+  )
 }

@@ -12,10 +12,13 @@ const KEYS = {
 // Default dashboard that always exists
 const DEFAULT_DASHBOARD: Dashboard = {
   id: 'main-dashboard',
-  name: 'Newsdeck',
+  name: 'Huvuddashboard',
+  slug: 'main',
+  description: 'Din huvuddashboard för nyhetsövervakning',
   columns: [],
   createdAt: new Date().toISOString(),
-  viewCount: 0
+  viewCount: 0,
+  isDefault: true
 }
 
 // Fallback to in-memory storage if KV is not available (for local development)
@@ -138,6 +141,50 @@ export const persistentDb = {
       await persistentDb.addDashboard(main)
     }
     return main
+  },
+
+  // Get dashboard by slug
+  getDashboardBySlug: async (slug: string) => {
+    if (isKVAvailable()) {
+      const dashboards = await kv.get<Dashboard[]>(KEYS.DASHBOARDS) || []
+      const dashboard = dashboards.find(d => d.slug === slug)
+      if (dashboard && !dashboard.columns) {
+        dashboard.columns = []
+      }
+      return dashboard || null
+    } else {
+      const dashboard = fallbackDashboards.find(d => d.slug === slug)
+      if (dashboard && !dashboard.columns) {
+        dashboard.columns = []
+      }
+      return dashboard || null
+    }
+  },
+
+  // Create new dashboard
+  createDashboard: async (name: string, description?: string) => {
+    const { generateSlug, ensureUniqueSlug } = await import('./utils')
+    
+    // Get existing slugs to ensure uniqueness
+    const existingDashboards = await persistentDb.getDashboards()
+    const existingSlugs = existingDashboards.map(d => d.slug)
+    
+    // Generate unique slug
+    const baseSlug = generateSlug(name)
+    const uniqueSlug = ensureUniqueSlug(baseSlug, existingSlugs)
+    
+    const newDashboard: Dashboard = {
+      id: `dashboard-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name,
+      slug: uniqueSlug,
+      description,
+      columns: [],
+      createdAt: new Date().toISOString(),
+      viewCount: 0
+    }
+    
+    await persistentDb.addDashboard(newDashboard)
+    return newDashboard
   },
 
   updateDashboard: async (id: string, updates: Partial<Dashboard>) => {

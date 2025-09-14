@@ -43,10 +43,13 @@ export interface DashboardColumn {
 export interface Dashboard {
   id: string;
   name: string;
+  slug: string;                 // URL-friendly name (auto-generated from name)
+  description?: string;         // Optional description
   columns: DashboardColumn[];   // Array av kolumner istället för filters
   createdAt: string;
   viewCount?: number;
   lastViewed?: string;
+  isDefault?: boolean;          // Mark default dashboard (main-dashboard)
 }
 
 // Fake workflow data för POC
