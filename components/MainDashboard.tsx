@@ -398,7 +398,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           .sort((a, b) => a.order - b.order)
           .map((column) => {
             // Sort by database insertion order (newest first) - array order is preserved from database
-            const columnItems = (columnData[column.id] || []).reverse()
+            const columnItems = (columnData[column.id] || [])
             
             return (
               <div 
