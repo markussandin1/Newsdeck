@@ -68,7 +68,8 @@ export default function Dashboard({ dashboard }: DashboardProps) {
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-full px-4 py-4">
           <div className="flex justify-between items-center">
-            <div>
+            <div className="flex items-center gap-3">
+              <img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-16 h-16 object-contain" />
               <h1 className="text-2xl font-bold text-gray-800">{dashboard.name}</h1>
               <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
                 <span>{dashboard?.columns?.length || 0} kolumner</span>

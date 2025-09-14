@@ -14,8 +14,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="text-center">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mb-4 mx-auto">
-          📰
+        <div className="w-16 h-16 flex items-center justify-center mb-4 mx-auto">
+          <img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-16 h-16 object-contain" />
         </div>
         <div className="text-slate-600">Laddar Newsdeck...</div>
       </div>

@@ -80,7 +80,8 @@ export default function NewsItem({ item, compact = false, onClick }: NewsItemPro
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Europe/Stockholm'
     })
   }
 
@@ -115,7 +116,7 @@ export default function NewsItem({ item, compact = false, onClick }: NewsItemPro
               )}
             </div>
             <time className="text-xs text-slate-400">
-              {new Date(item.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+              {new Date(item.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
             </time>
           </div>
           

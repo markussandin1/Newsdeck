@@ -274,11 +274,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="glass border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-                📰
+              <div className="w-16 h-16 flex items-center justify-center">
+                <img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-16 h-16 object-contain" />
               </div>
               <div className="relative" ref={dropdownRef}>
                 <button 
@@ -362,7 +362,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                <span>{isLoading ? 'Uppdaterar...' : `Live • ${lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`}</span>
+                <span>{isLoading ? 'Uppdaterar...' : `Live • ${lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}`}</span>
               </div>
               
               <div className="flex items-center gap-3">
@@ -397,8 +397,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           .filter(col => !col.isArchived)
           .sort((a, b) => a.order - b.order)
           .map((column) => {
-            const columnItems = (columnData[column.id] || [])
-              .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            // Sort by database insertion order (newest first) - array order is preserved from database
+            const columnItems = (columnData[column.id] || []).reverse()
             
             return (
               <div 
@@ -489,7 +489,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {columnItems.length === 0 ? (
                     <div className="text-center py-8 text-gray-500 text-sm">
-                      <div className="mb-4">📰</div>
+                      <div className="mb-4 flex justify-center"><img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-8 h-8 object-contain" /></div>
                       <div className="mb-2">Väntar på händelser...</div>
                       <div className="text-xs text-gray-400">
                         Konfigurationen finns i kolumnhuvudet ↑
