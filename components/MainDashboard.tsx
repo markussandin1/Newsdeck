@@ -397,8 +397,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           .filter(col => !col.isArchived)
           .sort((a, b) => a.order - b.order)
           .map((column) => {
-            // Sort by database insertion order (newest first) - array order is preserved from database
+            // Sort by timestamp, but normalize timezone issues
             const columnItems = (columnData[column.id] || [])
+              .sort((a, b) => {
+                // Normalize timestamps - treat ones without timezone as Swedish local time
+                const normalizeTimestamp = (ts: string) => {
+                  if (ts.endsWith('Z') || ts.includes('+') || ts.includes('-')) {
+                    return new Date(ts).getTime()
+                  }
+                  // No timezone info - treat as Swedish local time by adding +02:00
+                  return new Date(ts + '+02:00').getTime()
+                }
+                return normalizeTimestamp(b.timestamp) - normalizeTimestamp(a.timestamp)
+              })
             
             return (
               <div 
