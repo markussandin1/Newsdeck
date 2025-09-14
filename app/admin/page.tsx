@@ -76,7 +76,7 @@ export default function AdminPage() {
     try {
       setFeedback(null)
       const data = JSON.parse(jsonInput)
-      
+
       const response = await fetch(`/api/columns/${selectedColumn}`, {
         method: 'POST',
         headers: {
@@ -95,6 +95,32 @@ export default function AdminPage() {
       }
     } catch (error) {
       setFeedback({ type: 'error', message: 'Invalid JSON format' })
+    }
+  }
+
+  const runMigration = async () => {
+    try {
+      setFeedback(null)
+
+      const response = await fetch('/api/migrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setFeedback({
+          type: 'success',
+          message: `Migration slutförd! ${result.updated} events uppdaterades med createdInDb timestamp.`
+        })
+      } else {
+        setFeedback({ type: 'error', message: result.error || 'Migration misslyckades' })
+      }
+    } catch (error) {
+      setFeedback({ type: 'error', message: 'Kunde inte köra migration' })
     }
   }
 
@@ -117,7 +143,13 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="w-16 h-16 mb-4 mx-auto">
+            <img
+              src="/newsdeck-logo.png"
+              alt="Newsdeck"
+              className="w-full h-full object-contain animate-pulse"
+            />
+          </div>
           <p className="text-gray-500">Laddar admin...</p>
         </div>
       </div>
@@ -228,12 +260,18 @@ export default function AdminPage() {
                   </select>
                 </div>
 
-                <div className="mb-4">
+                <div className="mb-4 space-y-2">
                   <button
                     onClick={loadExample}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm"
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm mr-2"
                   >
                     Ladda exempeldata
+                  </button>
+                  <button
+                    onClick={runMigration}
+                    className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 text-sm"
+                  >
+                    Migrera befintlig data
                   </button>
                 </div>
 

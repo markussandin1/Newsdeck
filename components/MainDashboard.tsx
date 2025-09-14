@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, memo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
@@ -15,6 +16,7 @@ interface ColumnData {
 }
 
 export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDashboardProps) {
+  const router = useRouter()
   const [columnData, setColumnData] = useState<ColumnData>({})
   const [lastUpdate, setLastUpdate] = useState(new Date())
   const [isLoading, setIsLoading] = useState(false)
@@ -259,16 +261,157 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       const data = await response.json()
       if (data.success) {
         // Navigate to new dashboard
-        window.location.href = `/dashboard/${data.dashboard.slug}`
+        router.push(`/dashboard/${data.dashboard.slug}`)
       }
     } catch (error) {
       console.error('Failed to create dashboard:', error)
     }
   }
 
-  const navigateToDashboard = (slug: string) => {
-    window.location.href = `/dashboard/${slug}`
-  }
+  const navigateToDashboard = useCallback((slug: string) => {
+    router.push(`/dashboard/${slug}`)
+  }, [router])
+
+  // Memoized column component for better performance
+  const NewsColumn = memo(({
+    column,
+    columnItems,
+    onEditColumn,
+    onRemoveColumn,
+    onCopyId,
+    onUpdateColumn,
+    onSelectNewsItem,
+    editingColumn,
+    editTitle,
+    editDescription,
+    setEditTitle,
+    setEditDescription,
+    setEditingColumn,
+    copiedId
+  }: {
+    column: DashboardColumn
+    columnItems: NewsItemType[]
+    onEditColumn: (column: DashboardColumn) => void
+    onRemoveColumn: (columnId: string) => void
+    onCopyId: (text: string, columnId: string, columnTitle: string) => void
+    onUpdateColumn: (columnId: string, title: string, description?: string) => void
+    onSelectNewsItem: (item: NewsItemType) => void
+    editingColumn: string | null
+    editTitle: string
+    editDescription: string
+    setEditTitle: (title: string) => void
+    setEditDescription: (description: string) => void
+    setEditingColumn: (id: string | null) => void
+    copiedId: string | null
+  }) => (
+    <div
+      key={column.id}
+      className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
+    >
+      {/* Column Header */}
+      <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
+        {editingColumn === column.id ? (
+          // Edit Mode
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            onUpdateColumn(column.id, editTitle, editDescription)
+          }} className="space-y-2">
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full px-2 py-1 text-sm border rounded"
+              placeholder="Kolumnnamn"
+              required
+            />
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="w-full px-2 py-1 text-xs border rounded resize-none"
+              placeholder="Beskrivning (valfritt)"
+              rows={2}
+            />
+            <div className="flex gap-1">
+              <button
+                type="submit"
+                className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+              >
+                ✓
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingColumn(null)}
+                className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+          </form>
+        ) : (
+          // View Mode
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2 flex-1">
+              <button
+                onClick={() => onCopyId(column.id, column.id, column.title)}
+                className="text-blue-500 hover:text-blue-700 p-1"
+                title="Kopiera kolumn-ID"
+              >
+                {copiedId === column.id ? '✓' : '📋'}
+              </button>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-800">
+                    {column.title}
+                  </h3>
+                  <button
+                    onClick={() => onEditColumn(column)}
+                    className="text-gray-400 hover:text-gray-600 text-xs"
+                    title="Redigera kolumn"
+                  >
+                    ✏️
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {columnItems.length} händelser
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onRemoveColumn(column.id)}
+              className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
+              title="Ta bort kolumn"
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Column Content */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {columnItems.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm">
+            <div className="mb-4 flex justify-center"><img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-8 h-8 object-contain" /></div>
+            <div className="mb-2">Väntar på händelser...</div>
+            <div className="text-xs text-gray-400">
+              Konfigurationen finns i kolumnhuvudet ↑
+            </div>
+          </div>
+        ) : (
+          columnItems.map((item) => (
+            <div key={item.id} className="mb-2">
+              <NewsItem
+                item={item}
+                compact={true}
+                onClick={() => onSelectNewsItem(item)}
+              />
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  ))
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -397,128 +540,38 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           .filter(col => !col.isArchived)
           .sort((a, b) => a.order - b.order)
           .map((column) => {
-            // Sort by timestamp, but normalize timezone issues
+            // Sort by database creation time (createdInDb), fallback to event timestamp
             const columnItems = (columnData[column.id] || [])
               .sort((a, b) => {
-                // Normalize timestamps - treat ones without timezone as Swedish local time
-                const normalizeTimestamp = (ts: string) => {
-                  if (ts.endsWith('Z') || ts.includes('+') || ts.includes('-')) {
-                    return new Date(ts).getTime()
+                const getEventTime = (item: any) => {
+                  // Prefer database creation time (createdInDb) over source timestamp
+                  if (item.createdInDb) {
+                    return new Date(item.createdInDb).getTime()
                   }
-                  // No timezone info - treat as Swedish local time by adding +02:00
-                  return new Date(ts + '+02:00').getTime()
+                  // Fallback to source timestamp
+                  return new Date(item.timestamp).getTime()
                 }
-                return normalizeTimestamp(b.timestamp) - normalizeTimestamp(a.timestamp)
+                return getEventTime(b) - getEventTime(a)
               })
-            
-            return (
-              <div 
-                key={column.id} 
-                className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
-              >
-                {/* Column Header */}
-                <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
-                  {editingColumn === column.id ? (
-                    // Edit Mode
-                    <form onSubmit={(e) => {
-                      e.preventDefault()
-                      updateColumn(column.id, editTitle, editDescription)
-                    }} className="space-y-2">
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full px-2 py-1 text-sm border rounded"
-                        placeholder="Kolumnnamn"
-                        required
-                      />
-                      <textarea
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        className="w-full px-2 py-1 text-xs border rounded resize-none"
-                        placeholder="Beskrivning (valfritt)"
-                        rows={2}
-                      />
-                      <div className="flex gap-1">
-                        <button
-                          type="submit"
-                          className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingColumn(null)}
-                          className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    // View Mode
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2 flex-1">
-                        <button
-                          onClick={() => copyToClipboard(column.id, column.id, column.title)}
-                          className="text-blue-500 hover:text-blue-700 p-1"
-                          title="Kopiera kolumn-ID"
-                        >
-                          {copiedId === column.id ? '✓' : '📋'}
-                        </button>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-800">
-                              {column.title}
-                            </h3>
-                            <button
-                              onClick={() => startEditing(column)}
-                              className="text-gray-400 hover:text-gray-600 text-xs"
-                              title="Redigera kolumn"
-                            >
-                              ✏️
-                            </button>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {columnItems.length} händelser
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={() => removeColumn(column.id)}
-                        className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
-                        title="Ta bort kolumn"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                </div>
 
-                {/* Column Content */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {columnItems.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 text-sm">
-                      <div className="mb-4 flex justify-center"><img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-8 h-8 object-contain" /></div>
-                      <div className="mb-2">Väntar på händelser...</div>
-                      <div className="text-xs text-gray-400">
-                        Konfigurationen finns i kolumnhuvudet ↑
-                      </div>
-                    </div>
-                  ) : (
-                    columnItems.map((item) => (
-                      <div key={item.id} className="mb-2">
-                        <NewsItem 
-                          item={item} 
-                          compact={true} 
-                          onClick={() => setSelectedNewsItem(item)}
-                        />
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+            return (
+              <NewsColumn
+                key={column.id}
+                column={column}
+                columnItems={columnItems}
+                onEditColumn={startEditing}
+                onRemoveColumn={removeColumn}
+                onCopyId={copyToClipboard}
+                onUpdateColumn={updateColumn}
+                onSelectNewsItem={setSelectedNewsItem}
+                editingColumn={editingColumn}
+                editTitle={editTitle}
+                editDescription={editDescription}
+                setEditTitle={setEditTitle}
+                setEditDescription={setEditDescription}
+                setEditingColumn={setEditingColumn}
+                copiedId={copiedId}
+              />
             )
           })}
 

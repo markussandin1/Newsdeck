@@ -74,8 +74,9 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
   }
 
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       onClick={onClose}
     >
       <div 
@@ -92,7 +93,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
               <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                 <span className="font-semibold text-blue-600">{item.source}</span>
                 <span>•</span>
-                <span>{formatTime(item.timestamp)}</span>
+                <span>{formatTime(item.createdInDb || item.timestamp)}</span>
               </div>
             </div>
             <button

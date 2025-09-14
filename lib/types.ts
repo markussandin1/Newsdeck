@@ -22,9 +22,10 @@ export interface NewsItem {
     coordinates?: [number, number]; // [lat, lng]
   };
   
-  // UI State
+  // Metadata
+  createdInDb?: string;         // ISO 8601 format - när posten skapades i databasen
   isNew?: boolean;              // Om meddelandet är nytt (visas i 30 sekunder)
-  
+
   // Övrigt
   extra?: Record<string, any>;  // Källspecifika fält
   raw?: any;                    // Originaldata för debugging

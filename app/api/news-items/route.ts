@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         id: item.id,
         workflowId: columnId, // Use column ID as workflow ID
         source: item.source || 'workflows',
-        timestamp: item.timestamp || new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         title: item.title,
         description: item.description,
         newsValue: item.newsValue ?? 3,

@@ -1,5 +1,5 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 
 interface NewsItemProps {
   item: NewsItemType
@@ -7,7 +7,7 @@ interface NewsItemProps {
   onClick?: () => void
 }
 
-export default function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
+function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   const [isNew, setIsNew] = useState(item.isNew || false)
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function NewsItem({ item, compact = false, onClick }: NewsItemPro
               )}
             </div>
             <time className="text-xs text-slate-400">
-              {new Date(item.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
+              {new Date(item.createdInDb || item.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
             </time>
           </div>
           
@@ -170,7 +170,7 @@ export default function NewsItem({ item, compact = false, onClick }: NewsItemPro
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
             <span className="font-medium">{item.source}</span>
             <span>•</span>
-            <span>{formatTime(item.timestamp)}</span>
+            <span>{formatTime(item.createdInDb || item.timestamp)}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 ml-3">
@@ -216,3 +216,5 @@ export default function NewsItem({ item, compact = false, onClick }: NewsItemPro
     </div>
   )
 }
+
+export default memo(NewsItem)

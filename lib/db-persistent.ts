@@ -33,47 +33,87 @@ const isKVAvailable = () => {
 export const persistentDb = {
   // News items
   addNewsItem: async (item: NewsItem) => {
+    // Add database creation timestamp
+    const itemWithTimestamp = {
+      ...item,
+      createdInDb: new Date().toISOString()
+    }
+
     if (isKVAvailable()) {
       const existing = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
-      const updated = [...existing, item]
+      const updated = [...existing, itemWithTimestamp]
       await kv.set(KEYS.NEWS_ITEMS, updated)
-      return item
+      return itemWithTimestamp
     } else {
       // Fallback to in-memory
-      fallbackNewsItems.push(item)
-      return item
+      fallbackNewsItems.push(itemWithTimestamp)
+      return itemWithTimestamp
     }
   },
 
   addNewsItems: async (items: NewsItem[]) => {
+    // Add database creation timestamp to all items
+    const itemsWithTimestamp = items.map(item => ({
+      ...item,
+      createdInDb: new Date().toISOString()
+    }))
+
     if (isKVAvailable()) {
       const existing = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
-      const updated = [...existing, ...items]
+      const updated = [...existing, ...itemsWithTimestamp]
       await kv.set(KEYS.NEWS_ITEMS, updated)
-      return items
+      return itemsWithTimestamp
     } else {
       // Fallback to in-memory
-      fallbackNewsItems.push(...items)
-      return items
+      fallbackNewsItems.push(...itemsWithTimestamp)
+      return itemsWithTimestamp
     }
   },
 
   getNewsItems: async () => {
     if (isKVAvailable()) {
       const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
-      return items.sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      )
+      return items.sort((a, b) => {
+        // Sort by createdInDb (when event was added to database), fallback to timestamp
+        const timeA = new Date(a.createdInDb || a.timestamp).getTime()
+        const timeB = new Date(b.createdInDb || b.timestamp).getTime()
+        return timeB - timeA
+      })
     } else {
-      return [...fallbackNewsItems].sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      )
+      return [...fallbackNewsItems].sort((a, b) => {
+        // Sort by createdInDb (when event was added to database), fallback to timestamp
+        const timeA = new Date(a.createdInDb || a.timestamp).getTime()
+        const timeB = new Date(b.createdInDb || b.timestamp).getTime()
+        return timeB - timeA
+      })
     }
   },
 
   getRecentNewsItems: async (limit = 10) => {
     const items = await persistentDb.getNewsItems()
     return items.slice(0, limit)
+  },
+
+  // Get news items with pagination support
+  getNewsItemsPaginated: async (limit = 50, offset = 0) => {
+    if (isKVAvailable()) {
+      const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
+      return items
+        .sort((a, b) => {
+          const timeA = new Date(a.createdInDb || a.timestamp).getTime()
+          const timeB = new Date(b.createdInDb || b.timestamp).getTime()
+          return timeB - timeA
+        })
+        .slice(offset, offset + limit)
+    } else {
+      return [...fallbackNewsItems]
+        .sort((a, b) => {
+          const timeA = new Date(a.createdInDb || a.timestamp).getTime()
+          const timeB = new Date(b.createdInDb || b.timestamp).getTime()
+          return timeB - timeA
+        })
+        .slice(offset, offset + limit)
+    }
   },
 
   // Dashboards
@@ -235,11 +275,15 @@ export const persistentDb = {
     }
   },
 
-  getColumnData: async (columnId: string) => {
+  getColumnData: async (columnId: string, limit?: number) => {
     if (isKVAvailable()) {
-      return await kv.get<NewsItem[]>(KEYS.COLUMN_DATA(columnId)) || []
+      const items = await kv.get<NewsItem[]>(KEYS.COLUMN_DATA(columnId)) || []
+      // Apply limit if specified (default to 50 for performance)
+      return limit ? items.slice(0, limit) : items.slice(0, 50)
     } else {
-      return fallbackColumnData.get(columnId) || []
+      const items = fallbackColumnData.get(columnId) || []
+      // Apply limit if specified (default to 50 for performance)
+      return limit ? items.slice(0, limit) : items.slice(0, 50)
     }
   },
 
@@ -294,7 +338,12 @@ export const persistentDb = {
     const items = await persistentDb.getNewsItems()
     return items
       .filter(item => item.workflowId === workflowId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => {
+        // Sort by createdInDb (when event was added to database), fallback to timestamp
+        const timeA = new Date(a.createdInDb || a.timestamp).getTime()
+        const timeB = new Date(b.createdInDb || b.timestamp).getTime()
+        return timeB - timeA
+      })
   },
 
   // Get news items for multiple workflows
@@ -302,7 +351,12 @@ export const persistentDb = {
     const items = await persistentDb.getNewsItems()
     return items
       .filter(item => workflowIds.includes(item.workflowId))
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => {
+        // Sort by createdInDb (when event was added to database), fallback to timestamp
+        const timeA = new Date(a.createdInDb || a.timestamp).getTime()
+        const timeB = new Date(b.createdInDb || b.timestamp).getTime()
+        return timeB - timeA
+      })
   },
 
   // Get unique values for admin interface
@@ -334,6 +388,102 @@ export const persistentDb = {
       fallbackDashboards = []
       fallbackColumnData.clear()
     }
+  },
+
+  // Cleanup old news items (performance optimization)
+  cleanupOldItems: async (olderThanDays = 7) => {
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays)
+    const cutoffTime = cutoffDate.getTime()
+
+    let removedCount = 0
+
+    if (isKVAvailable()) {
+      // Clean up main news items
+      const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
+      const filteredItems = items.filter(item => {
+        const itemTime = new Date(item.createdInDb || item.timestamp).getTime()
+        const isOld = itemTime < cutoffTime
+        if (isOld) removedCount++
+        return !isOld
+      })
+
+      if (removedCount > 0) {
+        await kv.set(KEYS.NEWS_ITEMS, filteredItems)
+      }
+
+      // Clean up column data
+      const dashboards = await kv.get<Dashboard[]>(KEYS.DASHBOARDS) || []
+      for (const dashboard of dashboards) {
+        for (const column of dashboard.columns || []) {
+          const columnItems = await kv.get<NewsItem[]>(KEYS.COLUMN_DATA(column.id)) || []
+          const filteredColumnItems = columnItems.filter(item => {
+            const itemTime = new Date(item.createdInDb || item.timestamp).getTime()
+            return itemTime >= cutoffTime
+          })
+
+          if (filteredColumnItems.length !== columnItems.length) {
+            await kv.set(KEYS.COLUMN_DATA(column.id), filteredColumnItems)
+          }
+        }
+      }
+    } else {
+      // Clean up fallback data
+      fallbackNewsItems = fallbackNewsItems.filter(item => {
+        const itemTime = new Date(item.createdInDb || item.timestamp).getTime()
+        const isOld = itemTime < cutoffTime
+        if (isOld) removedCount++
+        return !isOld
+      })
+
+      // Clean up column data
+      for (const [columnId, items] of fallbackColumnData.entries()) {
+        const filteredItems = items.filter(item => {
+          const itemTime = new Date(item.createdInDb || item.timestamp).getTime()
+          return itemTime >= cutoffTime
+        })
+        fallbackColumnData.set(columnId, filteredItems)
+      }
+    }
+
+    return { success: true, removedCount, cutoffDate: cutoffDate.toISOString() }
+  },
+
+  // Migration: Add createdInDb to existing items
+  migrateCreatedInDb: async () => {
+    let updated = 0
+
+    if (isKVAvailable()) {
+      const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
+      const migratedItems = items.map(item => {
+        if (!item.createdInDb) {
+          updated++
+          return {
+            ...item,
+            createdInDb: item.timestamp // Use original timestamp as fallback
+          }
+        }
+        return item
+      })
+
+      if (updated > 0) {
+        await kv.set(KEYS.NEWS_ITEMS, migratedItems)
+      }
+    } else {
+      // Fallback to in-memory
+      fallbackNewsItems = fallbackNewsItems.map(item => {
+        if (!item.createdInDb) {
+          updated++
+          return {
+            ...item,
+            createdInDb: item.timestamp // Use original timestamp as fallback
+          }
+        }
+        return item
+      })
+    }
+
+    return { success: true, updated }
   },
 
   // Health check
