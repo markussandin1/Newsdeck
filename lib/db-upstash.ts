@@ -15,10 +15,13 @@ const KEYS = {
 // Default dashboard that always exists
 const DEFAULT_DASHBOARD: Dashboard = {
   id: 'main-dashboard',
-  name: 'Newsdeck',
+  name: 'Huvuddashboard',
+  slug: 'main',
+  description: 'Din huvuddashboard för nyhetsövervakning',
   columns: [],
   createdAt: new Date().toISOString(),
-  viewCount: 0
+  viewCount: 0,
+  isDefault: true
 }
 
 // Fallback to in-memory storage if Redis is not available (for local development)
