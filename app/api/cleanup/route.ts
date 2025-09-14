@@ -6,9 +6,8 @@ export async function POST() {
     const result = await db.cleanupOldItems(7) // Remove items older than 7 days
 
     return NextResponse.json({
-      success: true,
-      message: `Cleanup completed. Removed ${result.removedCount} old items`,
-      ...result
+      ...result,
+      message: `Cleanup completed. Removed ${result.removedCount} old items`
     })
   } catch (error) {
     console.error('Error during cleanup:', error)
@@ -25,9 +24,8 @@ export async function GET() {
     const result = await db.cleanupOldItems(7)
 
     return NextResponse.json({
-      success: true,
-      message: `Cleanup check completed. Would remove ${result.removedCount} old items`,
-      ...result
+      ...result,
+      message: `Cleanup check completed. Would remove ${result.removedCount} old items`
     })
   } catch (error) {
     console.error('Error during cleanup check:', error)
