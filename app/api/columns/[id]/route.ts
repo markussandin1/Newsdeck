@@ -39,7 +39,16 @@ export async function POST(
     console.log('🔍 DEBUG - Is array:', Array.isArray(body))
     
     // Handle both single item and array of items
-    const items = Array.isArray(body) ? body : [body]
+    let items = Array.isArray(body) ? body : [body]
+    
+    // WORKAROUND: Handle object with numeric keys (from postToNewsdeck function)
+    if (typeof body === 'object' && !Array.isArray(body) && body !== null) {
+      const keys = Object.keys(body)
+      if (keys.every(key => /^\d+$/.test(key))) {
+        items = Object.values(body)
+        console.log('🔧 WORKAROUND: Converted object with numeric keys to array')
+      }
+    }
     const validatedItems: NewsItem[] = []
     
     for (const item of items) {
