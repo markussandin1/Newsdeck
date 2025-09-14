@@ -37,7 +37,23 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       const data = await response.json()
       
       if (data.success) {
-        setColumnData(data.columnData || {})
+        const newColumnData = data.columnData || {}
+        
+        // Mark new items that weren't in previous data
+        Object.keys(newColumnData).forEach(columnId => {
+          const oldItems = columnData[columnId] || []
+          const newItems = newColumnData[columnId] || []
+          
+          newColumnData[columnId] = newItems.map((item: any) => {
+            const isExistingItem = oldItems.some((oldItem: any) => oldItem.id === item.id)
+            return {
+              ...item,
+              isNew: !isExistingItem && oldItems.length > 0 // Only mark as new if this isn't the first load
+            }
+          })
+        })
+        
+        setColumnData(newColumnData)
         setLastUpdate(new Date())
       }
     } catch (error) {
@@ -196,47 +212,52 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="max-w-full px-4 py-4">
+      <div className="glass border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">{dashboard.name}</h1>
-              <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                <span>{dashboard?.columns?.length || 0} kolumner</span>
-                <span>•</span>
-                <span>{getTotalNewsCount()} händelser</span>
-                <span>•</span>
-                <span>Uppdaterad: {lastUpdate.toLocaleTimeString('sv-SE')}</span>
-                {isLoading && (
-                  <>
-                    <span>•</span>
-                    <span className="text-blue-600 animate-pulse">Uppdaterar...</span>
-                  </>
-                )}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
+                📰
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-slate-900">{dashboard.name}</h1>
+                <div className="flex items-center gap-4 text-sm text-slate-600">
+                  <span>{dashboard?.columns?.filter(col => !col.isArchived)?.length || 0} kolumner</span>
+                  <span>•</span>
+                  <span>{getTotalNewsCount()} händelser</span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowAddColumnModal(true)}
-                className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 text-sm"
-              >
-                + Lägg till kolumn
-              </button>
-              <button
-                onClick={fetchColumnData}
-                disabled={isLoading}
-                className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 text-sm"
-              >
-                🔄 Uppdatera
-              </button>
-              <a
-                href="/admin"
-                className="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
-              >
-                Admin
-              </a>
+            
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
+                <span>{isLoading ? 'Uppdaterar...' : `Live • ${lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`}</span>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowAddColumnModal(true)}
+                  className="px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition text-sm font-medium"
+                >
+                  + Lägg till kolumn
+                </button>
+                <button
+                  onClick={fetchColumnData}
+                  disabled={isLoading}
+                  className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 smooth-transition text-sm font-medium"
+                >
+                  🔄 Uppdatera
+                </button>
+                <a
+                  href="/admin"
+                  className="px-3 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 smooth-transition text-sm font-medium"
+                >
+                  Admin
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -257,7 +278,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
               >
                 {/* Column Header */}
-                <div className="p-4 border-b bg-gray-50">
+                <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
                   {editingColumn === column.id ? (
                     // Edit Mode
                     <form onSubmit={(e) => {

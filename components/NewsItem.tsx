@@ -1,4 +1,5 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
+import { useState, useEffect } from 'react'
 
 interface NewsItemProps {
   item: NewsItemType
@@ -7,16 +8,38 @@ interface NewsItemProps {
 }
 
 export default function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
-  const getNewsValueStyle = (newsValue: number) => {
+  const [isNew, setIsNew] = useState(item.isNew || false)
+
+  useEffect(() => {
+    if (item.isNew) {
+      // Clear "new" indicator after 30 seconds
+      const timer = setTimeout(() => setIsNew(false), 30000)
+      return () => clearTimeout(timer)
+    }
+  }, [item.isNew])
+  const getNewsValueAccentColor = (newsValue: number) => {
     switch (newsValue) {
       case 5:
-        return 'border-red-500 border-2 bg-red-50 animate-pulse'
+        return 'bg-rose-500'
       case 4:
-        return 'border-orange-500 border-2 bg-orange-50'
+        return 'bg-amber-500'
       case 3:
-        return 'border-yellow-500 border-2 bg-yellow-50'
+        return 'bg-emerald-500'
       default:
-        return 'border-gray-300 border bg-white'
+        return 'bg-slate-400'
+    }
+  }
+
+  const getNewsValueBadgeStyle = (newsValue: number) => {
+    switch (newsValue) {
+      case 5:
+        return 'bg-rose-100 text-rose-700'
+      case 4:
+        return 'bg-amber-100 text-amber-700'
+      case 3:
+        return 'bg-emerald-100 text-emerald-700'
+      default:
+        return 'bg-slate-100 text-slate-700'
     }
   }
 
@@ -50,52 +73,74 @@ export default function NewsItem({ item, compact = false, onClick }: NewsItemPro
   if (compact) {
     return (
       <div 
-        className={`rounded-lg p-3 shadow-sm cursor-pointer transition-transform hover:scale-105 ${getNewsValueStyle(item.newsValue)}`}
+        className={`relative bg-white rounded-lg border border-slate-200 p-4 cursor-pointer group smooth-transition hover:shadow-soft-lg hover:border-slate-300 ${
+          isNew ? 'new-message' : ''
+        }`}
         onClick={onClick}
       >
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-gray-800 text-sm leading-tight mb-1 line-clamp-2">
-              {item.title}
-            </h4>
-            <div className="flex items-center gap-2 text-xs text-gray-600">
-              <span className="font-medium">{item.source}</span>
-              <span>•</span>
-              <span>{new Date(item.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
+        {/* New message indicator */}
+        {isNew && (
+          <div className="absolute -top-1 -right-1 flex items-center justify-center">
+            <div className="new-indicator-dot"></div>
+            <div className="new-indicator-ping"></div>
           </div>
-          <div className="flex flex-col items-end gap-1 ml-2 flex-shrink-0">
-            <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-              item.newsValue >= 4 ? 'bg-red-600 text-white' :
-              item.newsValue === 3 ? 'bg-yellow-600 text-white' :
-              'bg-gray-600 text-white'
-            }`}>
-              {item.newsValue}
-            </span>
-            {item.severity && (
-              <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${
-                item.severity === 'critical' ? 'bg-red-100 text-red-700' :
-                item.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                item.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-gray-100 text-gray-700'
-              }`}>
-                {item.severity.toUpperCase()}
+        )}
+
+        {/* Accent stripe */}
+        <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${getNewsValueAccentColor(item.newsValue)}`}></div>
+        
+        <div className="pl-3">
+          {/* Metadata header */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                {item.source}
+              </span>
+              {isNew && (
+                <span className="new-badge">NY</span>
+              )}
+            </div>
+            <time className="text-xs text-slate-400">
+              {new Date(item.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+            </time>
+          </div>
+          
+          {/* Title */}
+          <h3 className="font-semibold text-slate-900 mb-2 line-clamp-2 group-hover:text-blue-700 smooth-transition text-sm leading-tight">
+            {item.title}
+          </h3>
+          
+          {/* Description */}
+          {item.description && (
+            <p className="text-sm text-slate-600 line-clamp-2 mb-3 leading-relaxed">
+              {item.description}
+            </p>
+          )}
+          
+          {/* Footer */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getNewsValueBadgeStyle(item.newsValue)}`}>
+                {item.newsValue}
+              </span>
+              {item.severity && (
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  item.severity === 'critical' ? 'bg-rose-100 text-rose-700' :
+                  item.severity === 'high' ? 'bg-amber-100 text-amber-700' :
+                  item.severity === 'medium' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-slate-100 text-slate-700'
+                }`}>
+                  {item.severity.toUpperCase()}
+                </span>
+              )}
+            </div>
+            {item.location && (
+              <span className="text-xs text-slate-400 flex items-center gap-1">
+                📍 {[item.location.name, item.location.municipality].filter(Boolean).join(', ')}
               </span>
             )}
           </div>
         </div>
-        
-        {item.description && (
-          <p className="text-gray-700 text-xs leading-relaxed line-clamp-2 mb-2">
-            {item.description}
-          </p>
-        )}
-        
-        {item.location && (
-          <div className="text-xs text-gray-600">
-            📍 {[item.location.name, item.location.municipality].filter(Boolean).join(', ')}
-          </div>
-        )}
       </div>
     )
   }
