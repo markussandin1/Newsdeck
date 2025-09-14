@@ -24,6 +24,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
 
@@ -172,11 +173,15 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }
 
-  const copyToClipboard = async (text: string, type: 'id' | 'config') => {
+  const copyToClipboard = async (text: string, columnId: string, columnTitle: string) => {
     try {
       await navigator.clipboard.writeText(text)
-      setCopiedId(`${type}`)
-      setTimeout(() => setCopiedId(null), 2000)
+      setCopiedId(columnId)
+      setToastMessage(`Kolumn ID: ${text} för kolumnen "${columnTitle}" är kopierat`)
+      setTimeout(() => {
+        setCopiedId(null)
+        setToastMessage(null)
+      }, 3000)
     } catch (error) {
       console.error('Failed to copy:', error)
     }
@@ -292,11 +297,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2 flex-1">
                         <button
-                          onClick={() => copyToClipboard(column.id, 'id')}
+                          onClick={() => copyToClipboard(column.id, column.id, column.title)}
                           className="text-blue-500 hover:text-blue-700 p-1"
                           title="Kopiera kolumn-ID"
                         >
-                          {copiedId === 'id' ? '✓' : '📋'}
+                          {copiedId === column.id ? '✓' : '📋'}
                         </button>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
@@ -523,6 +528,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         </div>
       )}
       
+      {/* Toast notification */}
+      {toastMessage && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
+          {toastMessage}
+        </div>
+      )}
+
       {/* Auto-refresh indicator */}
       <div className="fixed bottom-4 right-4 bg-white rounded-full shadow-lg px-3 py-2 text-xs text-gray-600 border">
         🔄 Auto-uppdatering var 5:e sekund
