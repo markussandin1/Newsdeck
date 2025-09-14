@@ -48,7 +48,7 @@
 
 /* New message indicators */
 .new-message {
-  @apply ring-2 ring-blue-400 ring-opacity-50 bg-blue-50/30;
+  @apply ring-2 ring-blue-400/50 bg-blue-50/30;
 }
 
 .new-indicator-dot {

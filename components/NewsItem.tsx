@@ -43,6 +43,20 @@ export default function NewsItem({ item, compact = false, onClick }: NewsItemPro
     }
   }
 
+  // Legacy function for non-compact view
+  const getNewsValueStyle = (newsValue: number) => {
+    switch (newsValue) {
+      case 5:
+        return 'border-rose-500 border-2 bg-rose-50'
+      case 4:
+        return 'border-amber-500 border-2 bg-amber-50'
+      case 3:
+        return 'border-emerald-500 border-2 bg-emerald-50'
+      default:
+        return 'border-slate-300 border bg-white'
+    }
+  }
+
   const getSeverityBadge = (severity?: "critical" | "high" | "medium" | "low" | null) => {
     if (!severity) return null
     
