@@ -101,6 +101,41 @@ export async function POST(
   }
 }
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const { title, description } = await request.json()
+    
+    if (!title?.trim()) {
+      return NextResponse.json(
+        { error: 'Title is required' },
+        { status: 400 }
+      )
+    }
+    
+    // In a real app, you'd update the column in a database
+    // For now, we'll just return success since columns are managed in the dashboard
+    
+    return NextResponse.json({
+      success: true,
+      message: `Column ${id} updated successfully`,
+      columnId: id,
+      title: title.trim(),
+      description: description?.trim() || undefined
+    })
+    
+  } catch (error) {
+    console.error('Error updating column:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

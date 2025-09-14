@@ -20,6 +20,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [newColumnDescription, setNewColumnDescription] = useState('')
+  const [editingColumn, setEditingColumn] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const fetchColumnData = async () => {
     try {
@@ -102,6 +106,56 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }
 
+  const updateColumn = async (columnId: string, title: string, description?: string) => {
+    try {
+      const response = await fetch(`/api/columns/${columnId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim(), description: description?.trim() })
+      })
+      
+      const data = await response.json()
+      if (data.success) {
+        // Update the main dashboard with updated column
+        const updatedColumns = (dashboard?.columns || []).map(col => 
+          col.id === columnId 
+            ? { ...col, title: title.trim(), description: description?.trim() }
+            : col
+        )
+        
+        const dashboardResponse = await fetch('/api/dashboard/main', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ columns: updatedColumns })
+        })
+        
+        const dashboardData = await dashboardResponse.json()
+        if (dashboardData.success) {
+          onDashboardUpdate(dashboardData.dashboard)
+          setEditingColumn(null)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update column:', error)
+    }
+  }
+
+  const copyToClipboard = async (text: string, type: 'id' | 'config') => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedId(`${type}`)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch (error) {
+      console.error('Failed to copy:', error)
+    }
+  }
+
+  const startEditing = (column: DashboardColumn) => {
+    setEditingColumn(column.id)
+    setEditTitle(column.title)
+    setEditDescription(column.description || '')
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -162,42 +216,125 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
               >
                 {/* Column Header */}
-                <div className="p-4 border-b bg-gray-50 flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 mb-1">
-                      {column.title}
-                    </h3>
-                    {column.description && (
-                      <div className="text-xs text-gray-600 mb-2">
-                        {column.description}
+                <div className="p-4 border-b bg-gray-50">
+                  {editingColumn === column.id ? (
+                    // Edit Mode
+                    <form onSubmit={(e) => {
+                      e.preventDefault()
+                      updateColumn(column.id, editTitle, editDescription)
+                    }} className="space-y-2">
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="w-full px-2 py-1 text-sm border rounded"
+                        placeholder="Kolumnnamn"
+                        required
+                      />
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        className="w-full px-2 py-1 text-xs border rounded resize-none"
+                        placeholder="Beskrivning (valfritt)"
+                        rows={2}
+                      />
+                      <div className="flex gap-1">
+                        <button
+                          type="submit"
+                          className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingColumn(null)}
+                          className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                        >
+                          ✕
+                        </button>
                       </div>
-                    )}
-                    <div className="text-xs text-gray-500 mb-1">
-                      {columnItems.length} händelser
+                    </form>
+                  ) : (
+                    // View Mode
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-gray-800">
+                            {column.title}
+                          </h3>
+                          <button
+                            onClick={() => startEditing(column)}
+                            className="text-gray-400 hover:text-gray-600 text-xs"
+                            title="Redigera kolumn"
+                          >
+                            ✏️
+                          </button>
+                        </div>
+                        {column.description && (
+                          <div className="text-xs text-gray-600 mb-2">
+                            {column.description}
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-500 mb-2">
+                          {columnItems.length} händelser
+                        </div>
+                        
+                        {/* Column ID and API Info */}
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-400">ID:</span>
+                            <code className="bg-gray-100 px-1 rounded font-mono text-xs">
+                              {column.id}
+                            </code>
+                            <button
+                              onClick={() => copyToClipboard(column.id, 'id')}
+                              className="text-blue-500 hover:text-blue-700 px-1"
+                              title="Kopiera kolumn-ID"
+                            >
+                              {copiedId === 'id' ? '✓' : '📋'}
+                            </button>
+                          </div>
+                          
+                          <div className="bg-blue-50 p-2 rounded text-xs">
+                            <div className="text-blue-800 font-medium mb-1">Workflow-konfiguration:</div>
+                            <div className="space-y-1">
+                              <div className="text-blue-700">
+                                URL: <code className="bg-white px-1">https://newsdeck-beta.vercel.app/api/news-items</code>
+                              </div>
+                              <div className="text-blue-700">
+                                JSON: <code className="bg-white px-1">{`{"columnId": "${column.id}", "items": [...]}`}</code>
+                                <button
+                                  onClick={() => copyToClipboard(`{"columnId": "${column.id}", "items": []}`, 'config')}
+                                  className="text-blue-500 hover:text-blue-700 ml-1"
+                                  title="Kopiera JSON-mall"
+                                >
+                                  {copiedId === 'config' ? '✓' : '📋'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => removeColumn(column.id)}
+                        className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
+                        title="Ta bort kolumn"
+                      >
+                        ×
+                      </button>
                     </div>
-                    <div className="text-xs text-gray-400 font-mono">
-                      ID: {column.id.slice(0, 8)}...
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => removeColumn(column.id)}
-                    className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
-                    title="Ta bort kolumn"
-                  >
-                    ×
-                  </button>
+                  )}
                 </div>
 
                 {/* Column Content */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {columnItems.length === 0 ? (
                     <div className="text-center py-8 text-gray-500 text-sm">
-                      <div className="mb-2">Inga händelser</div>
-                      <div className="text-xs text-gray-400 mb-2">
-                        Skicka data till:
-                      </div>
-                      <div className="text-xs font-mono bg-gray-100 p-2 rounded">
-                        /api/columns/{column.id}
+                      <div className="mb-4">📰</div>
+                      <div className="mb-2">Väntar på händelser...</div>
+                      <div className="text-xs text-gray-400">
+                        Konfigurationen finns i kolumnhuvudet ↑
                       </div>
                     </div>
                   ) : (
