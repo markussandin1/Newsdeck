@@ -209,18 +209,37 @@ export const persistentDb = {
   removeColumnFromDashboard: async (dashboardId: string, columnId: string) => {
     const dashboard = await persistentDb.getDashboard(dashboardId)
     if (dashboard) {
-      const updatedColumns = dashboard.columns.filter(col => col.id !== columnId)
-      
-      // Also clear column data
-      if (isKVAvailable()) {
-        await kv.del(KEYS.COLUMN_DATA(columnId))
-      } else {
-        fallbackColumnData.delete(columnId)
-      }
+      const updatedColumns = dashboard.columns.map(col => 
+        col.id === columnId 
+          ? { ...col, isArchived: true, archivedAt: new Date().toISOString() }
+          : col
+      )
       
       return await persistentDb.updateDashboard(dashboardId, { columns: updatedColumns })
     }
     return null
+  },
+
+  restoreColumnInDashboard: async (dashboardId: string, columnId: string) => {
+    const dashboard = await persistentDb.getDashboard(dashboardId)
+    if (dashboard) {
+      const updatedColumns = dashboard.columns.map(col => 
+        col.id === columnId 
+          ? { ...col, isArchived: false, archivedAt: undefined }
+          : col
+      )
+      
+      return await persistentDb.updateDashboard(dashboardId, { columns: updatedColumns })
+    }
+    return null
+  },
+
+  getArchivedColumns: async (dashboardId: string) => {
+    const dashboard = await persistentDb.getDashboard(dashboardId)
+    if (dashboard) {
+      return dashboard.columns.filter(col => col.isArchived === true)
+    }
+    return []
   },
 
   // Get news items for specific workflow (for column-based dashboards)

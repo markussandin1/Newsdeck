@@ -33,6 +33,8 @@ export interface DashboardColumn {
   description?: string;        // Valfri beskrivning av vad kolumnen ska innehålla
   order: number;               // Sorteringsordning från vänster till höger
   createdAt: string;           // När kolumnen skapades
+  isArchived?: boolean;        // Om kolumnen är arkiverad (dold men inte raderad)
+  archivedAt?: string;         // När kolumnen arkiverades
 }
 
 export interface Dashboard {

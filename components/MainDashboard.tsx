@@ -24,6 +24,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
+  const [showArchivedColumns, setShowArchivedColumns] = useState(false)
 
   const fetchColumnData = async () => {
     try {
@@ -42,9 +44,23 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }
 
+  // Load archived columns
+  const loadArchivedColumns = async () => {
+    try {
+      const response = await fetch(`/api/columns/archived`)
+      const data = await response.json()
+      if (data.success) {
+        setArchivedColumns(data.columns)
+      }
+    } catch (error) {
+      console.error('Failed to load archived columns:', error)
+    }
+  }
+
   // Polling for real-time updates every 5 seconds
   useEffect(() => {
     fetchColumnData()
+    loadArchivedColumns()
     const interval = setInterval(fetchColumnData, 5000)
     return () => clearInterval(interval)
   }, [])
@@ -80,6 +96,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         if (dashboardData.success) {
           onDashboardUpdate(dashboardData.dashboard)
           setShowAddColumnModal(false)
+          setNewColumnTitle('')
+          setNewColumnDescription('')
         }
       }
     } catch (error) {
@@ -87,22 +105,36 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }
 
-  const removeColumn = async (columnId: string) => {
-    const updatedColumns = (dashboard?.columns || []).filter(col => col.id !== columnId)
-    
+  const restoreColumn = async (columnId: string) => {
     try {
-      const response = await fetch('/api/dashboard/main', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ columns: updatedColumns })
+      const response = await fetch(`/api/columns/${columnId}/restore`, {
+        method: 'PUT'
       })
       
       const data = await response.json()
       if (data.success) {
         onDashboardUpdate(data.dashboard)
+        loadArchivedColumns() // Reload archived columns
+        setShowAddColumnModal(false)
       }
     } catch (error) {
-      console.error('Failed to remove column:', error)
+      console.error('Failed to restore column:', error)
+    }
+  }
+
+  const removeColumn = async (columnId: string) => {
+    try {
+      const response = await fetch(`/api/columns/${columnId}/archive`, {
+        method: 'PUT'
+      })
+      
+      const data = await response.json()
+      if (data.success) {
+        onDashboardUpdate(data.dashboard)
+        loadArchivedColumns() // Reload archived columns
+      }
+    } catch (error) {
+      console.error('Failed to archive column:', error)
     }
   }
 
@@ -206,6 +238,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       {/* TweetDeck-style Columns */}
       <div className="flex overflow-x-auto h-[calc(100vh-100px)]">
         {(dashboard?.columns || [])
+          .filter(col => !col.isArchived)
           .sort((a, b) => a.order - b.order)
           .map((column) => {
             const columnItems = columnData[column.id] || []
@@ -257,61 +290,29 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   ) : (
                     // View Mode
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-800">
-                            {column.title}
-                          </h3>
-                          <button
-                            onClick={() => startEditing(column)}
-                            className="text-gray-400 hover:text-gray-600 text-xs"
-                            title="Redigera kolumn"
-                          >
-                            ✏️
-                          </button>
-                        </div>
-                        {column.description && (
-                          <div className="text-xs text-gray-600 mb-2">
-                            {column.description}
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-500 mb-2">
-                          {columnItems.length} händelser
-                        </div>
-                        
-                        {/* Column ID and API Info */}
-                        <div className="space-y-1 text-xs">
-                          <div className="flex items-center gap-1">
-                            <span className="text-gray-400">ID:</span>
-                            <code className="bg-gray-100 px-1 rounded font-mono text-xs">
-                              {column.id}
-                            </code>
+                      <div className="flex items-center gap-2 flex-1">
+                        <button
+                          onClick={() => copyToClipboard(column.id, 'id')}
+                          className="text-blue-500 hover:text-blue-700 p-1"
+                          title="Kopiera kolumn-ID"
+                        >
+                          {copiedId === 'id' ? '✓' : '📋'}
+                        </button>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-gray-800">
+                              {column.title}
+                            </h3>
                             <button
-                              onClick={() => copyToClipboard(column.id, 'id')}
-                              className="text-blue-500 hover:text-blue-700 px-1"
-                              title="Kopiera kolumn-ID"
+                              onClick={() => startEditing(column)}
+                              className="text-gray-400 hover:text-gray-600 text-xs"
+                              title="Redigera kolumn"
                             >
-                              {copiedId === 'id' ? '✓' : '📋'}
+                              ✏️
                             </button>
                           </div>
-                          
-                          <div className="bg-blue-50 p-2 rounded text-xs">
-                            <div className="text-blue-800 font-medium mb-1">Workflow-konfiguration:</div>
-                            <div className="space-y-1">
-                              <div className="text-blue-700">
-                                URL: <code className="bg-white px-1">https://newsdeck-beta.vercel.app/api/news-items</code>
-                              </div>
-                              <div className="text-blue-700">
-                                JSON: <code className="bg-white px-1">{`{"columnId": "${column.id}", "items": [...]}`}</code>
-                                <button
-                                  onClick={() => copyToClipboard(`{"columnId": "${column.id}", "items": []}`, 'config')}
-                                  className="text-blue-500 hover:text-blue-700 ml-1"
-                                  title="Kopiera JSON-mall"
-                                >
-                                  {copiedId === 'config' ? '✓' : '📋'}
-                                </button>
-                              </div>
-                            </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {columnItems.length} händelser
                           </div>
                         </div>
                       </div>
@@ -382,63 +383,134 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 </button>
               </div>
               
-              <form onSubmit={(e) => {
-                e.preventDefault()
-                if (newColumnTitle.trim()) {
-                  addColumn(newColumnTitle, newColumnDescription)
-                }
-              }}>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kolumnnamn *
-                    </label>
-                    <input
-                      type="text"
-                      value={newColumnTitle}
-                      onChange={(e) => setNewColumnTitle(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="t.ex. Breaking News Stockholm"
-                      required
-                      autoFocus
-                    />
+              {/* Tab buttons */}
+              <div className="flex mb-4 border-b">
+                <button
+                  onClick={() => setShowArchivedColumns(false)}
+                  className={`px-4 py-2 font-medium text-sm ${
+                    !showArchivedColumns 
+                      ? 'border-b-2 border-blue-500 text-blue-600' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Skapa ny
+                </button>
+                <button
+                  onClick={() => setShowArchivedColumns(true)}
+                  className={`px-4 py-2 font-medium text-sm ${
+                    showArchivedColumns 
+                      ? 'border-b-2 border-blue-500 text-blue-600' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Återställ ({archivedColumns.length})
+                </button>
+              </div>
+
+              {!showArchivedColumns ? (
+                // Create new column form
+                <form onSubmit={(e) => {
+                  e.preventDefault()
+                  if (newColumnTitle.trim()) {
+                    addColumn(newColumnTitle, newColumnDescription)
+                  }
+                }}>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Kolumnnamn *
+                      </label>
+                      <input
+                        type="text"
+                        value={newColumnTitle}
+                        onChange={(e) => setNewColumnTitle(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="t.ex. Breaking News Stockholm"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Beskrivning (valfritt)
+                      </label>
+                      <textarea
+                        value={newColumnDescription}
+                        onChange={(e) => setNewColumnDescription(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Beskriv vad denna kolumn ska innehålla..."
+                        rows={3}
+                      />
+                    </div>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Beskrivning (valfritt)
-                    </label>
-                    <textarea
-                      value={newColumnDescription}
-                      onChange={(e) => setNewColumnDescription(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Beskriv vad denna kolumn ska innehålla..."
-                      rows={3}
-                    />
+                  <div className="flex gap-3 pt-4 mt-6 border-t">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                      disabled={!newColumnTitle.trim()}
+                    >
+                      Skapa kolumn
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddColumnModal(false)
+                        setNewColumnTitle('')
+                        setNewColumnDescription('')
+                        setShowArchivedColumns(false)
+                      }}
+                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    >
+                      Avbryt
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                // Restore archived columns
+                <div className="space-y-3">
+                  {archivedColumns.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="mb-2">📦</div>
+                      <div>Inga arkiverade kolumner</div>
+                    </div>
+                  ) : (
+                    archivedColumns.map((column) => (
+                      <div key={column.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">{column.title}</div>
+                          {column.description && (
+                            <div className="text-sm text-gray-600 mt-1">{column.description}</div>
+                          )}
+                          <div className="text-xs text-gray-500 mt-1">
+                            Arkiverad: {new Date(column.archivedAt || '').toLocaleDateString('sv-SE')}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => restoreColumn(column.id)}
+                          className="ml-3 px-3 py-2 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+                        >
+                          Återställ
+                        </button>
+                      </div>
+                    ))
+                  )}
+                  
+                  <div className="flex justify-end pt-4 mt-6 border-t">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddColumnModal(false)
+                        setShowArchivedColumns(false)
+                      }}
+                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    >
+                      Stäng
+                    </button>
                   </div>
                 </div>
-                
-                <div className="flex gap-3 pt-4 mt-6 border-t">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50"
-                    disabled={!newColumnTitle.trim()}
-                  >
-                    Skapa kolumn
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddColumnModal(false)
-                      setNewColumnTitle('')
-                      setNewColumnDescription('')
-                    }}
-                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                  >
-                    Avbryt
-                  </button>
-                </div>
-              </form>
+              )}
               
               <div className="mt-6 p-3 bg-blue-50 rounded-lg">
                 <div className="text-sm text-blue-800">
