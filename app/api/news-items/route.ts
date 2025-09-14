@@ -58,9 +58,13 @@ export async function POST(request: NextRequest) {
     
     // Store items in column-specific storage - append to existing items
     const existingItems = await db.getColumnData(columnId) || []
+    console.log(`🔍 DEBUG - Existing items in column ${columnId}:`, existingItems.length)
+    
     const allItems = [...existingItems, ...validatedItems]
+    console.log(`🔍 DEBUG - Total items after adding new:`, allItems.length)
     
     await db.setColumnData(columnId, allItems)
+    console.log(`🔍 DEBUG - Successfully stored ${allItems.length} items to column ${columnId}`)
     
     // Also add to general news storage for admin/debugging
     await db.addNewsItems(validatedItems)
