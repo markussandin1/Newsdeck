@@ -52,10 +52,10 @@ export const persistentDb = {
   },
 
   addNewsItems: async (items: NewsItem[]) => {
-    // Add database creation timestamp to all items
+    // Add database creation timestamp to items that don't already have it
     const itemsWithTimestamp = items.map(item => ({
       ...item,
-      createdInDb: new Date().toISOString()
+      createdInDb: item.createdInDb || new Date().toISOString()
     }))
 
     if (isKVAvailable()) {

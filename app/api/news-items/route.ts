@@ -56,18 +56,25 @@ export async function POST(request: NextRequest) {
       validatedItems.push(newsItem)
     }
     
+    // Add createdInDb timestamp to items before storing
+    const currentTime = new Date().toISOString()
+    const itemsWithTimestamp = validatedItems.map(item => ({
+      ...item,
+      createdInDb: currentTime
+    }))
+
     // Store items in column-specific storage - append to existing items
     const existingItems = await db.getColumnData(columnId) || []
     console.log(`🔍 DEBUG - Existing items in column ${columnId}:`, existingItems.length)
-    
-    const allItems = [...existingItems, ...validatedItems]
+
+    const allItems = [...existingItems, ...itemsWithTimestamp]
     console.log(`🔍 DEBUG - Total items after adding new:`, allItems.length)
-    
+
     await db.setColumnData(columnId, allItems)
     console.log(`🔍 DEBUG - Successfully stored ${allItems.length} items to column ${columnId}`)
-    
-    // Also add to general news storage for admin/debugging
-    await db.addNewsItems(validatedItems)
+
+    // Also add to general news storage for admin/debugging (items already have createdInDb)
+    await db.addNewsItems(itemsWithTimestamp)
     
     return NextResponse.json({
       success: true,
