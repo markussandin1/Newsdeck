@@ -6,41 +6,67 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Validate if it's a single item or array
-    const items: NewsItem[] = Array.isArray(body) ? body : [body]
+    // DEBUG: Log what we receive
+    console.log('🔍 DEBUG - News items API received:', JSON.stringify(body, null, 2))
     
-    // Basic validation
-    for (const item of items) {
-      if (!item.id || !item.workflowId || !item.source || !item.timestamp || !item.title) {
-        return NextResponse.json(
-          { error: 'Missing required fields: id, workflowId, source, timestamp, title' },
-          { status: 400 }
-        )
-      }
-      
-      if (!item.newsValue || item.newsValue < 1 || item.newsValue > 5) {
-        return NextResponse.json(
-          { error: 'newsValue must be between 1 and 5' },
-          { status: 400 }
-        )
-      }
-      
-      // Validate timestamp format
-      if (isNaN(new Date(item.timestamp).getTime())) {
-        return NextResponse.json(
-          { error: 'Invalid timestamp format. Use ISO 8601 format.' },
-          { status: 400 }
-        )
-      }
+    // Extract columnId and items from payload
+    const { columnId, items: rawItems } = body
+    
+    if (!columnId) {
+      return NextResponse.json(
+        { error: 'columnId is required in request body' },
+        { status: 400 }
+      )
     }
     
-    // Save to database
-    db.addNewsItems(items)
+    if (!rawItems || !Array.isArray(rawItems)) {
+      return NextResponse.json(
+        { error: 'items array is required in request body' },
+        { status: 400 }
+      )
+    }
+    
+    const validatedItems: NewsItem[] = []
+    
+    for (const item of rawItems) {
+      // Basic validation
+      if (!item.id || !item.title) {
+        return NextResponse.json(
+          { error: 'Each item must have id and title' },
+          { status: 400 }
+        )
+      }
+      
+      // Create NewsItem with column ID as workflowId for backward compatibility
+      const newsItem: NewsItem = {
+        id: item.id,
+        workflowId: columnId, // Use column ID as workflow ID
+        source: item.source || 'workflows',
+        timestamp: item.timestamp || new Date().toISOString(),
+        title: item.title,
+        description: item.description,
+        newsValue: item.newsValue ?? 3,
+        category: item.category,
+        severity: item.severity,
+        location: item.location,
+        extra: item.extra,
+        raw: item.raw
+      }
+      
+      validatedItems.push(newsItem)
+    }
+    
+    // Store items in column-specific storage
+    await db.setColumnData(columnId, validatedItems)
+    
+    // Also add to general news storage for admin/debugging
+    await db.addNewsItems(validatedItems)
     
     return NextResponse.json({
       success: true,
-      message: `${items.length} news item(s) added successfully`,
-      items
+      message: `Added ${validatedItems.length} items to column ${columnId}`,
+      columnId,
+      itemsAdded: validatedItems.length
     })
     
   } catch (error) {
