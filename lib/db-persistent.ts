@@ -437,13 +437,13 @@ export const persistentDb = {
       })
 
       // Clean up column data
-      for (const [columnId, items] of fallbackColumnData.entries()) {
+      fallbackColumnData.forEach((items, columnId) => {
         const filteredItems = items.filter(item => {
           const itemTime = new Date(item.createdInDb || item.timestamp).getTime()
           return itemTime >= cutoffTime
         })
         fallbackColumnData.set(columnId, filteredItems)
-      }
+      })
     }
 
     return { success: true, removedCount, cutoffDate: cutoffDate.toISOString() }
