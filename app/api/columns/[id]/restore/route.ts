@@ -3,9 +3,10 @@ import { db } from '@/lib/db'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params
     const columnId = params.id
     
     const updatedDashboard = await db.restoreColumnInDashboard('main-dashboard', columnId)
