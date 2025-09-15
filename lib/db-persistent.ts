@@ -278,12 +278,12 @@ export const persistentDb = {
   getColumnData: async (columnId: string, limit?: number) => {
     if (isKVAvailable()) {
       const items = await kv.get<NewsItem[]>(KEYS.COLUMN_DATA(columnId)) || []
-      // Apply limit if specified (default to 50 for performance)
-      return limit ? items.slice(0, limit) : items.slice(0, 50)
+      // Apply limit if specified (no default limit - return all items)
+      return limit ? items.slice(0, limit) : items
     } else {
       const items = fallbackColumnData.get(columnId) || []
-      // Apply limit if specified (default to 50 for performance)
-      return limit ? items.slice(0, limit) : items.slice(0, 50)
+      // Apply limit if specified (no default limit - return all items)
+      return limit ? items.slice(0, limit) : items
     }
   },
 
@@ -484,6 +484,39 @@ export const persistentDb = {
     }
 
     return { success: true, updated }
+  },
+
+  // Sync column data from general news storage (for fixing data inconsistencies)
+  syncColumnDataFromGeneral: async (columnId: string) => {
+    const allItems = await persistentDb.getNewsItems()
+    const columnItems = allItems.filter(item => item.workflowId === columnId)
+
+    console.log(`🔄 SYNC - Found ${columnItems.length} items for column ${columnId} in general storage`)
+
+    await persistentDb.setColumnData(columnId, columnItems)
+
+    console.log(`✅ SYNC - Updated column ${columnId} with ${columnItems.length} items`)
+
+    return { success: true, itemsFound: columnItems.length, columnId }
+  },
+
+  // Sync all columns data from general news storage
+  syncAllColumnsDataFromGeneral: async () => {
+    const dashboards = await persistentDb.getDashboards()
+    let totalSynced = 0
+
+    for (const dashboard of dashboards) {
+      if (dashboard.columns) {
+        for (const column of dashboard.columns.filter(col => !col.isArchived)) {
+          const result = await persistentDb.syncColumnDataFromGeneral(column.id)
+          totalSynced += result.itemsFound
+        }
+      }
+    }
+
+    console.log(`✅ SYNC - Synced ${totalSynced} total items across all columns`)
+
+    return { success: true, totalItemsSynced: totalSynced }
   },
 
   // Health check
