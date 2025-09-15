@@ -2,6 +2,13 @@
 
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { useEffect } from 'react'
+import dynamic from 'next/dynamic'
+
+// Dynamically import LeafletMap to avoid SSR issues
+const LeafletMap = dynamic(() => import('./LeafletMap'), {
+  ssr: false,
+  loading: () => <div className="w-full h-48 bg-gray-100 rounded-lg border border-gray-200 animate-pulse" />
+})
 
 interface NewsItemModalProps {
   item: NewsItemType | null
@@ -72,6 +79,12 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
       timeZone: 'Europe/Stockholm'
     })
   }
+
+
+  const getGoogleMapsUrl = (lat: number, lng: number) => {
+    return `https://www.google.com/maps/place/${lat},${lng}/@${lat},${lng},16z`
+  }
+
 
   return (
     <div
@@ -155,8 +168,31 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                   </div>
                 )}
                 {item.location.coordinates && (
-                  <div>
+                  <div className="mb-3">
                     <span className="font-medium">Koordinater:</span> {item.location.coordinates[0]}, {item.location.coordinates[1]}
+                  </div>
+                )}
+
+                {/* Interactive map */}
+                {item.location.coordinates && item.location.coordinates.length >= 2 && (
+                  <div className="mt-4">
+                    <div className="relative group">
+                      <LeafletMap
+                        lat={item.location.coordinates[0]}
+                        lng={item.location.coordinates[1]}
+                        height={192}
+                        zoom={16}
+                        onClick={() => {
+                          window.open(getGoogleMapsUrl(item.location.coordinates![0], item.location.coordinates![1]), '_blank')
+                        }}
+                      />
+                      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm text-gray-700 opacity-0 group-hover:opacity-100 smooth-transition shadow-sm">
+                        🗺️ Öppna i Google Maps
+                      </div>
+                      <div className="absolute bottom-3 left-3 bg-black/70 text-white rounded px-2 py-1 text-xs">
+                        Klicka för att öppna i Google Maps
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

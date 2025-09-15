@@ -1,5 +1,5 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, memo, useRef } from 'react'
 
 interface NewsItemProps {
   item: NewsItemType
@@ -85,6 +85,9 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
     })
   }
 
+
+
+
   if (compact) {
     return (
       <div 
@@ -131,7 +134,8 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
               {item.description}
             </p>
           )}
-          
+
+
           {/* Footer */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

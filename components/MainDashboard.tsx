@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, memo, useCallback } from 'react'
+import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import NewsItem from './NewsItem'
@@ -38,20 +38,89 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  // Global scroll position preservation
+  const preserveScrollPositions = useCallback(() => {
+    const scrollPositions: {[columnId: string]: number} = {}
+
+    // Save all current scroll positions
+    dashboard.columns?.forEach(column => {
+      const scrollElement = document.querySelector(`[data-column-id="${column.id}"]`) as HTMLElement
+      if (scrollElement) {
+        scrollPositions[column.id] = scrollElement.scrollTop
+      }
+    })
+
+    // Restore positions on next frame
+    requestAnimationFrame(() => {
+      dashboard.columns?.forEach(column => {
+        const scrollElement = document.querySelector(`[data-column-id="${column.id}"]`) as HTMLElement
+        if (scrollElement && scrollPositions[column.id] > 0) {
+          scrollElement.scrollTop = scrollPositions[column.id]
+        }
+      })
+    })
+  }, [dashboard.columns])
+
+  // Watch for columnData changes and preserve scroll positions
+  useEffect(() => {
+    if (Object.keys(columnData).length > 0) {
+      // Delay to ensure DOM has updated
+      setTimeout(preserveScrollPositions, 50)
+    }
+  }, [columnData, preserveScrollPositions])
+
+  // Memoized column data to prevent unnecessary re-sorting
+  const memoizedColumnData = useMemo(() => {
+    const result: {[columnId: string]: NewsItemType[]} = {}
+
+    Object.keys(columnData).forEach(columnId => {
+      result[columnId] = (columnData[columnId] || [])
+        .sort((a, b) => {
+          const getEventTime = (item: any) => {
+            // Prefer database creation time (createdInDb) over source timestamp
+            if (item.createdInDb) {
+              return new Date(item.createdInDb).getTime()
+            }
+            // Fallback to source timestamp
+            return new Date(item.timestamp).getTime()
+          }
+          return getEventTime(b) - getEventTime(a)
+        })
+    })
+
+    return result
+  }, [columnData])
+
   const fetchColumnData = async () => {
     try {
-      setIsLoading(true)
       const response = await fetch(`/api/dashboards/main-dashboard`)
       const data = await response.json()
-      
+
       if (data.success) {
         const newColumnData = data.columnData || {}
-        
-        // Mark new items that weren't in previous data
+
+        // First check if the raw data has changed at all
+        const rawDataChanged = !deepEqual(columnData, newColumnData)
+
+        console.log('🔍 POLL DEBUG:', {
+          rawDataChanged,
+          oldItemCounts: Object.keys(columnData).map(k => `${k}: ${columnData[k]?.length || 0}`),
+          newItemCounts: Object.keys(newColumnData).map(k => `${k}: ${newColumnData[k]?.length || 0}`)
+        })
+
+        if (!rawDataChanged) {
+          // No changes detected, skip all updates
+          console.log('⏭️ SKIPPING UPDATE - No changes detected')
+          return
+        }
+
+        console.log('🔄 UPDATING STATE - Changes detected')
+
+        // Process new items only if there are actual changes
         Object.keys(newColumnData).forEach(columnId => {
           const oldItems = columnData[columnId] || []
           const newItems = newColumnData[columnId] || []
-          
+
           newColumnData[columnId] = newItems.map((item: any) => {
             const isExistingItem = oldItems.some((oldItem: any) => oldItem.id === item.id)
             return {
@@ -60,15 +129,36 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             }
           })
         })
-        
+
+        // Update state only when there are actual changes
         setColumnData(newColumnData)
         setLastUpdate(new Date())
+
+        // Preserve scroll positions after state update
+        preserveScrollPositions()
       }
     } catch (error) {
       console.error('Failed to fetch column data:', error)
-    } finally {
-      setIsLoading(false)
     }
+  }
+
+  // Deep equality check to prevent unnecessary re-renders
+  const deepEqual = (obj1: any, obj2: any): boolean => {
+    if (obj1 === obj2) return true
+    if (!obj1 || !obj2) return false
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return obj1 === obj2
+
+    const keys1 = Object.keys(obj1)
+    const keys2 = Object.keys(obj2)
+
+    if (keys1.length !== keys2.length) return false
+
+    for (const key of keys1) {
+      if (!keys2.includes(key)) return false
+      if (!deepEqual(obj1[key], obj2[key])) return false
+    }
+
+    return true
   }
 
   // Load archived columns
@@ -303,11 +393,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     setEditDescription: (description: string) => void
     setEditingColumn: (id: string | null) => void
     copiedId: string | null
-  }) => (
-    <div
-      key={column.id}
-      className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
-    >
+  }) => {
+    const scrollRef = useRef<HTMLDivElement>(null)
+
+    return (
+      <div
+        key={column.id}
+        className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
+      >
       {/* Column Header */}
       <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
         {editingColumn === column.id ? (
@@ -389,7 +482,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       </div>
 
       {/* Column Content */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div
+        className="flex-1 overflow-y-auto p-2 space-y-2"
+        ref={scrollRef}
+        data-column-id={column.id}
+      >
         {columnItems.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">
             <div className="mb-4 flex justify-center"><img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-8 h-8 object-contain" /></div>
@@ -399,8 +496,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             </div>
           </div>
         ) : (
-          columnItems.map((item) => (
-            <div key={item.id} className="mb-2">
+          columnItems.map((item, index) => (
+            <div key={`${column.id}-${item.id}-${index}`} className="mb-2">
               <NewsItem
                 item={item}
                 compact={true}
@@ -411,7 +508,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         )}
       </div>
     </div>
-  ))
+  )
+})
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -540,40 +638,28 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           .filter(col => !col.isArchived)
           .sort((a, b) => a.order - b.order)
           .map((column) => {
-            // Sort by database creation time (createdInDb), fallback to event timestamp
-            const columnItems = (columnData[column.id] || [])
-              .sort((a, b) => {
-                const getEventTime = (item: any) => {
-                  // Prefer database creation time (createdInDb) over source timestamp
-                  if (item.createdInDb) {
-                    return new Date(item.createdInDb).getTime()
-                  }
-                  // Fallback to source timestamp
-                  return new Date(item.timestamp).getTime()
-                }
-                return getEventTime(b) - getEventTime(a)
-              })
+            const columnItems = memoizedColumnData[column.id] || []
 
             return (
               <NewsColumn
                 key={column.id}
                 column={column}
                 columnItems={columnItems}
-                onEditColumn={startEditing}
-                onRemoveColumn={removeColumn}
-                onCopyId={copyToClipboard}
-                onUpdateColumn={updateColumn}
-                onSelectNewsItem={setSelectedNewsItem}
-                editingColumn={editingColumn}
-                editTitle={editTitle}
-                editDescription={editDescription}
-                setEditTitle={setEditTitle}
-                setEditDescription={setEditDescription}
-                setEditingColumn={setEditingColumn}
-                copiedId={copiedId}
-              />
-            )
-          })}
+                  onEditColumn={startEditing}
+                  onRemoveColumn={removeColumn}
+                  onCopyId={copyToClipboard}
+                  onUpdateColumn={updateColumn}
+                  onSelectNewsItem={setSelectedNewsItem}
+                  editingColumn={editingColumn}
+                  editTitle={editTitle}
+                  editDescription={editDescription}
+                  setEditTitle={setEditTitle}
+                  setEditDescription={setEditDescription}
+                  setEditingColumn={setEditingColumn}
+                  copiedId={copiedId}
+                />
+              )
+            })}
 
         {/* Add Column Button */}
         <div className="flex-shrink-0 w-80 bg-gray-50 border-r border-gray-200 flex items-center justify-center">
