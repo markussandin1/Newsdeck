@@ -16,7 +16,7 @@ export default function HomePage() {
       <div className="text-center">
         <div className="w-16 h-16 mb-4 mx-auto">
           <img
-            src="/newsdeck-logo.png"
+            src="/newsdeck-icon.svg"
             alt="Newsdeck logo"
             className="w-full h-full object-contain animate-pulse"
           />

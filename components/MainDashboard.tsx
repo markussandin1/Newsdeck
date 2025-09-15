@@ -489,7 +489,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       >
         {columnItems.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">
-            <div className="mb-4 flex justify-center"><img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-8 h-8 object-contain" /></div>
+            <div className="mb-4 flex justify-center"><img src="/newsdeck-icon.svg" alt="Newsdeck logo" className="w-8 h-8 object-contain" /></div>
             <div className="mb-2">Väntar på händelser...</div>
             <div className="text-xs text-gray-400">
               Konfigurationen finns i kolumnhuvudet ↑
@@ -519,7 +519,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 flex items-center justify-center">
-                <img src="/newsdeck-logo.png" alt="Newsdeck logo" className="w-16 h-16 object-contain" />
+                <img src="/newsdeck-icon.svg" alt="Newsdeck logo" className="w-16 h-16 object-contain" />
               </div>
               <div className="relative" ref={dropdownRef}>
                 <button 

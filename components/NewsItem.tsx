@@ -24,7 +24,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
       case 4:
         return 'bg-amber-500'
       case 3:
-        return 'bg-emerald-500'
+        return 'bg-yellow-500'
       default:
         return 'bg-slate-400'
     }
@@ -37,7 +37,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
       case 4:
         return 'bg-amber-100 text-amber-700'
       case 3:
-        return 'bg-emerald-100 text-emerald-700'
+        return 'bg-yellow-100 text-yellow-700'
       default:
         return 'bg-slate-100 text-slate-700'
     }
@@ -51,28 +51,12 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
       case 4:
         return 'border-amber-500 border-2 bg-amber-50'
       case 3:
-        return 'border-emerald-500 border-2 bg-emerald-50'
+        return 'border-yellow-500 border-2 bg-yellow-50'
       default:
         return 'border-slate-300 border bg-white'
     }
   }
 
-  const getSeverityBadge = (severity?: "critical" | "high" | "medium" | "low" | null) => {
-    if (!severity) return null
-    
-    const styles = {
-      critical: 'bg-red-100 text-red-800',
-      high: 'bg-orange-100 text-orange-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      low: 'bg-gray-100 text-gray-800'
-    }
-    
-    return (
-      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${styles[severity as keyof typeof styles] || styles.low}`}>
-        {severity.toUpperCase()}
-      </span>
-    )
-  }
 
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleString('sv-SE', {
@@ -142,16 +126,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${getNewsValueBadgeStyle(item.newsValue)}`}>
                 {item.newsValue}
               </span>
-              {item.severity && (
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  item.severity === 'critical' ? 'bg-rose-100 text-rose-700' :
-                  item.severity === 'high' ? 'bg-amber-100 text-amber-700' :
-                  item.severity === 'medium' ? 'bg-emerald-100 text-emerald-700' :
-                  'bg-slate-100 text-slate-700'
-                }`}>
-                  {item.severity.toUpperCase()}
-                </span>
-              )}
             </div>
             {item.location && (
               <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -185,7 +159,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           }`}>
             {item.newsValue}
           </span>
-          {getSeverityBadge(item.severity)}
         </div>
       </div>
       
