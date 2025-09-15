@@ -10,7 +10,6 @@ export async function POST(request: NextRequest) {
       // Sync specific column
       const result = await db.syncColumnDataFromGeneral(columnId)
       return NextResponse.json({
-        success: true,
         message: `Synced column ${columnId}`,
         ...result
       })
@@ -18,7 +17,6 @@ export async function POST(request: NextRequest) {
       // Sync all columns
       const result = await db.syncAllColumnsDataFromGeneral()
       return NextResponse.json({
-        success: true,
         message: 'Synced all columns',
         ...result
       })
