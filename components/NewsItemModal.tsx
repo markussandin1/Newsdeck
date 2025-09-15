@@ -183,7 +183,9 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                         height={192}
                         zoom={16}
                         onClick={() => {
-                          window.open(getGoogleMapsUrl(item.location.coordinates![0], item.location.coordinates![1]), '_blank')
+                          if (item.location?.coordinates) {
+                            window.open(getGoogleMapsUrl(item.location.coordinates[0], item.location.coordinates[1]), '_blank')
+                          }
                         }}
                       />
                       <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm text-gray-700 opacity-0 group-hover:opacity-100 smooth-transition shadow-sm">

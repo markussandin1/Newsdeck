@@ -61,7 +61,6 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
       map.scrollWheelZoom.disable()
       map.boxZoom.disable()
       map.keyboard.disable()
-      if (map.tap) map.tap.disable()
 
       mapInstanceRef.current = map
       isInitializedRef.current = true
