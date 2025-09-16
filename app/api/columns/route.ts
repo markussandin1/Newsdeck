@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     // Basic validation
     if (!body.title?.trim()) {
       return NextResponse.json(
@@ -30,10 +30,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
+    // Dashboard ID is required
+    const dashboardId = body.dashboardId || 'main-dashboard'
+
     // Generate UUID for the column
     const columnId = crypto.randomUUID()
-    
+
     const column: DashboardColumn = {
       id: columnId,
       title: body.title.trim(),
@@ -41,16 +44,16 @@ export async function POST(request: NextRequest) {
       order: body.order ?? 0,
       createdAt: new Date().toISOString()
     }
-    
-    // Add column to main dashboard
-    await db.addColumnToDashboard('main-dashboard', column)
-    
+
+    // Add column to specified dashboard
+    await db.addColumnToDashboard(dashboardId, column)
+
     return NextResponse.json({
       success: true,
       message: 'Column created successfully',
       column
     })
-    
+
   } catch (error) {
     console.error('Error creating column:', error)
     return NextResponse.json(

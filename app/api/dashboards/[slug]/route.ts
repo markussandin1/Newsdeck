@@ -60,3 +60,50 @@ export async function GET(
     )
   }
 }
+
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const params = await context.params
+    const slug = params.slug
+    const body = await request.json()
+
+    let dashboardId
+
+    // Handle legacy main dashboard access
+    if (slug === 'main' || slug === 'main-dashboard') {
+      dashboardId = 'main-dashboard'
+    } else {
+      const dashboard = await db.getDashboardBySlug(slug)
+      if (!dashboard) {
+        return NextResponse.json(
+          { error: 'Dashboard not found' },
+          { status: 404 }
+        )
+      }
+      dashboardId = dashboard.id
+    }
+
+    const result = await db.updateDashboard(dashboardId, body)
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Failed to update dashboard' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      dashboard: result
+    })
+  } catch (error) {
+    console.error('Error updating dashboard:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function GET() {
   try {
     const dashboard = await db.getMainDashboard()
-    
+
     // Fetch column data for all columns in the dashboard
     const columnData: { [columnId: string]: any[] } = {}
-    
+
     if (dashboard.columns) {
       for (const column of dashboard.columns) {
         try {
@@ -20,7 +20,7 @@ export async function GET() {
         }
       }
     }
-    
+
     return NextResponse.json({
       success: true,
       dashboard,
@@ -28,6 +28,32 @@ export async function GET() {
     })
   } catch (error) {
     console.error('Error fetching main dashboard with column data:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+
+    const result = await db.updateDashboard('main-dashboard', body)
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Failed to update dashboard' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      dashboard: result
+    })
+  } catch (error) {
+    console.error('Error updating main dashboard:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

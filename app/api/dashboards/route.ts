@@ -26,23 +26,34 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, description } = body
-    
+    const { name, description, columns } = body
+
     if (!name || name.trim().length === 0) {
       return NextResponse.json(
         { error: 'Dashboard name is required' },
         { status: 400 }
       )
     }
-    
+
     const newDashboard = await db.createDashboard(name.trim(), description?.trim())
-    
+
+    // If columns were provided, add them to the dashboard
+    if (columns && Array.isArray(columns) && columns.length > 0) {
+      const updatedDashboard = await db.updateDashboard(newDashboard.id, { columns })
+
+      return NextResponse.json({
+        success: true,
+        message: 'Dashboard created successfully',
+        dashboard: updatedDashboard
+      })
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Dashboard created successfully',
       dashboard: newDashboard
     })
-    
+
   } catch (error) {
     console.error('Error creating dashboard:', error)
     return NextResponse.json(

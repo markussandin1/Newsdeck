@@ -3,8 +3,15 @@ import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { columnId } = body
+    let body = {}
+    try {
+      body = await request.json()
+    } catch {
+      // No JSON body provided, use default empty object
+      body = {}
+    }
+
+    const { columnId } = body as { columnId?: string }
 
     if (columnId) {
       // Sync specific column
