@@ -126,14 +126,14 @@ export default function AdminPage() {
     }
   }
 
-  const deleteItem = async (id: string) => {
-    console.log(`🗑️ ADMIN: Delete button clicked for item ID: ${id}`)
+  const deleteItem = async (dbId: string, originalId: string) => {
+    console.log(`🗑️ ADMIN: Delete button clicked for item dbId: ${dbId}, originalId: ${originalId}`)
 
-    if (!confirm(`Är du säker på att du vill ta bort händelsen med ID: ${id}?`)) {
+    if (!confirm(`Är du säker på att du vill ta bort händelsen "${originalId}"?`)) {
       return
     }
 
-    console.log(`🗑️ ADMIN: User confirmed deletion of item ID: ${id}`)
+    console.log(`🗑️ ADMIN: User confirmed deletion of item dbId: ${dbId}`)
 
     try {
       const response = await fetch('/api/news-items', {
@@ -141,7 +141,7 @@ export default function AdminPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ dbId }),
       })
 
       const result = await response.json()
@@ -563,7 +563,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => deleteItem(item.id)}
+                      onClick={() => deleteItem(item.dbId || item.id, item.id)}
                       className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
                     >
                       Ta bort

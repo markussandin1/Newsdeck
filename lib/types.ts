@@ -1,7 +1,9 @@
 export interface NewsItem {
   // Identifikation
-  id: string;                    // Unikt ID för händelsen
-  workflowId: string;            // ID för workflow som skapat datan
+  id: string;                    // Ursprungligt ID från källan (kan dupliceras)
+  dbId: string;                  // Unikt UUID för denna databas-post
+  workflowId: string;            // ID för workflow som skapat datan (kolumn-ID för bakåtkompatibilitet)
+  flowId?: string;               // UUID från workflow-applikationen (nytt system)
   source: string;                // Källans namn (sos, polisen, smhi, tt, etc)
   timestamp: string;             // ISO 8601 format
   
@@ -33,12 +35,13 @@ export interface NewsItem {
 
 export interface DashboardColumn {
   id: string;                  // UUID som används som endpoint för data
-  title: string;               // Användardefinierad titel för kolumnen  
+  title: string;               // Användardefinierad titel för kolumnen
   description?: string;        // Valfri beskrivning av vad kolumnen ska innehålla
   order: number;               // Sorteringsordning från vänster till höger
   createdAt: string;           // När kolumnen skapades
   isArchived?: boolean;        // Om kolumnen är arkiverad (dold men inte raderad)
   archivedAt?: string;         // När kolumnen arkiverades
+  flowId?: string;             // UUID från workflow-applikationen att lyssna på
 }
 
 export interface Dashboard {

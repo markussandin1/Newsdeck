@@ -92,8 +92,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   }, [columnData])
 
   const fetchColumnData = async () => {
+    if (!dashboard?.id) {
+      console.log('Dashboard not loaded yet, skipping fetchColumnData')
+      return
+    }
+
     try {
-      const response = await fetch(`/api/dashboards/main-dashboard`)
+      // Use the correct endpoint based on dashboard type
+      let endpoint = `/api/dashboards/${dashboard.slug || dashboard.id}`
+      if (dashboard.id === 'main-dashboard') {
+        endpoint = '/api/dashboards/main-dashboard'
+      }
+
+      const response = await fetch(endpoint)
       const data = await response.json()
 
       if (data.success) {
@@ -189,12 +200,20 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   // Polling for real-time updates every 5 seconds
   useEffect(() => {
-    fetchColumnData()
-    loadArchivedColumns()
-    loadAllDashboards()
-    const interval = setInterval(fetchColumnData, 5000)
-    return () => clearInterval(interval)
-  }, [])
+    if (dashboard?.id) {
+      fetchColumnData()
+      loadArchivedColumns()
+      loadAllDashboards()
+    }
+  }, [dashboard?.id])
+
+  // Set up polling interval
+  useEffect(() => {
+    if (dashboard?.id) {
+      const interval = setInterval(fetchColumnData, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [dashboard?.id])
 
   // Handle click outside dropdown
   useEffect(() => {

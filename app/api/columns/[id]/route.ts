@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { NewsItem } from '@/lib/types'
 import { db } from '@/lib/db'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function GET(
   request: NextRequest,
@@ -63,7 +64,9 @@ export async function POST(
       // Create NewsItem with column ID as workflowId for backward compatibility
       const newsItem: NewsItem = {
         id: item.id,
+        dbId: uuidv4(), // Generate unique UUID for this database entry
         workflowId: id, // Use column ID as workflow ID
+        flowId: item.flowId, // UUID från workflow-applikationen (om tillgänglig)
         source: item.source || 'workflows',
         timestamp: item.timestamp || new Date().toISOString(),
         title: item.title,
@@ -107,24 +110,51 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const { title, description } = await request.json()
-    
+    const { title, description, flowId } = await request.json()
+
     if (!title?.trim()) {
       return NextResponse.json(
         { error: 'Title is required' },
         { status: 400 }
       )
     }
-    
-    // In a real app, you'd update the column in a database
-    // For now, we'll just return success since columns are managed in the dashboard
-    
+
+    // Update the column in the dashboard
+    const dashboards = await db.getDashboards()
+    let columnUpdated = false
+
+    for (const dashboard of dashboards) {
+      for (const column of dashboard.columns || []) {
+        if (column.id === id) {
+          column.title = title.trim()
+          column.description = description?.trim() || undefined
+          if (flowId !== undefined) {
+            column.flowId = flowId?.trim() || undefined
+          }
+          columnUpdated = true
+          break
+        }
+      }
+      if (columnUpdated) {
+        await db.updateDashboard(dashboard.id, dashboard)
+        break
+      }
+    }
+
+    if (!columnUpdated) {
+      return NextResponse.json(
+        { error: 'Column not found' },
+        { status: 404 }
+      )
+    }
+
     return NextResponse.json({
       success: true,
       message: `Column ${id} updated successfully`,
       columnId: id,
       title: title.trim(),
-      description: description?.trim() || undefined
+      description: description?.trim() || undefined,
+      flowId: flowId?.trim() || undefined
     })
     
   } catch (error) {

@@ -1,5 +1,6 @@
 import { kv } from '@vercel/kv'
 import { NewsItem, Dashboard, DashboardColumn } from './types'
+import { v4 as uuidv4 } from 'uuid'
 
 // Keys for Redis storage
 const KEYS = {
@@ -72,7 +73,23 @@ export const persistentDb = {
 
   getNewsItems: async () => {
     if (isKVAvailable()) {
-      const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
+      let items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
+
+      // Migration: Add dbId to items that don't have it
+      let needsUpdate = false
+      items = items.map(item => {
+        if (!item.dbId) {
+          needsUpdate = true
+          return { ...item, dbId: uuidv4() }
+        }
+        return item
+      })
+
+      if (needsUpdate) {
+        await kv.set(KEYS.NEWS_ITEMS, items)
+        console.log(`🔄 DB: Added dbId to items missing it`)
+      }
+
       return items.sort((a, b) => {
         // Sort by createdInDb (when event was added to database), fallback to timestamp
         const timeA = new Date(a.createdInDb || a.timestamp).getTime()
@@ -80,6 +97,19 @@ export const persistentDb = {
         return timeB - timeA
       })
     } else {
+      // Migration for fallback storage
+      let needsUpdate = false
+      fallbackNewsItems.forEach(item => {
+        if (!item.dbId) {
+          item.dbId = uuidv4()
+          needsUpdate = true
+        }
+      })
+
+      if (needsUpdate) {
+        console.log(`🔄 DB: Added dbId to fallback items missing it`)
+      }
+
       return [...fallbackNewsItems].sort((a, b) => {
         // Sort by createdInDb (when event was added to database), fallback to timestamp
         const timeA = new Date(a.createdInDb || a.timestamp).getTime()
@@ -94,25 +124,27 @@ export const persistentDb = {
     return items.slice(0, limit)
   },
 
-  deleteNewsItem: async (id: string) => {
-    console.log(`🗑️ DB: deleteNewsItem called with ID: ${id}`)
+  deleteNewsItem: async (dbId: string) => {
+    console.log(`🗑️ DB: deleteNewsItem called with dbId: ${dbId}`)
     console.log(`🗑️ DB: KV available: ${isKVAvailable()}`)
 
     if (isKVAvailable()) {
-      console.log(`🗑️ DB: Starting delete process for item ${id}`)
+      console.log(`🗑️ DB: Starting delete process for item ${dbId}`)
 
       const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
       console.log(`🗑️ DB: Found ${items.length} items in general storage`)
 
-      const index = items.findIndex(item => item.id === id)
-      if (index === -1) {
-        console.log(`🗑️ DB: Item ${id} not found in general storage`)
+      const initialLength = items.length
+      const filteredItems = items.filter(item => item.dbId !== dbId)
+      const deletedCount = initialLength - filteredItems.length
+
+      if (deletedCount === 0) {
+        console.log(`🗑️ DB: Item ${dbId} not found in general storage`)
         return false
       }
 
-      items.splice(index, 1)
-      await kv.set(KEYS.NEWS_ITEMS, items)
-      console.log(`🗑️ DB: Removed item ${id} from general storage, ${items.length} items remain`)
+      await kv.set(KEYS.NEWS_ITEMS, filteredItems)
+      console.log(`🗑️ DB: Removed ${deletedCount} item(s) with dbId ${dbId} from general storage, ${filteredItems.length} items remain`)
 
       // Also remove from all column data
       const dashboards = await kv.get<Dashboard[]>(KEYS.DASHBOARDS) || []
@@ -125,12 +157,14 @@ export const persistentDb = {
         for (const column of dashboard.columns || []) {
           columnsChecked++
           const columnItems = await kv.get<NewsItem[]>(KEYS.COLUMN_DATA(column.id)) || []
-          const columnIndex = columnItems.findIndex(item => item.id === id)
-          if (columnIndex !== -1) {
-            columnItems.splice(columnIndex, 1)
-            await kv.set(KEYS.COLUMN_DATA(column.id), columnItems)
+          const columnInitialLength = columnItems.length
+          const filteredColumnItems = columnItems.filter(item => item.dbId !== dbId)
+          const columnDeletedCount = columnInitialLength - filteredColumnItems.length
+
+          if (columnDeletedCount > 0) {
+            await kv.set(KEYS.COLUMN_DATA(column.id), filteredColumnItems)
             columnsUpdated++
-            console.log(`🗑️ DB: Removed item ${id} from column ${column.id} (${column.title}), ${columnItems.length} items remain`)
+            console.log(`🗑️ DB: Removed ${columnDeletedCount} item(s) with dbId ${dbId} from column ${column.id} (${column.title}), ${filteredColumnItems.length} items remain`)
           }
         }
       }
@@ -139,16 +173,19 @@ export const persistentDb = {
       return true
     } else {
       // Fallback to in-memory
-      console.log(`🗑️ DB: Using fallback storage for item ${id}`)
+      console.log(`🗑️ DB: Using fallback storage for item ${dbId}`)
 
-      const index = fallbackNewsItems.findIndex(item => item.id === id)
-      if (index === -1) {
-        console.log(`🗑️ DB: Item ${id} not found in fallback storage`)
+      const initialFallbackLength = fallbackNewsItems.length
+      const originalLength = fallbackNewsItems.length
+      fallbackNewsItems.splice(0, fallbackNewsItems.length, ...fallbackNewsItems.filter(item => item.dbId !== dbId))
+      const deletedFallbackCount = originalLength - fallbackNewsItems.length
+
+      if (deletedFallbackCount === 0) {
+        console.log(`🗑️ DB: Item ${dbId} not found in fallback storage`)
         return false
       }
 
-      fallbackNewsItems.splice(index, 1)
-      console.log(`🗑️ DB: Removed item ${id} from fallback storage, ${fallbackNewsItems.length} items remain`)
+      console.log(`🗑️ DB: Removed ${deletedFallbackCount} item(s) with dbId ${dbId} from fallback storage, ${fallbackNewsItems.length} items remain`)
 
       // Also remove from column data
       let columnsChecked = 0
@@ -156,11 +193,14 @@ export const persistentDb = {
 
       fallbackColumnData.forEach((items, columnId) => {
         columnsChecked++
-        const columnIndex = items.findIndex(item => item.id === id)
-        if (columnIndex !== -1) {
-          items.splice(columnIndex, 1)
+        const columnInitialLength = items.length
+        const filteredItems = items.filter(item => item.dbId !== dbId)
+        const columnDeletedCount = columnInitialLength - filteredItems.length
+
+        if (columnDeletedCount > 0) {
+          items.splice(0, items.length, ...filteredItems)
           columnsUpdated++
-          console.log(`🗑️ DB: Removed item ${id} from fallback column ${columnId}, ${items.length} items remain`)
+          console.log(`🗑️ DB: Removed ${columnDeletedCount} item(s) with dbId ${dbId} from fallback column ${columnId}, ${items.length} items remain`)
         }
       })
 

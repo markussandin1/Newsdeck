@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { NewsItem } from '@/lib/types'
 import { db } from '@/lib/db'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +41,9 @@ export async function POST(request: NextRequest) {
       // Create NewsItem with column ID as workflowId for backward compatibility
       const newsItem: NewsItem = {
         id: item.id,
+        dbId: uuidv4(), // Generate unique UUID for this database entry
         workflowId: columnId, // Use column ID as workflow ID
+        flowId: item.flowId, // UUID från workflow-applikationen (om tillgänglig)
         source: item.source || 'workflows',
         timestamp: new Date().toISOString(),
         title: item.title,
@@ -113,20 +116,20 @@ export async function GET() {
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id } = body
+    const { dbId } = body
 
-    if (!id) {
+    if (!dbId) {
       return NextResponse.json(
-        { error: 'Item ID is required' },
+        { error: 'Item dbId is required' },
         { status: 400 }
       )
     }
 
-    console.log(`🗑️ DELETE - Attempting to delete news item with ID: ${id}`)
+    console.log(`🗑️ DELETE - Attempting to delete news item with dbId: ${dbId}`)
     console.log(`🗑️ DELETE - db.deleteNewsItem function exists: ${typeof db.deleteNewsItem}`)
 
-    // Remove from general news storage
-    const deleted = await db.deleteNewsItem(id)
+    // Remove from general news storage using dbId
+    const deleted = await db.deleteNewsItem(dbId)
     console.log(`🗑️ DELETE - db.deleteNewsItem returned: ${deleted}`)
 
     if (!deleted) {
@@ -136,12 +139,12 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    console.log(`🗑️ DELETE - Successfully deleted news item: ${id}`)
+    console.log(`🗑️ DELETE - Successfully deleted news item: ${dbId}`)
 
     return NextResponse.json({
       success: true,
-      message: `Deleted item ${id}`,
-      id
+      message: `Deleted item ${dbId}`,
+      dbId
     })
 
   } catch (error) {
