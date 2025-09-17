@@ -95,43 +95,76 @@ export const persistentDb = {
   },
 
   deleteNewsItem: async (id: string) => {
+    console.log(`🗑️ DB: deleteNewsItem called with ID: ${id}`)
+    console.log(`🗑️ DB: KV available: ${isKVAvailable()}`)
+
     if (isKVAvailable()) {
+      console.log(`🗑️ DB: Starting delete process for item ${id}`)
+
       const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
+      console.log(`🗑️ DB: Found ${items.length} items in general storage`)
+
       const index = items.findIndex(item => item.id === id)
-      if (index === -1) return false
+      if (index === -1) {
+        console.log(`🗑️ DB: Item ${id} not found in general storage`)
+        return false
+      }
 
       items.splice(index, 1)
       await kv.set(KEYS.NEWS_ITEMS, items)
+      console.log(`🗑️ DB: Removed item ${id} from general storage, ${items.length} items remain`)
 
       // Also remove from all column data
       const dashboards = await kv.get<Dashboard[]>(KEYS.DASHBOARDS) || []
+      console.log(`🗑️ DB: Checking ${dashboards.length} dashboards for column data`)
+
+      let columnsChecked = 0
+      let columnsUpdated = 0
+
       for (const dashboard of dashboards) {
         for (const column of dashboard.columns || []) {
+          columnsChecked++
           const columnItems = await kv.get<NewsItem[]>(KEYS.COLUMN_DATA(column.id)) || []
           const columnIndex = columnItems.findIndex(item => item.id === id)
           if (columnIndex !== -1) {
             columnItems.splice(columnIndex, 1)
             await kv.set(KEYS.COLUMN_DATA(column.id), columnItems)
+            columnsUpdated++
+            console.log(`🗑️ DB: Removed item ${id} from column ${column.id} (${column.title}), ${columnItems.length} items remain`)
           }
         }
       }
 
+      console.log(`🗑️ DB: Checked ${columnsChecked} columns, updated ${columnsUpdated} columns`)
       return true
     } else {
       // Fallback to in-memory
+      console.log(`🗑️ DB: Using fallback storage for item ${id}`)
+
       const index = fallbackNewsItems.findIndex(item => item.id === id)
-      if (index === -1) return false
+      if (index === -1) {
+        console.log(`🗑️ DB: Item ${id} not found in fallback storage`)
+        return false
+      }
 
       fallbackNewsItems.splice(index, 1)
+      console.log(`🗑️ DB: Removed item ${id} from fallback storage, ${fallbackNewsItems.length} items remain`)
 
       // Also remove from column data
+      let columnsChecked = 0
+      let columnsUpdated = 0
+
       fallbackColumnData.forEach((items, columnId) => {
+        columnsChecked++
         const columnIndex = items.findIndex(item => item.id === id)
         if (columnIndex !== -1) {
           items.splice(columnIndex, 1)
+          columnsUpdated++
+          console.log(`🗑️ DB: Removed item ${id} from fallback column ${columnId}, ${items.length} items remain`)
         }
       })
 
+      console.log(`🗑️ DB: Checked ${columnsChecked} fallback columns, updated ${columnsUpdated} columns`)
       return true
     }
   },

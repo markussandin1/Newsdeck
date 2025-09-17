@@ -123,9 +123,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     console.log(`🗑️ DELETE - Attempting to delete news item with ID: ${id}`)
+    console.log(`🗑️ DELETE - db.deleteNewsItem function exists: ${typeof db.deleteNewsItem}`)
 
     // Remove from general news storage
     const deleted = await db.deleteNewsItem(id)
+    console.log(`🗑️ DELETE - db.deleteNewsItem returned: ${deleted}`)
 
     if (!deleted) {
       return NextResponse.json(
