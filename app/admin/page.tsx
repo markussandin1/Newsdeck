@@ -127,9 +127,13 @@ export default function AdminPage() {
   }
 
   const deleteItem = async (id: string) => {
-    if (!confirm('Är du säker på att du vill ta bort denna händelse?')) {
+    console.log(`🗑️ ADMIN: Delete button clicked for item ID: ${id}`)
+
+    if (!confirm(`Är du säker på att du vill ta bort händelsen med ID: ${id}?`)) {
       return
     }
+
+    console.log(`🗑️ ADMIN: User confirmed deletion of item ID: ${id}`)
 
     try {
       const response = await fetch('/api/news-items', {
