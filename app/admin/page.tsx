@@ -111,7 +111,7 @@ export default function AdminPage() {
       const response = await fetch('/api/news-items')
       const result = await response.json()
       if (result.success) {
-        const columnIds = dashboard.columns.map(col => col.id)
+        const columnIds = dashboard.columns.map((col: DashboardColumn) => col.id)
         const filteredItems = result.items.filter((item: any) =>
           columnIds.includes(item.workflowId)
         )
