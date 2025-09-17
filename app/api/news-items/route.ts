@@ -109,3 +109,44 @@ export async function GET() {
     )
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id } = body
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Item ID is required' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`🗑️ DELETE - Attempting to delete news item with ID: ${id}`)
+
+    // Remove from general news storage
+    const deleted = await db.deleteNewsItem(id)
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: 'Item not found' },
+        { status: 404 }
+      )
+    }
+
+    console.log(`🗑️ DELETE - Successfully deleted news item: ${id}`)
+
+    return NextResponse.json({
+      success: true,
+      message: `Deleted item ${id}`,
+      id
+    })
+
+  } catch (error) {
+    console.error('Error deleting news item:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

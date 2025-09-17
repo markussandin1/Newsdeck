@@ -4,32 +4,172 @@ import { useState, useEffect } from 'react'
 import { DashboardColumn, NewsItem } from '@/lib/types'
 
 export default function AdminPage() {
+  const [dashboards, setDashboards] = useState<any[]>([])
+  const [selectedDashboard, setSelectedDashboard] = useState<string>('')
   const [columns, setColumns] = useState<DashboardColumn[]>([])
   const [selectedColumn, setSelectedColumn] = useState<string>('')
   const [jsonInput, setJsonInput] = useState('')
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [recentItems, setRecentItems] = useState<NewsItem[]>([])
+  const [itemsLoading, setItemsLoading] = useState(false)
 
-  const fetchColumns = async () => {
+  const fetchDashboards = async () => {
     try {
-      const response = await fetch('/api/columns')
+      const response = await fetch('/api/dashboards')
       const result = await response.json()
       if (result.success) {
-        setColumns(result.columns)
-        if (result.columns.length > 0 && !selectedColumn) {
-          setSelectedColumn(result.columns[0].id)
+        console.log(`🔍 Admin: Found ${result.dashboards.length} dashboards`)
+        setDashboards(result.dashboards)
+        // Auto-select main dashboard if available
+        const mainDash = result.dashboards.find((d: any) => d.id === 'main-dashboard')
+        if (mainDash && !selectedDashboard) {
+          console.log(`🎯 Admin: Auto-selecting main dashboard`)
+          setSelectedDashboard(mainDash.id)
+        } else if (result.dashboards.length > 0 && !selectedDashboard) {
+          console.log(`🎯 Admin: Auto-selecting first dashboard: ${result.dashboards[0].name}`)
+          setSelectedDashboard(result.dashboards[0].id)
         }
       }
     } catch (error) {
+      console.error('Failed to fetch dashboards:', error)
+    }
+  }
+
+  const fetchColumns = async (dashboardId: string) => {
+    if (!dashboardId) return
+
+    try {
+      let endpoint
+
+      if (dashboardId === 'main-dashboard') {
+        endpoint = '/api/dashboards/main-dashboard'
+      } else {
+        // Find the dashboard object to get its slug
+        const dashboard = dashboards.find(d => d.id === dashboardId)
+        if (dashboard && dashboard.slug) {
+          endpoint = `/api/dashboards/${dashboard.slug}`
+        } else {
+          // Fallback: try using the ID directly
+          endpoint = `/api/dashboards/${dashboardId}`
+        }
+      }
+
+      console.log(`🔍 Admin: Fetching columns for dashboard ${dashboardId} from ${endpoint}`)
+
+      const response = await fetch(endpoint)
+      const result = await response.json()
+      if (result.success) {
+        const dashboard = result.dashboard
+        console.log(`✅ Admin: Found ${(dashboard.columns || []).length} columns for dashboard ${dashboardId}`)
+        setColumns(dashboard.columns || [])
+        if (dashboard.columns && dashboard.columns.length > 0) {
+          setSelectedColumn(dashboard.columns[0].id)
+        } else {
+          setSelectedColumn('')
+        }
+      } else {
+        console.error('Failed to fetch dashboard:', result.error)
+        setColumns([])
+        setSelectedColumn('')
+      }
+    } catch (error) {
       console.error('Failed to fetch columns:', error)
+      setColumns([])
+      setSelectedColumn('')
     } finally {
       setIsLoading(false)
     }
   }
 
+  const fetchRecentItems = async (dashboardId?: string) => {
+    setItemsLoading(true)
+    try {
+      const targetDashboard = dashboardId || selectedDashboard
+      console.log(`🔍 Admin: Fetching recent items for dashboard ${targetDashboard}`)
+
+      if (!targetDashboard) {
+        // No dashboard selected, show all items
+        const response = await fetch('/api/news-items')
+        const result = await response.json()
+        if (result.success) {
+          console.log(`✅ Admin: Found ${result.items.length} total items (no dashboard filter)`)
+          setRecentItems(result.items.slice(0, 20))
+        }
+        return
+      }
+
+      // Get dashboard columns to filter items
+      const dashboard = dashboards.find(d => d.id === targetDashboard)
+      if (!dashboard || !dashboard.columns) {
+        console.log(`⚠️ Admin: Dashboard ${targetDashboard} has no columns`)
+        setRecentItems([])
+        return
+      }
+
+      // Get all items and filter by column IDs (workflowId)
+      const response = await fetch('/api/news-items')
+      const result = await response.json()
+      if (result.success) {
+        const columnIds = dashboard.columns.map(col => col.id)
+        const filteredItems = result.items.filter((item: any) =>
+          columnIds.includes(item.workflowId)
+        )
+        console.log(`✅ Admin: Found ${filteredItems.length} items for dashboard ${targetDashboard} (${columnIds.length} columns)`)
+        setRecentItems(filteredItems.slice(0, 20))
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent items:', error)
+      setRecentItems([])
+    } finally {
+      setItemsLoading(false)
+    }
+  }
+
+  const deleteItem = async (id: string) => {
+    if (!confirm('Är du säker på att du vill ta bort denna händelse?')) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/news-items', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setFeedback({ type: 'success', message: result.message })
+        fetchRecentItems(selectedDashboard) // Refresh the list for current dashboard
+      } else {
+        setFeedback({ type: 'error', message: result.error })
+      }
+    } catch (error) {
+      setFeedback({ type: 'error', message: 'Kunde inte ta bort händelsen' })
+    }
+  }
+
   useEffect(() => {
-    fetchColumns()
+    fetchDashboards()
+    fetchRecentItems()
   }, [])
+
+  useEffect(() => {
+    if (selectedDashboard && dashboards.length > 0) {
+      console.log(`🔄 Admin: Dashboard changed to ${selectedDashboard}, fetching columns and recent items...`)
+      setSelectedColumn('') // Reset column selection when dashboard changes
+      fetchColumns(selectedDashboard)
+      fetchRecentItems(selectedDashboard)
+    }
+  }, [selectedDashboard, dashboards])
+
+  const handleDashboardChange = (dashboardId: string) => {
+    setSelectedDashboard(dashboardId)
+  }
 
   const exampleData = [
     {
@@ -175,15 +315,52 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Dashboard Selector */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Välj Dashboard</h2>
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700 min-w-max">
+              Aktuell dashboard:
+            </label>
+            <select
+              value={selectedDashboard}
+              onChange={(e) => handleDashboardChange(e.target.value)}
+              className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Välj dashboard...</option>
+              {dashboards.map((dashboard) => (
+                <option key={dashboard.id} value={dashboard.id}>
+                  {dashboard.name} {dashboard.id === 'main-dashboard' ? '(Huvuddashboard)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedDashboard && (
+            <div className="mt-3 text-sm text-gray-600">
+              Dashboard-ID: <code className="bg-gray-100 px-2 py-1 rounded">{selectedDashboard}</code>
+            </div>
+          )}
+        </div>
+
         <div className="grid md:grid-cols-2 gap-6">
           {/* Left Side - Columns Overview */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Aktiva Kolumner</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">
+              Aktiva Kolumner
+              {selectedDashboard && dashboards.find(d => d.id === selectedDashboard) &&
+                ` - ${dashboards.find(d => d.id === selectedDashboard)?.name}`
+              }
+            </h2>
             
-            {columns.length === 0 ? (
+            {!selectedDashboard ? (
               <div className="text-center py-8 text-gray-500">
-                <div className="mb-2">Inga kolumner skapade ännu</div>
-                <div className="text-sm">Gå tillbaka till Newsdeck för att skapa din första kolumn</div>
+                <div className="mb-2">Välj en dashboard först</div>
+                <div className="text-sm">Använd dropdown-menyn ovan för att välja vilken dashboard du vill hantera</div>
+              </div>
+            ) : columns.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <div className="mb-2">Inga kolumner i denna dashboard</div>
+                <div className="text-sm">Gå till dashboarden för att skapa kolumner</div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -235,8 +412,12 @@ export default function AdminPage() {
           {/* Right Side - Data Upload */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Ladda upp JSON-data</h2>
-            
-            {columns.length === 0 ? (
+
+            {!selectedDashboard ? (
+              <div className="text-center py-8 text-gray-500">
+                Välj en dashboard först för att ladda upp data
+              </div>
+            ) : columns.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 Skapa kolumner först för att ladda upp data
               </div>
@@ -307,6 +488,87 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Recent News Items */}
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-800">
+              Senaste händelser
+              {selectedDashboard && dashboards.find(d => d.id === selectedDashboard) &&
+                ` - ${dashboards.find(d => d.id === selectedDashboard)?.name}`
+              }
+            </h2>
+            <button
+              onClick={() => fetchRecentItems(selectedDashboard)}
+              disabled={itemsLoading}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+            >
+              {itemsLoading ? 'Laddar...' : 'Uppdatera'}
+            </button>
+          </div>
+
+          {!selectedDashboard ? (
+            <div className="text-center py-8 text-gray-500">
+              <div className="mb-2">Välj en dashboard först</div>
+              <div className="text-sm">Händelser visas för den valda dashboarden</div>
+            </div>
+          ) : itemsLoading ? (
+            <div className="text-center py-8 text-gray-500">
+              Laddar händelser...
+            </div>
+          ) : recentItems.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <div className="mb-2">Inga händelser hittades</div>
+              <div className="text-sm">
+                {dashboards.find(d => d.id === selectedDashboard)?.columns?.length === 0
+                  ? 'Denna dashboard har inga kolumner'
+                  : 'Inga händelser för denna dashboard än'
+                }
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {recentItems.map((item) => (
+                <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-gray-800">{item.title}</h3>
+                        <span className={`px-2 py-1 text-xs rounded ${
+                          item.newsValue === 5 ? 'bg-red-100 text-red-700' :
+                          item.newsValue === 4 ? 'bg-orange-100 text-orange-700' :
+                          item.newsValue === 3 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          Värde {item.newsValue}
+                        </span>
+                      </div>
+                      {item.description && (
+                        <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                      )}
+                      <div className="flex gap-4 text-xs text-gray-500">
+                        <span>Källa: {item.source}</span>
+                        <span>ID: {item.id}</span>
+                        <span>
+                          Skapad: {new Date(item.createdInDb || item.timestamp).toLocaleString('sv-SE')}
+                        </span>
+                        {item.location?.municipality && (
+                          <span>Plats: {item.location.municipality}</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deleteItem(item.id)}
+                      className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+                    >
+                      Ta bort
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Usage Instructions */}

@@ -94,6 +94,48 @@ export const persistentDb = {
     return items.slice(0, limit)
   },
 
+  deleteNewsItem: async (id: string) => {
+    if (isKVAvailable()) {
+      const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
+      const index = items.findIndex(item => item.id === id)
+      if (index === -1) return false
+
+      items.splice(index, 1)
+      await kv.set(KEYS.NEWS_ITEMS, items)
+
+      // Also remove from all column data
+      const dashboards = await kv.get<Dashboard[]>(KEYS.DASHBOARDS) || []
+      for (const dashboard of dashboards) {
+        for (const column of dashboard.columns || []) {
+          const columnItems = await kv.get<NewsItem[]>(KEYS.COLUMN_DATA(column.id)) || []
+          const columnIndex = columnItems.findIndex(item => item.id === id)
+          if (columnIndex !== -1) {
+            columnItems.splice(columnIndex, 1)
+            await kv.set(KEYS.COLUMN_DATA(column.id), columnItems)
+          }
+        }
+      }
+
+      return true
+    } else {
+      // Fallback to in-memory
+      const index = fallbackNewsItems.findIndex(item => item.id === id)
+      if (index === -1) return false
+
+      fallbackNewsItems.splice(index, 1)
+
+      // Also remove from column data
+      fallbackColumnData.forEach((items, columnId) => {
+        const columnIndex = items.findIndex(item => item.id === id)
+        if (columnIndex !== -1) {
+          items.splice(columnIndex, 1)
+        }
+      })
+
+      return true
+    }
+  },
+
   // Get news items with pagination support
   getNewsItemsPaginated: async (limit = 50, offset = 0) => {
     if (isKVAvailable()) {
