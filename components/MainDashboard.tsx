@@ -23,9 +23,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [newColumnDescription, setNewColumnDescription] = useState('')
+  const [newColumnFlowId, setNewColumnFlowId] = useState('')
   const [editingColumn, setEditingColumn] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [editFlowId, setEditFlowId] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
@@ -236,7 +238,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     return Object.values(columnData).reduce((total, items) => total + items.length, 0)
   }
 
-  const addColumn = async (title: string, description?: string) => {
+  const addColumn = async (title: string, description?: string, flowId?: string) => {
     try {
       const response = await fetch('/api/columns', {
         method: 'POST',
@@ -244,6 +246,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         body: JSON.stringify({
           title: title.trim(),
           description: description?.trim(),
+          flowId: flowId?.trim() || undefined,
           order: dashboard?.columns?.length || 0,
           dashboardId: dashboard?.id
         })
@@ -272,6 +275,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           setShowAddColumnModal(false)
           setNewColumnTitle('')
           setNewColumnDescription('')
+          setNewColumnFlowId('')
         }
       }
     } catch (error) {
@@ -312,12 +316,16 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }
 
-  const updateColumn = async (columnId: string, title: string, description?: string) => {
+  const updateColumn = async (columnId: string, title: string, description?: string, flowId?: string) => {
     try {
       const response = await fetch(`/api/columns/${columnId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), description: description?.trim() })
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description?.trim(),
+          flowId: flowId !== undefined ? flowId.trim() : undefined
+        })
       })
       
       const data = await response.json()
@@ -325,7 +333,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         // Update the main dashboard with updated column
         const updatedColumns = (dashboard?.columns || []).map(col => 
           col.id === columnId 
-            ? { ...col, title: title.trim(), description: description?.trim() }
+            ? { ...col, title: title.trim(), description: description?.trim(), flowId: flowId?.trim() || undefined }
             : col
         )
         
@@ -339,6 +347,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         if (dashboardData.success) {
           onDashboardUpdate(dashboardData.dashboard)
           setEditingColumn(null)
+          setEditFlowId('')
         }
       }
     } catch (error) {
@@ -346,11 +355,16 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }
 
-  const copyToClipboard = async (text: string, columnId: string, columnTitle: string) => {
+  const copyToClipboard = async (text: string | undefined, columnId: string, columnTitle: string, label = 'Kolumn ID') => {
+    if (!text) {
+      setToastMessage(`Ingen ${label.toLowerCase()} att kopiera för "${columnTitle}"`)
+      setTimeout(() => setToastMessage(null), 2500)
+      return
+    }
     try {
       await navigator.clipboard.writeText(text)
       setCopiedId(columnId)
-      setToastMessage(`Kolumn ID: ${text} för kolumnen "${columnTitle}" är kopierat`)
+      setToastMessage(`${label}: ${text} för kolumnen "${columnTitle}" är kopierat`)
       setTimeout(() => {
         setCopiedId(null)
         setToastMessage(null)
@@ -364,6 +378,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     setEditingColumn(column.id)
     setEditTitle(column.title)
     setEditDescription(column.description || '')
+    setEditFlowId(column.flowId || '')
   }
 
   const createDashboard = async (name: string, description?: string) => {
@@ -400,8 +415,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     editingColumn,
     editTitle,
     editDescription,
+    editFlowId,
     setEditTitle,
     setEditDescription,
+    setEditFlowId,
     setEditingColumn,
     copiedId
   }: {
@@ -409,14 +426,16 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     columnItems: NewsItemType[]
     onEditColumn: (column: DashboardColumn) => void
     onRemoveColumn: (columnId: string) => void
-    onCopyId: (text: string, columnId: string, columnTitle: string) => void
-    onUpdateColumn: (columnId: string, title: string, description?: string) => void
+    onCopyId: (text: string | undefined, columnId: string, columnTitle: string, label?: string) => void
+    onUpdateColumn: (columnId: string, title: string, description?: string, flowId?: string) => void
     onSelectNewsItem: (item: NewsItemType) => void
     editingColumn: string | null
     editTitle: string
     editDescription: string
+    editFlowId: string
     setEditTitle: (title: string) => void
     setEditDescription: (description: string) => void
+    setEditFlowId: (flowId: string) => void
     setEditingColumn: (id: string | null) => void
     copiedId: string | null
   }) => {
@@ -433,7 +452,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           // Edit Mode
           <form onSubmit={(e) => {
             e.preventDefault()
-            onUpdateColumn(column.id, editTitle, editDescription)
+            onUpdateColumn(column.id, editTitle, editDescription, editFlowId)
           }} className="space-y-2">
             <input
               type="text"
@@ -449,6 +468,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
               className="w-full px-2 py-1 text-xs border rounded resize-none"
               placeholder="Beskrivning (valfritt)"
               rows={2}
+            />
+            <input
+              type="text"
+              value={editFlowId}
+              onChange={(e) => setEditFlowId(e.target.value)}
+              className="w-full px-2 py-1 text-xs border rounded"
+              placeholder="Workflow ID (valfritt)"
             />
             <div className="flex gap-1">
               <button
@@ -492,6 +518,25 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   {columnItems.length} händelser
+                </div>
+                <div className="text-[11px] text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+                  <span className="uppercase tracking-wide text-gray-400">Workflow</span>
+                  {column.flowId ? (
+                    <>
+                      <code className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-700 break-all">
+                        {column.flowId}
+                      </code>
+                      <button
+                        onClick={() => onCopyId(column.flowId, `${column.id}-flow`, column.title, 'Workflow ID')}
+                        className="text-blue-500 hover:text-blue-700"
+                        title="Kopiera workflow ID"
+                      >
+                        {copiedId === `${column.id}-flow` ? '✓' : '📋'}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="italic text-gray-400">Ingen koppling</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -671,21 +716,23 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 key={column.id}
                 column={column}
                 columnItems={columnItems}
-                  onEditColumn={startEditing}
-                  onRemoveColumn={removeColumn}
-                  onCopyId={copyToClipboard}
-                  onUpdateColumn={updateColumn}
-                  onSelectNewsItem={setSelectedNewsItem}
-                  editingColumn={editingColumn}
-                  editTitle={editTitle}
-                  editDescription={editDescription}
-                  setEditTitle={setEditTitle}
-                  setEditDescription={setEditDescription}
-                  setEditingColumn={setEditingColumn}
-                  copiedId={copiedId}
-                />
-              )
-            })}
+                onEditColumn={startEditing}
+                onRemoveColumn={removeColumn}
+                onCopyId={copyToClipboard}
+                onUpdateColumn={updateColumn}
+                onSelectNewsItem={setSelectedNewsItem}
+                editingColumn={editingColumn}
+                editTitle={editTitle}
+                editDescription={editDescription}
+                editFlowId={editFlowId}
+                setEditTitle={setEditTitle}
+                setEditDescription={setEditDescription}
+                setEditFlowId={setEditFlowId}
+                setEditingColumn={setEditingColumn}
+                copiedId={copiedId}
+              />
+            )
+          })}
 
         {/* Add Column Button */}
         <div className="flex-shrink-0 w-80 bg-gray-50 border-r border-gray-200 flex items-center justify-center">
@@ -713,6 +760,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                     setShowAddColumnModal(false)
                     setNewColumnTitle('')
                     setNewColumnDescription('')
+                    setNewColumnFlowId('')
                   }}
                   className="text-gray-500 hover:text-gray-700 text-xl"
                 >
@@ -749,7 +797,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 <form onSubmit={(e) => {
                   e.preventDefault()
                   if (newColumnTitle.trim()) {
-                    addColumn(newColumnTitle, newColumnDescription)
+                    addColumn(newColumnTitle, newColumnDescription, newColumnFlowId)
                   }
                 }}>
                   <div className="space-y-4">
@@ -780,6 +828,22 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                         rows={3}
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Workflow ID (valfritt)
+                      </label>
+                      <input
+                        type="text"
+                        value={newColumnFlowId}
+                        onChange={(e) => setNewColumnFlowId(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="t.ex. workflow-uuid-123"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        UUID från din workflow-applikation för automatisk data-routing
+                      </p>
+                    </div>
                   </div>
                   
                   <div className="flex gap-3 pt-4 mt-6 border-t">
@@ -796,6 +860,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                         setShowAddColumnModal(false)
                         setNewColumnTitle('')
                         setNewColumnDescription('')
+                        setNewColumnFlowId('')
                         setShowArchivedColumns(false)
                       }}
                       className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"

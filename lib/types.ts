@@ -12,16 +12,19 @@ export interface NewsItem {
   description?: string;          // Kort beskrivning
   
   // Prioritering
-  newsValue: 1 | 2 | 3 | 4 | 5; // 5 = högst nyhetsvärde
+  newsValue: number;             // 5 = högst nyhetsvärde (tillåter 0 i nya flöden)
   category?: string;             // traffic, weather, crime, politics, economy, sports
-  severity?: "critical" | "high" | "medium" | "low" | null;
+  severity?: string | null;
   
   // Geografi
   location?: {
-    municipality?: string;       // Kommun
+    country?: string;           // Land
     county?: string;            // Län
-    name?: string;              // Platsnamn
-    coordinates?: [number, number]; // [lat, lng]
+    municipality?: string;       // Kommun
+    area?: string;              // Område
+    street?: string;            // Gata/adress
+    name?: string;              // Platsnamn (för bakåtkompatibilitet)
+    coordinates?: number[];      // [lat, lng] eller annat format
   };
   
   // Metadata

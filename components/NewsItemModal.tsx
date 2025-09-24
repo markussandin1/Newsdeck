@@ -51,7 +51,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
     }
   }
 
-  const getSeverityBadge = (severity?: "critical" | "high" | "medium" | "low" | null) => {
+  const getSeverityBadge = (severity?: string | null) => {
     if (!severity) return null
     
     const styles = {

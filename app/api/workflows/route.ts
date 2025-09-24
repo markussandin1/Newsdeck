@@ -10,12 +10,43 @@ export async function POST(request: NextRequest) {
     // DEBUG: Log what we receive
     console.log('🔍 DEBUG - Workflow API received:', JSON.stringify(body, null, 2))
 
-    // Extract flowId and items from payload
-    const { flowId, items: rawItems } = body
+    // Support both old and new schema
+    let columnId, workflowId, rawItems, extraData
 
-    if (!flowId) {
+    if (body.events && Array.isArray(body.items)) {
+      // New schema with events wrapper
+      const eventColumnId = typeof body.events.columnId === 'string'
+        ? body.events.columnId.trim()
+        : body.events.columnId
+      const eventWorkflowId = typeof body.events.workflowId === 'string'
+        ? body.events.workflowId.trim()
+        : body.events.workflowId
+
+      columnId = eventColumnId || undefined
+      workflowId = eventWorkflowId || undefined
+      rawItems = body.items
+      extraData = body.extra || {}
+    } else {
+      // Legacy schema
+      columnId = typeof body.columnId === 'string'
+        ? body.columnId.trim() || undefined
+        : body.columnId
+      workflowId = typeof body.workflowId === 'string'
+        ? body.workflowId.trim() || undefined
+        : undefined
+      if (!workflowId && typeof body.flowId === 'string') {
+        workflowId = body.flowId.trim() || undefined
+      } else if (!workflowId) {
+        workflowId = body.flowId
+      }
+      rawItems = body.items
+      extraData = body.extra || {}
+    }
+
+    // Validate that we have either columnId or workflowId
+    if (!columnId && !workflowId) {
       return NextResponse.json(
-        { error: 'flowId is required in request body' },
+        { error: 'Either columnId or workflowId is required in events object' },
         { status: 400 }
       )
     }
@@ -38,22 +69,25 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Create NewsItem with flowId
+      // Create NewsItem with appropriate workflowId and flowId
       const newsItem: NewsItem = {
         id: item.id,
         dbId: uuidv4(), // Generate unique UUID for this database entry
-        workflowId: flowId, // Use flowId as workflowId for compatibility
-        flowId: flowId, // Store the original flowId
+        workflowId: columnId || workflowId, // Use columnId if provided, otherwise workflowId
+        flowId: workflowId, // Store the workflow UUID if provided
         source: item.source || 'workflows',
-        timestamp: new Date().toISOString(),
+        timestamp: item.timestamp || new Date().toISOString(),
         title: item.title,
         description: item.description,
         newsValue: item.newsValue ?? 3,
         category: item.category,
         severity: item.severity,
         location: item.location,
-        extra: item.extra,
-        raw: item.raw
+        extra: {
+          ...(item.extra || {}),
+          ...(extraData || {}) // Merge top-level extra data
+        },
+        raw: item
       }
 
       validatedItems.push(newsItem)
@@ -66,19 +100,25 @@ export async function POST(request: NextRequest) {
       createdInDb: currentTime
     }))
 
-    // Find columns that are configured to listen to this flowId
+    // Find columns that are configured to listen to this workflowId
     const dashboards = await db.getDashboards()
     const matchingColumns: string[] = []
 
-    for (const dashboard of dashboards) {
-      for (const column of dashboard.columns || []) {
-        if (column.flowId === flowId) {
-          matchingColumns.push(column.id)
+    // If columnId is provided directly, use it
+    if (columnId) {
+      matchingColumns.push(columnId)
+      console.log(`🎯 WORKFLOW: Direct column targeting - columnId ${columnId}`)
+    } else if (workflowId) {
+      // Find columns that are configured to listen to this workflowId
+      for (const dashboard of dashboards) {
+        for (const column of dashboard.columns || []) {
+          if (column.flowId === workflowId) {
+            matchingColumns.push(column.id)
+          }
         }
       }
+      console.log(`🔗 WORKFLOW: Found ${matchingColumns.length} columns listening to workflowId ${workflowId}`)
     }
-
-    console.log(`🔗 WORKFLOW: Found ${matchingColumns.length} columns listening to flowId ${flowId}`)
 
     // Store items in matching column-specific storage
     let totalColumnsUpdated = 0
@@ -99,8 +139,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Added ${validatedItems.length} items for flowId ${flowId}. Updated ${totalColumnsUpdated} columns.`,
-      flowId,
+      message: `Added ${validatedItems.length} items for ${columnId ? `columnId ${columnId}` : `workflowId ${workflowId}`}. Updated ${totalColumnsUpdated} columns.`,
+      columnId,
+      workflowId,
       itemsAdded: validatedItems.length,
       columnsUpdated: totalColumnsUpdated,
       matchingColumns

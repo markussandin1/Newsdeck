@@ -10,25 +10,56 @@ export async function POST(request: NextRequest) {
     // DEBUG: Log what we receive
     console.log('🔍 DEBUG - News items API received:', JSON.stringify(body, null, 2))
     
-    // Extract columnId and items from payload
-    const { columnId, items: rawItems } = body
-    
-    if (!columnId) {
+    // Support both legacy payloads and the new events schema
+    let columnId: string | undefined = typeof body.columnId === 'string'
+      ? body.columnId.trim() || undefined
+      : body.columnId
+    let workflowId: string | undefined = typeof body.workflowId === 'string'
+      ? body.workflowId.trim() || undefined
+      : undefined
+    let rawItems = body.items
+    let extraData = body.extra || {}
+
+    if (body.events && Array.isArray(body.items)) {
+      const eventColumnId = typeof body.events.columnId === 'string'
+        ? body.events.columnId.trim()
+        : body.events.columnId
+      const eventWorkflowId = typeof body.events.workflowId === 'string'
+        ? body.events.workflowId.trim()
+        : body.events.workflowId
+
+      columnId = eventColumnId || columnId
+      workflowId = eventWorkflowId || workflowId
+      rawItems = body.items
+      extraData = body.extra || {}
+    } else if (!workflowId && typeof body.flowId === 'string') {
+      workflowId = body.flowId.trim() || undefined
+    }
+
+    if (!columnId && !workflowId) {
       return NextResponse.json(
-        { error: 'columnId is required in request body' },
+        { error: 'Either columnId or workflowId is required in request body' },
         { status: 400 }
       )
     }
-    
+
     if (!rawItems || !Array.isArray(rawItems)) {
       return NextResponse.json(
         { error: 'items array is required in request body' },
         { status: 400 }
       )
     }
-    
+
+    const resolvedWorkflowId = columnId || workflowId
+    if (!resolvedWorkflowId) {
+      return NextResponse.json(
+        { error: 'Unable to resolve workflow or column identifier from payload' },
+        { status: 400 }
+      )
+    }
+
     const validatedItems: NewsItem[] = []
-    
+
     for (const item of rawItems) {
       // Basic validation
       if (!item.id || !item.title) {
@@ -37,28 +68,31 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-      
-      // Create NewsItem with column ID as workflowId for backward compatibility
+
+      // Create NewsItem with workflow/column identifiers resolved from payload
       const newsItem: NewsItem = {
         id: item.id,
         dbId: uuidv4(), // Generate unique UUID for this database entry
-        workflowId: columnId, // Use column ID as workflow ID
-        flowId: item.flowId, // UUID från workflow-applikationen (om tillgänglig)
+        workflowId: resolvedWorkflowId,
+        flowId: item.flowId || workflowId, // UUID från workflow-applikationen (om tillgänglig)
         source: item.source || 'workflows',
-        timestamp: new Date().toISOString(),
+        timestamp: item.timestamp || new Date().toISOString(),
         title: item.title,
         description: item.description,
         newsValue: item.newsValue ?? 3,
         category: item.category,
         severity: item.severity,
         location: item.location,
-        extra: item.extra,
-        raw: item.raw
+        extra: {
+          ...(item.extra || {}),
+          ...(extraData || {})
+        },
+        raw: item
       }
-      
+
       validatedItems.push(newsItem)
     }
-    
+
     // Add createdInDb timestamp to items before storing
     const currentTime = new Date().toISOString()
     const itemsWithTimestamp = validatedItems.map(item => ({
@@ -66,25 +100,51 @@ export async function POST(request: NextRequest) {
       createdInDb: currentTime
     }))
 
-    // Store items in column-specific storage - append to existing items
-    const existingItems = await db.getColumnData(columnId) || []
-    console.log(`🔍 DEBUG - Existing items in column ${columnId}:`, existingItems.length)
+    const matchingColumns = new Set<string>()
 
-    const allItems = [...existingItems, ...itemsWithTimestamp]
-    console.log(`🔍 DEBUG - Total items after adding new:`, allItems.length)
+    if (columnId) {
+      matchingColumns.add(columnId)
+      console.log(`🎯 NEWS ITEMS: Direct column targeting - columnId ${columnId}`)
+    } else if (workflowId) {
+      const dashboards = await db.getDashboards()
+      for (const dashboard of dashboards) {
+        for (const column of dashboard.columns || []) {
+          if (column.flowId === workflowId) {
+            matchingColumns.add(column.id)
+          }
+        }
+      }
+      console.log(`🔗 NEWS ITEMS: Found ${matchingColumns.size} columns listening to workflowId ${workflowId}`)
+    }
 
-    await db.setColumnData(columnId, allItems)
-    console.log(`🔍 DEBUG - Successfully stored ${allItems.length} items to column ${columnId}`)
+    let totalColumnsUpdated = 0
+    const columnResults: Record<string, number> = {}
+
+    for (const targetColumnId of Array.from(matchingColumns)) {
+      const existingItems = await db.getColumnData(targetColumnId) || []
+      console.log(`🔍 DEBUG - Existing items in column ${targetColumnId}:`, existingItems.length)
+
+      const allItems = [...existingItems, ...itemsWithTimestamp]
+      console.log(`🔍 DEBUG - Total items after adding new:`, allItems.length)
+
+      await db.setColumnData(targetColumnId, allItems)
+      columnResults[targetColumnId] = allItems.length
+      console.log(`🔍 DEBUG - Successfully stored ${allItems.length} items to column ${targetColumnId}`)
+      totalColumnsUpdated++
+    }
 
     // Also add to general news storage for admin/debugging (items already have createdInDb)
     await db.addNewsItems(itemsWithTimestamp)
-    
+
     return NextResponse.json({
       success: true,
-      message: `Added ${validatedItems.length} items to column ${columnId}. Total items in column: ${allItems.length}`,
+      message: `Added ${validatedItems.length} items for ${columnId ? `columnId ${columnId}` : `workflowId ${workflowId}`}. Updated ${totalColumnsUpdated} columns.`,
       columnId,
+      workflowId,
       itemsAdded: validatedItems.length,
-      totalItems: allItems.length
+      columnsUpdated: totalColumnsUpdated,
+      matchingColumns: Array.from(matchingColumns),
+      columnTotals: columnResults
     })
     
   } catch (error) {

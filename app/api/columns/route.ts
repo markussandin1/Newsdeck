@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       id: columnId,
       title: body.title.trim(),
       description: body.description?.trim(),
+      flowId: body.flowId?.trim() || undefined,
       order: body.order ?? 0,
       createdAt: new Date().toISOString()
     }
