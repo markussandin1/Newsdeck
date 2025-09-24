@@ -58,6 +58,118 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   }
 
 
+  const getSeverityPresentation = (severity?: string | null) => {
+    if (!severity) return null
+
+    const normalized = severity.trim().toLowerCase()
+    const map: Record<string, { label: string; badgeClass: string; bannerClass: string }> = {
+      critical: {
+        label: 'Kritisk',
+        badgeClass: 'bg-rose-100 text-rose-700 border border-rose-200',
+        bannerClass: 'bg-rose-600 text-white'
+      },
+      kritisk: {
+        label: 'Kritisk',
+        badgeClass: 'bg-rose-100 text-rose-700 border border-rose-200',
+        bannerClass: 'bg-rose-600 text-white'
+      },
+      high: {
+        label: 'Hög',
+        badgeClass: 'bg-amber-100 text-amber-700 border border-amber-200',
+        bannerClass: 'bg-amber-500 text-white'
+      },
+      hög: {
+        label: 'Hög',
+        badgeClass: 'bg-amber-100 text-amber-700 border border-amber-200',
+        bannerClass: 'bg-amber-500 text-white'
+      },
+      medium: {
+        label: 'Medel',
+        badgeClass: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
+        bannerClass: 'bg-yellow-500 text-white'
+      },
+      medel: {
+        label: 'Medel',
+        badgeClass: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
+        bannerClass: 'bg-yellow-500 text-white'
+      },
+      low: {
+        label: 'Låg',
+        badgeClass: 'bg-slate-100 text-slate-600 border border-slate-200',
+        bannerClass: 'bg-slate-500 text-white'
+      },
+      låg: {
+        label: 'Låg',
+        badgeClass: 'bg-slate-100 text-slate-600 border border-slate-200',
+        bannerClass: 'bg-slate-500 text-white'
+      }
+    }
+
+    const presentation = map[normalized]
+
+    return presentation || {
+      label: severity,
+      badgeClass: 'bg-slate-100 text-slate-600 border border-slate-200',
+      bannerClass: 'bg-slate-500 text-white'
+    }
+  }
+
+  const getLocationSummary = () => {
+    if (!item.location) return null
+
+    const primary = item.location.area || item.location.street || item.location.name
+    const secondary = item.location.municipality
+    const tertiary = item.location.county
+
+    return [primary, secondary, tertiary].filter(Boolean).join(' · ')
+  }
+
+  const isUrl = (value?: string | null) => {
+    if (!value) return false
+    try {
+      new URL(value)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const getHostname = (value: string) => {
+    try {
+      const hostname = new URL(value).hostname
+      return hostname.replace(/^www\./, '')
+    } catch {
+      return value
+    }
+  }
+
+  const getSourceInfo = () => {
+    const rawSource = item.source?.trim()
+    const rawUrl = item.url?.trim()
+    const fallbackUrl = isUrl(rawSource) ? rawSource : undefined
+    const sourceUrl = rawUrl || fallbackUrl
+
+    let displaySource = rawSource
+
+    if (!displaySource && sourceUrl) {
+      displaySource = getHostname(sourceUrl)
+    }
+
+    if (displaySource && isUrl(displaySource) && sourceUrl) {
+      displaySource = getHostname(sourceUrl)
+    }
+
+    return {
+      displaySource: displaySource || 'Okänd källa',
+      sourceUrl
+    }
+  }
+
+  const { displaySource, sourceUrl } = getSourceInfo()
+  const severityPresentation = getSeverityPresentation(item.severity)
+  const locationSummary = getLocationSummary()
+
+
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleString('sv-SE', {
       year: 'numeric',
@@ -95,9 +207,23 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           {/* Metadata header */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                {item.source}
-              </span>
+              {sourceUrl ? (
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-indigo-600 uppercase tracking-wide hover:underline flex items-center gap-1"
+                >
+                  {displaySource}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6L10 16" />
+                  </svg>
+                </a>
+              ) : (
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  {displaySource}
+                </span>
+              )}
               {isNew && (
                 <span className="new-badge">NY</span>
               )}
@@ -126,10 +252,15 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${getNewsValueBadgeStyle(item.newsValue)}`}>
                 {item.newsValue}
               </span>
+              {severityPresentation && (
+                <span className={`px-2 py-1 text-[11px] font-medium rounded-full ${severityPresentation.badgeClass}`}>
+                  {severityPresentation.label}
+                </span>
+              )}
             </div>
-            {item.location && (
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                📍 {[item.location.name, item.location.municipality].filter(Boolean).join(', ')}
+            {locationSummary && (
+              <span className="text-xs text-slate-500 flex items-center gap-1 text-right">
+                📍 {locationSummary}
               </span>
             )}
           </div>
@@ -146,10 +277,32 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
             {item.title}
           </h3>
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-            <span className="font-medium">{item.source}</span>
+            {sourceUrl ? (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-indigo-600 hover:underline flex items-center gap-1"
+              >
+                {displaySource}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6L10 16" />
+                </svg>
+              </a>
+            ) : (
+              <span className="font-medium">{displaySource}</span>
+            )}
             <span>•</span>
             <span>{formatTime(item.createdInDb || item.timestamp)}</span>
           </div>
+          {severityPresentation && (
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${severityPresentation.bannerClass}`}>
+              {severityPresentation.label}
+              {item.category && (
+                <span className="text-white/80 font-normal">{item.category}</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1 ml-3">
           <span className={`px-2 py-1 rounded text-xs font-bold ${
@@ -168,26 +321,76 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
         </p>
       )}
       
-      <div className="space-y-2">
+      <div className="space-y-4">
         {item.location && (
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">📍 Plats:</span>{' '}
-            {[
-              item.location.name,
-              item.location.municipality,
-              item.location.county
-            ].filter(Boolean).join(', ')}
+          <div>
+            <div className="text-sm font-semibold text-gray-700 mb-1">Platsdetaljer</div>
+            <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
+              {item.location.country && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-400">Land</span>
+                  <span>{item.location.country}</span>
+                </div>
+              )}
+              {item.location.county && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-400">Län</span>
+                  <span>{item.location.county}</span>
+                </div>
+              )}
+              {item.location.municipality && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-400">Kommun</span>
+                  <span>{item.location.municipality}</span>
+                </div>
+              )}
+              {item.location.area && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-400">Område</span>
+                  <span>{item.location.area}</span>
+                </div>
+              )}
+              {item.location.street && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-400">Adress</span>
+                  <span>{item.location.street}</span>
+                </div>
+              )}
+              {item.location.name && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-400">Platsnamn</span>
+                  <span>{item.location.name}</span>
+                </div>
+              )}
+              {Array.isArray(item.location.coordinates) && item.location.coordinates.length === 2 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-400">Koordinater</span>
+                  <span>{item.location.coordinates.join(', ')}</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
-        
-        {item.category && (
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">🏷️ Kategori:</span> {item.category}
+
+        {item.extra && Object.keys(item.extra).length > 0 && (
+          <div>
+            <div className="text-sm font-semibold text-gray-700 mb-1">Extra data</div>
+            <div className="space-y-1 text-sm text-gray-600">
+              {Object.entries(item.extra).map(([key, value]) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-xs uppercase tracking-wide text-gray-400 whitespace-nowrap">{key}</span>
+                  <span className="break-words">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-        
-        <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
-          <span className="font-medium">Workflow:</span> {item.workflowId}
+
+        <div className="text-xs text-gray-500 pt-2 border-t border-gray-200 flex flex-col gap-1">
+          <span><span className="font-medium">Workflow ID:</span> {item.workflowId}</span>
+          {item.flowId && (
+            <span><span className="font-medium">Flow ID:</span> {item.flowId}</span>
+          )}
         </div>
       </div>
     </div>

@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
         workflowId: columnId || workflowId, // Use columnId if provided, otherwise workflowId
         flowId: workflowId, // Store the workflow UUID if provided
         source: item.source || 'workflows',
+        url: item.URL || item.url || (typeof item.source === 'string' && item.source.startsWith('http') ? item.source : undefined),
         timestamp: item.timestamp || new Date().toISOString(),
         title: item.title,
         description: item.description,

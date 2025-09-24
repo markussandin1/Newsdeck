@@ -5,6 +5,7 @@ export interface NewsItem {
   workflowId: string;            // ID för workflow som skapat datan (kolumn-ID för bakåtkompatibilitet)
   flowId?: string;               // UUID från workflow-applikationen (nytt system)
   source: string;                // Källans namn (sos, polisen, smhi, tt, etc)
+  url?: string;                  // Länk till källa eller extern resurs
   timestamp: string;             // ISO 8601 format
   
   // Innehåll

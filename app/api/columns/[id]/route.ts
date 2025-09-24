@@ -68,6 +68,7 @@ export async function POST(
         workflowId: id, // Use column ID as workflow ID
         flowId: item.flowId, // UUID från workflow-applikationen (om tillgänglig)
         source: item.source || 'workflows',
+        url: item.URL || item.url || (typeof item.source === 'string' && item.source.startsWith('http') ? item.source : undefined),
         timestamp: item.timestamp || new Date().toISOString(),
         title: item.title,
         description: item.description,
