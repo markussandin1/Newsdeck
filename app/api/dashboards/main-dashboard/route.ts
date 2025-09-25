@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { NewsItem } from '@/lib/types'
 
 export async function GET() {
   try {
     const dashboard = await db.getMainDashboard()
 
     // Fetch column data for all columns in the dashboard
-    const columnData: { [columnId: string]: any[] } = {}
+    const columnData: Record<string, NewsItem[]> = {}
 
     if (dashboard.columns) {
       for (const column of dashboard.columns) {

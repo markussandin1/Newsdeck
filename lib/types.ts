@@ -33,8 +33,8 @@ export interface NewsItem {
   isNew?: boolean;              // Om meddelandet är nytt (visas i 30 sekunder)
 
   // Övrigt
-  extra?: Record<string, any>;  // Källspecifika fält
-  raw?: any;                    // Originaldata för debugging
+  extra?: Record<string, unknown>;  // Källspecifika fält
+  raw?: unknown;                    // Originaldata för debugging
 }
 
 export interface DashboardColumn {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { NewsItem } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
@@ -26,7 +27,7 @@ export async function GET(
     }
     
     // Fetch column data for all columns in the dashboard
-    const columnData: { [columnId: string]: any[] } = {}
+    const columnData: Record<string, NewsItem[]> = {}
     
     if (dashboard.columns) {
       for (const column of dashboard.columns.filter(col => !col.isArchived)) {

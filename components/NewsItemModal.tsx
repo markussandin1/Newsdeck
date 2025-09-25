@@ -1,7 +1,7 @@
 'use client'
 
 import { NewsItem as NewsItemType } from '@/lib/types'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 
 // Dynamically import LeafletMap to avoid SSR issues
@@ -204,7 +204,29 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
 
   const mapsUrl = coordinates ? getGoogleMapsUrl(coordinates[0], coordinates[1]) : null
 
-  const extraEntries = item.extra ? Object.entries(item.extra) : []
+  const renderExtraValue = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return ''
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value, null, 2) ?? ''
+    }
+    return String(value)
+  }
+
+  const extraSection: ReactNode = item?.extra && Object.keys(item.extra).length > 0 ? (
+    <div>
+      <h3 className="text-lg font-semibold text-gray-800 mb-2">📎 Extra data</h3>
+      <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+        {(Object.entries(item.extra) as Array<[string, unknown]>).map(([key, value]) => (
+          <div key={key} className="text-sm text-gray-600">
+            <span className="text-xs uppercase tracking-wide text-gray-400 mr-2">{key}</span>
+            <span className="break-words">{renderExtraValue(value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null
 
 
   return (
@@ -370,22 +392,10 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
           )}
           
           {/* Extra information */}
-          {extraEntries.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">📎 Extra data</h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                {extraEntries.map(([key, value]) => (
-                  <div key={key} className="text-sm text-gray-600">
-                    <span className="text-xs uppercase tracking-wide text-gray-400 mr-2">{key}</span>
-                    <span className="break-words">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {extraSection}
           
           {/* Raw data */}
-          {item.raw && (
+          {item.raw != null ? (
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">🔧 Rådata</h3>
               <div className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
@@ -394,7 +404,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                 </pre>
               </div>
             </div>
-          )}
+          ) : null}
           
           {/* Technical details */}
           <div className="border-t border-gray-200 pt-4">

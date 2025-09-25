@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import type { Map as LeafletMapInstance, Marker as LeafletMarker } from 'leaflet'
 
 interface LeafletMapProps {
   lat: number
@@ -12,13 +13,14 @@ interface LeafletMapProps {
 
 export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }: LeafletMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<any>(null)
-  const markerRef = useRef<any>(null)
+  const mapInstanceRef = useRef<LeafletMapInstance | null>(null)
+  const markerRef = useRef<LeafletMarker | null>(null)
   const isInitializedRef = useRef(false)
 
   // Initialize map only once
   useEffect(() => {
-    if (!mapRef.current || isInitializedRef.current) return
+    const container = mapRef.current
+    if (!container || isInitializedRef.current) return
 
     const initMap = async () => {
       // Load Leaflet CSS
@@ -32,10 +34,11 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
       }
 
       // Dynamically import Leaflet to avoid SSR issues
-      const L = (await import('leaflet')).default
+      const { default: L } = await import('leaflet')
 
       // Fix for missing marker icons in webpack/Next.js
-      delete (L.Icon.Default.prototype as any)._getIconUrl
+      const defaultIconPrototype = L.Icon.Default.prototype as unknown as { _getIconUrl?: () => string }
+      delete defaultIconPrototype._getIconUrl
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
         iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
@@ -43,7 +46,7 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
       })
 
       // Initialize map
-      const map = L.map(mapRef.current!).setView([lat, lng], zoom)
+      const map = L.map(container).setView([lat, lng], zoom)
 
       // Add OpenStreetMap tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -67,14 +70,17 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
 
       // Add click handler if provided
       if (onClick) {
-        mapRef.current!.style.cursor = 'pointer'
-        mapRef.current!.addEventListener('click', onClick)
+        container.style.cursor = 'pointer'
+        container.addEventListener('click', onClick)
       }
     }
 
     initMap()
 
     return () => {
+      if (onClick && container) {
+        container.removeEventListener('click', onClick)
+      }
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
@@ -82,13 +88,11 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
         isInitializedRef.current = false
       }
     }
-  }, []) // Remove dependencies to prevent re-initialization
+  }, [lat, lng, onClick, zoom])
 
   // Update map view and marker when coordinates change (without re-initializing)
   useEffect(() => {
     if (mapInstanceRef.current && markerRef.current && isInitializedRef.current) {
-      const L = require('leaflet')
-
       // Update map view
       mapInstanceRef.current.setView([lat, lng], zoom)
 

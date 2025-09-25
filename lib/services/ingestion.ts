@@ -22,8 +22,24 @@ export interface IngestionDb {
 interface NormalisedPayload {
   columnId?: string
   workflowId?: string
-  items: any[]
+  items: RawNewsItem[]
   extra: Record<string, unknown>
+}
+
+interface RawNewsItem extends Record<string, unknown> {
+  id: unknown
+  title: unknown
+  flowId?: unknown
+  source?: unknown
+  URL?: unknown
+  url?: unknown
+  timestamp?: unknown
+  description?: unknown
+  newsValue?: unknown
+  category?: unknown
+  severity?: unknown
+  location?: NewsItem['location']
+  extra?: Record<string, unknown>
 }
 
 export interface IngestionResult {
@@ -50,6 +66,22 @@ const toOptionalTrimmed = (value: unknown): string | undefined => {
   return undefined
 }
 
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0
+
+const resolveUrl = (item: RawNewsItem): string | undefined => {
+  if (isNonEmptyString(item.URL)) {
+    return item.URL
+  }
+  if (isNonEmptyString(item.url)) {
+    return item.url
+  }
+  if (isNonEmptyString(item.source) && item.source.startsWith('http')) {
+    return item.source
+  }
+  return undefined
+}
+
 const normalisePayload = (body: unknown): NormalisedPayload => {
   if (!isRecord(body)) {
     throw new IngestionError('Request body must be a JSON object')
@@ -71,7 +103,9 @@ const normalisePayload = (body: unknown): NormalisedPayload => {
     workflowId = toOptionalTrimmed(payload.flowId)
   }
 
-  const rawItems = Array.isArray(payload.items) ? payload.items : undefined
+  const rawItems = Array.isArray(payload.items)
+    ? (payload.items as RawNewsItem[])
+    : undefined
   if (!rawItems) {
     throw new IngestionError('items array is required in request body')
   }
@@ -126,12 +160,12 @@ export const ingestNewsItems = async (
     throw new IngestionError('Unable to resolve workflow or column identifier from payload')
   }
 
-  const validatedItems = items.map((item: any) => {
+  const validatedItems = items.map((item) => {
     if (!item || typeof item !== 'object') {
       throw new IngestionError('Each item must be an object with required fields')
     }
 
-    if (!item.id || !item.title) {
+    if (!isNonEmptyString(item.id) || !isNonEmptyString(item.title)) {
       throw new IngestionError('Each item must have id and title')
     }
 
@@ -143,21 +177,17 @@ export const ingestNewsItems = async (
       id: item.id,
       dbId: uuidv4(),
       workflowId: resolvedWorkflowId,
-      flowId: item.flowId ? toOptionalTrimmed(item.flowId) : workflowId,
-      source: item.source || 'workflows',
-      url: typeof item.URL === 'string' && item.URL.length > 0
-        ? item.URL
-        : typeof item.url === 'string' && item.url.length > 0
-          ? item.url
-          : typeof item.source === 'string' && item.source.startsWith('http')
-            ? item.source
-            : undefined,
+      flowId: toOptionalTrimmed(item.flowId) ?? workflowId,
+      source: isNonEmptyString(item.source) ? item.source : 'workflows',
+      url: resolveUrl(item),
       timestamp,
       title: item.title,
-      description: item.description,
-      newsValue: item.newsValue ?? 3,
-      category: item.category,
-      severity: item.severity,
+      description: typeof item.description === 'string' ? item.description : undefined,
+      newsValue: typeof item.newsValue === 'number' ? item.newsValue : 3,
+      category: typeof item.category === 'string' ? item.category : undefined,
+      severity: typeof item.severity === 'string' || item.severity === null
+        ? item.severity
+        : undefined,
       location: item.location,
       extra: {
         ...(isRecord(item.extra) ? item.extra : {}),

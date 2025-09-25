@@ -1,10 +1,34 @@
 'use client'
 
 import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const deepEqual = (obj1: unknown, obj2: unknown): boolean => {
+  if (Object.is(obj1, obj2)) return true
+
+  if (Array.isArray(obj1) && Array.isArray(obj2)) {
+    if (obj1.length !== obj2.length) return false
+    return obj1.every((value, index) => deepEqual(value, obj2[index]))
+  }
+
+  if (isRecord(obj1) && isRecord(obj2)) {
+    const keys1 = Object.keys(obj1)
+    const keys2 = Object.keys(obj2)
+
+    if (keys1.length !== keys2.length) return false
+
+    return keys1.every(key => deepEqual(obj1[key], obj2[key]))
+  }
+
+  return false
+}
 
 interface MainDashboardProps {
   dashboard: DashboardType
@@ -33,7 +57,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemType | null>(null)
-  const [allDashboards, setAllDashboards] = useState<DashboardType[]>([])
+  const [allDashboards, setAllDashboards] = useState<Array<DashboardType & { columnCount?: number }>>([])
   const [showDashboardDropdown, setShowDashboardDropdown] = useState(false)
   const [showCreateDashboardModal, setShowCreateDashboardModal] = useState(false)
   const [newDashboardName, setNewDashboardName] = useState('')
@@ -73,33 +97,33 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   // Memoized column data to prevent unnecessary re-sorting
   const memoizedColumnData = useMemo(() => {
-    const result: {[columnId: string]: NewsItemType[]} = {}
+    const result: ColumnData = {}
 
-    Object.keys(columnData).forEach(columnId => {
-      result[columnId] = (columnData[columnId] || [])
-        .sort((a, b) => {
-          const getEventTime = (item: any) => {
-            // Prefer database creation time (createdInDb) over source timestamp
-            if (item.createdInDb) {
-              return new Date(item.createdInDb).getTime()
-            }
-            // Fallback to source timestamp
-            return new Date(item.timestamp).getTime()
+    Object.entries(columnData).forEach(([columnId, items]) => {
+      result[columnId] = [...items].sort((a, b) => {
+        const getEventTime = (item: NewsItemType) => {
+          // Prefer database creation time (createdInDb) over source timestamp
+          if (item.createdInDb) {
+            return new Date(item.createdInDb).getTime()
           }
-          return getEventTime(b) - getEventTime(a)
-        })
+          // Fallback to source timestamp
+          return new Date(item.timestamp).getTime()
+        }
+        return getEventTime(b) - getEventTime(a)
+      })
     })
 
     return result
   }, [columnData])
 
-  const fetchColumnData = async () => {
+  const fetchColumnData = useCallback(async () => {
     if (!dashboard?.id) {
       console.log('Dashboard not loaded yet, skipping fetchColumnData')
       return
     }
 
     try {
+      setIsLoading(true)
       // Use the correct endpoint based on dashboard type
       let endpoint = `/api/dashboards/${dashboard.slug || dashboard.id}`
       if (dashboard.id === 'main-dashboard') {
@@ -107,18 +131,21 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       }
 
       const response = await fetch(endpoint)
-      const data = await response.json()
+      const data = await response.json() as {
+        success: boolean
+        columnData?: Record<string, NewsItemType[]>
+      }
 
       if (data.success) {
-        const newColumnData = data.columnData || {}
+        const incomingData: ColumnData = data.columnData ? { ...data.columnData } : {}
 
         // First check if the raw data has changed at all
-        const rawDataChanged = !deepEqual(columnData, newColumnData)
+        const rawDataChanged = !deepEqual(columnData, incomingData)
 
         console.log('🔍 POLL DEBUG:', {
           rawDataChanged,
           oldItemCounts: Object.keys(columnData).map(k => `${k}: ${columnData[k]?.length || 0}`),
-          newItemCounts: Object.keys(newColumnData).map(k => `${k}: ${newColumnData[k]?.length || 0}`)
+          newItemCounts: Object.keys(incomingData).map(k => `${k}: ${incomingData[k]?.length || 0}`)
         })
 
         if (!rawDataChanged) {
@@ -130,21 +157,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         console.log('🔄 UPDATING STATE - Changes detected')
 
         // Process new items only if there are actual changes
-        Object.keys(newColumnData).forEach(columnId => {
-          const oldItems = columnData[columnId] || []
-          const newItems = newColumnData[columnId] || []
+        const processedData: ColumnData = {}
 
-          newColumnData[columnId] = newItems.map((item: any) => {
-            const isExistingItem = oldItems.some((oldItem: any) => oldItem.id === item.id)
-            return {
-              ...item,
-              isNew: !isExistingItem && oldItems.length > 0 // Only mark as new if this isn't the first load
-            }
-          })
+        Object.entries(incomingData).forEach(([columnId, newItems]) => {
+          const previousItems = columnData[columnId] ?? []
+
+          processedData[columnId] = newItems.map(item => ({
+            ...item,
+            isNew: previousItems.length > 0 && !previousItems.some(existing => existing.id === item.id)
+          }))
         })
 
         // Update state only when there are actual changes
-        setColumnData(newColumnData)
+        setColumnData(processedData)
         setLastUpdate(new Date())
 
         // Preserve scroll positions after state update
@@ -152,53 +177,40 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       }
     } catch (error) {
       console.error('Failed to fetch column data:', error)
+    } finally {
+      setIsLoading(false)
     }
-  }
+  }, [columnData, dashboard.id, dashboard.slug, preserveScrollPositions])
 
   // Deep equality check to prevent unnecessary re-renders
-  const deepEqual = (obj1: any, obj2: any): boolean => {
-    if (obj1 === obj2) return true
-    if (!obj1 || !obj2) return false
-    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return obj1 === obj2
-
-    const keys1 = Object.keys(obj1)
-    const keys2 = Object.keys(obj2)
-
-    if (keys1.length !== keys2.length) return false
-
-    for (const key of keys1) {
-      if (!keys2.includes(key)) return false
-      if (!deepEqual(obj1[key], obj2[key])) return false
-    }
-
-    return true
-  }
-
   // Load archived columns
-  const loadArchivedColumns = async () => {
+  const loadArchivedColumns = useCallback(async () => {
     try {
       const response = await fetch(`/api/columns/archived`)
-      const data = await response.json()
+      const data = await response.json() as { success: boolean; columns: DashboardColumn[] }
       if (data.success) {
         setArchivedColumns(data.columns)
       }
     } catch (error) {
       console.error('Failed to load archived columns:', error)
     }
-  }
+  }, [])
 
   // Load all dashboards
-  const loadAllDashboards = async () => {
+  const loadAllDashboards = useCallback(async () => {
     try {
       const response = await fetch('/api/dashboards')
-      const data = await response.json()
-      if (data.success) {
+      const data = await response.json() as {
+        success: boolean
+        dashboards: Array<DashboardType & { columnCount?: number }>
+      }
+      if (data.success && Array.isArray(data.dashboards)) {
         setAllDashboards(data.dashboards)
       }
     } catch (error) {
       console.error('Failed to load dashboards:', error)
     }
-  }
+  }, [])
 
   // Polling for real-time updates every 5 seconds
   useEffect(() => {
@@ -207,7 +219,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       loadArchivedColumns()
       loadAllDashboards()
     }
-  }, [dashboard?.id])
+  }, [dashboard?.id, fetchColumnData, loadArchivedColumns, loadAllDashboards])
 
   // Set up polling interval
   useEffect(() => {
@@ -215,7 +227,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       const interval = setInterval(fetchColumnData, 5000)
       return () => clearInterval(interval)
     }
-  }, [dashboard?.id])
+    return undefined
+  }, [dashboard?.id, fetchColumnData])
 
   // Handle click outside dropdown
   useEffect(() => {
@@ -357,14 +370,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   const copyToClipboard = async (text: string | undefined, columnId: string, columnTitle: string, label = 'Kolumn ID') => {
     if (!text) {
-      setToastMessage(`Ingen ${label.toLowerCase()} att kopiera för "${columnTitle}"`)
+      setToastMessage(`Ingen ${label.toLowerCase()} att kopiera för ${columnTitle}`)
       setTimeout(() => setToastMessage(null), 2500)
       return
     }
     try {
       await navigator.clipboard.writeText(text)
       setCopiedId(columnId)
-      setToastMessage(`${label}: ${text} för kolumnen "${columnTitle}" är kopierat`)
+      setToastMessage(`${label}: ${text} för kolumnen ${columnTitle} är kopierat`)
       setTimeout(() => {
         setCopiedId(null)
         setToastMessage(null)
@@ -582,6 +595,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   )
 })
 
+  NewsColumn.displayName = 'NewsColumn'
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -644,7 +659,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                           onClick={() => {
                             if (dash.slug !== dashboard.slug) {
                               navigateToDashboard(dash.slug)
-                            }
+  }
+
                             setShowDashboardDropdown(false)
                           }}
                           className={`w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center justify-between ${
@@ -657,7 +673,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                               <div className="text-xs text-slate-500 mt-1">{dash.description}</div>
                             )}
                             <div className="text-xs text-slate-400 mt-1">
-                              {(dash as any).columnCount || 0} kolumner
+                              {dash.columnCount ?? 0} kolumner
                             </div>
                           </div>
                           {dash.id === dashboard.id && (
@@ -691,12 +707,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 >
                   🔄 Uppdatera
                 </button>
-                <a
+                <Link
                   href="/admin"
                   className="px-3 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 smooth-transition text-sm font-medium"
                 >
                   Admin
-                </a>
+                </Link>
               </div>
             </div>
           </div>

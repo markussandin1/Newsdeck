@@ -88,6 +88,7 @@ export default function CreateDashboard({ isOpen, onClose, onDashboardCreated }:
         setError(result.error || 'Failed to create dashboard')
       }
     } catch (error) {
+      console.error('Failed to create dashboard:', error)
       setError('Något gick fel vid skapandet av dashboard')
     } finally {
       setIsLoading(false)

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { DashboardColumn, NewsItem } from '@/lib/types'
+import { useCallback, useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 
 export default function AdminPage() {
-  const [dashboards, setDashboards] = useState<any[]>([])
+  const [dashboards, setDashboards] = useState<Dashboard[]>([])
   const [selectedDashboard, setSelectedDashboard] = useState<string>('')
   const [columns, setColumns] = useState<DashboardColumn[]>([])
   const [selectedColumn, setSelectedColumn] = useState<string>('')
@@ -14,29 +15,37 @@ export default function AdminPage() {
   const [recentItems, setRecentItems] = useState<NewsItem[]>([])
   const [itemsLoading, setItemsLoading] = useState(false)
 
-  const fetchDashboards = async () => {
+  const fetchDashboards = useCallback(async () => {
     try {
       const response = await fetch('/api/dashboards')
-      const result = await response.json()
-      if (result.success) {
+      const result = await response.json() as {
+        success: boolean
+        dashboards?: (Dashboard & { columnCount?: number })[]
+      }
+      if (result.success && Array.isArray(result.dashboards)) {
         console.log(`🔍 Admin: Found ${result.dashboards.length} dashboards`)
-        setDashboards(result.dashboards)
+        const normalizedDashboards = result.dashboards.map(dashboardItem => {
+          const { columnCount, ...dashboardWithoutCount } = dashboardItem
+          void columnCount
+          return dashboardWithoutCount
+        })
+        setDashboards(normalizedDashboards)
         // Auto-select main dashboard if available
-        const mainDash = result.dashboards.find((d: any) => d.id === 'main-dashboard')
+        const mainDash = normalizedDashboards.find(d => d.id === 'main-dashboard')
         if (mainDash && !selectedDashboard) {
           console.log(`🎯 Admin: Auto-selecting main dashboard`)
           setSelectedDashboard(mainDash.id)
-        } else if (result.dashboards.length > 0 && !selectedDashboard) {
-          console.log(`🎯 Admin: Auto-selecting first dashboard: ${result.dashboards[0].name}`)
-          setSelectedDashboard(result.dashboards[0].id)
+        } else if (normalizedDashboards.length > 0 && !selectedDashboard) {
+          console.log(`🎯 Admin: Auto-selecting first dashboard: ${normalizedDashboards[0].name}`)
+          setSelectedDashboard(normalizedDashboards[0].id)
         }
       }
     } catch (error) {
       console.error('Failed to fetch dashboards:', error)
     }
-  }
+  }, [selectedDashboard])
 
-  const fetchColumns = async (dashboardId: string) => {
+  const fetchColumns = useCallback(async (dashboardId: string) => {
     if (!dashboardId) return
 
     try {
@@ -58,8 +67,12 @@ export default function AdminPage() {
       console.log(`🔍 Admin: Fetching columns for dashboard ${dashboardId} from ${endpoint}`)
 
       const response = await fetch(endpoint)
-      const result = await response.json()
-      if (result.success) {
+      const result = await response.json() as {
+        success: boolean
+        dashboard?: Dashboard
+        error?: string
+      }
+      if (result.success && result.dashboard) {
         const dashboard = result.dashboard
         console.log(`✅ Admin: Found ${(dashboard.columns || []).length} columns for dashboard ${dashboardId}`)
         setColumns(dashboard.columns || [])
@@ -80,9 +93,9 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [dashboards])
 
-  const fetchRecentItems = async (dashboardId?: string) => {
+  const fetchRecentItems = useCallback(async (dashboardId?: string) => {
     setItemsLoading(true)
     try {
       const targetDashboard = dashboardId || selectedDashboard
@@ -91,7 +104,7 @@ export default function AdminPage() {
       if (!targetDashboard) {
         // No dashboard selected, show all items
         const response = await fetch('/api/news-items')
-        const result = await response.json()
+        const result = await response.json() as { success: boolean; items: NewsItem[] }
         if (result.success) {
           console.log(`✅ Admin: Found ${result.items.length} total items (no dashboard filter)`)
           setRecentItems(result.items.slice(0, 20))
@@ -109,10 +122,10 @@ export default function AdminPage() {
 
       // Get all items and filter by column IDs (workflowId)
       const response = await fetch('/api/news-items')
-      const result = await response.json()
+      const result = await response.json() as { success: boolean; items: NewsItem[] }
       if (result.success) {
         const columnIds = dashboard.columns.map((col: DashboardColumn) => col.id)
-        const filteredItems = result.items.filter((item: any) =>
+        const filteredItems = result.items.filter((item: NewsItem) =>
           columnIds.includes(item.workflowId)
         )
         console.log(`✅ Admin: Found ${filteredItems.length} items for dashboard ${targetDashboard} (${columnIds.length} columns)`)
@@ -124,7 +137,7 @@ export default function AdminPage() {
     } finally {
       setItemsLoading(false)
     }
-  }
+  }, [dashboards, selectedDashboard])
 
   const deleteItem = async (dbId: string, originalId: string) => {
     console.log(`🗑️ ADMIN: Delete button clicked for item dbId: ${dbId}, originalId: ${originalId}`)
@@ -153,6 +166,7 @@ export default function AdminPage() {
         setFeedback({ type: 'error', message: result.error })
       }
     } catch (error) {
+      console.error('Failed to delete news item:', error)
       setFeedback({ type: 'error', message: 'Kunde inte ta bort händelsen' })
     }
   }
@@ -160,7 +174,7 @@ export default function AdminPage() {
   useEffect(() => {
     fetchDashboards()
     fetchRecentItems()
-  }, [])
+  }, [fetchDashboards, fetchRecentItems])
 
   useEffect(() => {
     if (selectedDashboard && dashboards.length > 0) {
@@ -169,7 +183,7 @@ export default function AdminPage() {
       fetchColumns(selectedDashboard)
       fetchRecentItems(selectedDashboard)
     }
-  }, [selectedDashboard, dashboards])
+  }, [dashboards, fetchColumns, fetchRecentItems, selectedDashboard])
 
   const handleDashboardChange = (dashboardId: string) => {
     setSelectedDashboard(dashboardId)
@@ -238,6 +252,7 @@ export default function AdminPage() {
         setFeedback({ type: 'error', message: result.error })
       }
     } catch (error) {
+      console.error('Failed to parse JSON payload:', error)
       setFeedback({ type: 'error', message: 'Invalid JSON format' })
     }
   }
@@ -264,6 +279,7 @@ export default function AdminPage() {
         setFeedback({ type: 'error', message: result.error || 'Migration misslyckades' })
       }
     } catch (error) {
+      console.error('Failed to run migration:', error)
       setFeedback({ type: 'error', message: 'Kunde inte köra migration' })
     }
   }
@@ -279,6 +295,7 @@ export default function AdminPage() {
         setFeedback({ type: 'success', message: result.message })
       }
     } catch (error) {
+      console.error('Failed to clear column data:', error)
       setFeedback({ type: 'error', message: 'Failed to clear column data' })
     }
   }
@@ -310,12 +327,12 @@ export default function AdminPage() {
               <h1 className="text-2xl font-bold text-gray-800 mb-2">Admin - Kolumn Management</h1>
               <p className="text-gray-600">Hantera data för dina Newsdeck-kolumner</p>
             </div>
-            <a
+            <Link
               href="/"
               className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
             >
               ← Tillbaka till Newsdeck
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -593,7 +610,7 @@ export default function AdminPage() {
               <div className="space-y-2 text-gray-600">
                 <div>• Välj kolumn från dropdown</div>
                 <div>• Klistra in JSON-data</div>
-                <div>• Klicka "Skicka data till kolumn"</div>
+                <div>• Klicka &quot;Skicka data till kolumn&quot;</div>
                 <div>• Data visas direkt i Newsdeck</div>
               </div>
             </div>

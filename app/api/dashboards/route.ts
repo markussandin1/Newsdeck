@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Dashboard } from '@/lib/types'
 import { db } from '@/lib/db'
 
 export async function GET() {

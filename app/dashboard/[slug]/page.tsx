@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Dashboard as DashboardType } from '@/lib/types'
 import MainDashboard from '@/components/MainDashboard'
@@ -12,7 +13,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await fetch(`/api/dashboards/${slug}`)
@@ -30,13 +31,13 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [slug])
 
   useEffect(() => {
     if (slug) {
       fetchDashboard()
     }
-  }, [slug])
+  }, [fetchDashboard, slug])
 
   if (isLoading) {
     return (
@@ -64,12 +65,12 @@ export default function DashboardPage() {
           </div>
           <h1 className="text-xl font-semibold text-slate-900 mb-2">Dashboard hittades inte</h1>
           <p className="text-slate-600 mb-4">{error}</p>
-          <a 
+          <Link
             href="/dashboard/main"
             className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 smooth-transition"
           >
             Gå till huvuddashboard
-          </a>
+          </Link>
         </div>
       </div>
     )

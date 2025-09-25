@@ -26,7 +26,7 @@ const DEFAULT_DASHBOARD: Dashboard = {
 // Fallback to in-memory storage if KV is not available (for local development)
 let fallbackNewsItems: NewsItem[] = []
 let fallbackDashboards: Dashboard[] = []
-let fallbackColumnData = new Map<string, NewsItem[]>()
+const fallbackColumnData = new Map<string, NewsItem[]>()
 
 const isKVAvailable = () => {
   return process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
@@ -177,7 +177,6 @@ export const persistentDb = {
       // Fallback to in-memory
       logger.debug('db.deleteNewsItem.fallbackStart', { dbId })
 
-      const initialFallbackLength = fallbackNewsItems.length
       const originalLength = fallbackNewsItems.length
       fallbackNewsItems.splice(0, fallbackNewsItems.length, ...fallbackNewsItems.filter(item => item.dbId !== dbId))
       const deletedFallbackCount = originalLength - fallbackNewsItems.length

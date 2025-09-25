@@ -1,5 +1,5 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
-import { useState, useEffect, memo, useRef } from 'react'
+import { useState, useEffect, memo } from 'react'
 
 interface NewsItemProps {
   item: NewsItemType
