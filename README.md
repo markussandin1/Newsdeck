@@ -45,7 +45,6 @@ A real-time news dashboard application with TweetDeck-style columns and persiste
 4. **Open in browser:**
    - Application: http://localhost:3000
    - Admin panel: http://localhost:3000/admin
-   - Test persistence: http://localhost:3000/test-persistence
 
 ### Deployment to Vercel
 

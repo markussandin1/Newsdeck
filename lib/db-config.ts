@@ -4,7 +4,6 @@
 import { persistentDb as vercelKvDb } from './db-persistent'
 
 // Import other database implementations as needed
-// import { upstashDb } from './db-upstash'
 // import { supabaseDb } from './db-supabase'
 // import { planetscaleDb } from './db-planetscale'
 
@@ -13,15 +12,6 @@ const getActiveDatabase = () => {
   // Check for Vercel KV
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     console.log('🟢 Using Vercel KV database')
-    return vercelKvDb
-  }
-  
-  // Check for Upstash Redis
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    console.log('🟢 Using Upstash Redis database')
-    // Note: You would need to install @upstash/redis and uncomment the import above
-    // return upstashDb
-    console.log('⚠️ Upstash Redis detected but implementation not active. Using Vercel KV fallback.')
     return vercelKvDb
   }
   
@@ -46,9 +36,7 @@ export const db = activeDb
 export const getDatabaseStatus = async () => {
   try {
     const isConnected = await activeDb.isConnected()
-    const type = process.env.KV_REST_API_URL ? 'Vercel KV' : 
-                 process.env.UPSTASH_REDIS_REST_URL ? 'Upstash Redis' :
-                 'In-Memory Fallback'
+    const type = process.env.KV_REST_API_URL ? 'Vercel KV' : 'In-Memory Fallback'
     
     return {
       connected: isConnected,

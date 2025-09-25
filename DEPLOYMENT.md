@@ -73,11 +73,10 @@ Newsdeck uses a hybrid storage approach:
    - Vercel will automatically deploy
    - Or manually trigger a deployment from the Vercel dashboard
 
-2. **Test persistence:**
-   - Visit `your-domain.vercel.app/test-persistence`
-   - Run the test suite to verify database connectivity
-   - Create some columns and add data
-   - Refresh the page to verify data persists
+2. **Verify persistence manually:**
+   - Open the admin dashboard at `/admin`
+   - Create a column and push test events through your workflow
+   - Reload the dashboard to ensure items remain after refresh
 
 ## Local Development Setup
 
@@ -193,5 +192,5 @@ DEBUG=true
 
 For deployment issues:
 - Check Vercel deployment logs
-- Use the `/test-persistence` endpoint to diagnose database connectivity
+- Use the admin dashboard to confirm data writes and reads
 - Review the browser console for client-side errors

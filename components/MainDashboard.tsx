@@ -337,7 +337,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             : col
         )
         
-        const dashboardResponse = await fetch('/api/dashboard/main', {
+        const dashboardResponse = await fetch('/api/dashboards/main-dashboard', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ columns: updatedColumns })
