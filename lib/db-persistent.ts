@@ -1,6 +1,7 @@
 import { kv } from '@vercel/kv'
 import { NewsItem, Dashboard, DashboardColumn } from './types'
 import { v4 as uuidv4 } from 'uuid'
+import { logger } from './logger'
 
 // Keys for Redis storage
 const KEYS = {
@@ -87,7 +88,7 @@ export const persistentDb = {
 
       if (needsUpdate) {
         await kv.set(KEYS.NEWS_ITEMS, items)
-        console.log(`🔄 DB: Added dbId to items missing it`)
+        logger.info('db.items.migratedMissingDbId', { count: items.length })
       }
 
       return items.sort((a, b) => {
@@ -107,7 +108,7 @@ export const persistentDb = {
       })
 
       if (needsUpdate) {
-        console.log(`🔄 DB: Added dbId to fallback items missing it`)
+        logger.info('db.items.migratedFallbackDbId', { count: fallbackNewsItems.length })
       }
 
       return [...fallbackNewsItems].sort((a, b) => {
@@ -125,30 +126,25 @@ export const persistentDb = {
   },
 
   deleteNewsItem: async (dbId: string) => {
-    console.log(`🗑️ DB: deleteNewsItem called with dbId: ${dbId}`)
-    console.log(`🗑️ DB: KV available: ${isKVAvailable()}`)
+    logger.debug('db.deleteNewsItem.start', { dbId, kvAvailable: isKVAvailable() })
 
     if (isKVAvailable()) {
-      console.log(`🗑️ DB: Starting delete process for item ${dbId}`)
-
       const items = await kv.get<NewsItem[]>(KEYS.NEWS_ITEMS) || []
-      console.log(`🗑️ DB: Found ${items.length} items in general storage`)
 
       const initialLength = items.length
       const filteredItems = items.filter(item => item.dbId !== dbId)
       const deletedCount = initialLength - filteredItems.length
 
       if (deletedCount === 0) {
-        console.log(`🗑️ DB: Item ${dbId} not found in general storage`)
+        logger.warn('db.deleteNewsItem.notFound', { dbId })
         return false
       }
 
       await kv.set(KEYS.NEWS_ITEMS, filteredItems)
-      console.log(`🗑️ DB: Removed ${deletedCount} item(s) with dbId ${dbId} from general storage, ${filteredItems.length} items remain`)
+      logger.info('db.deleteNewsItem.removedFromGeneral', { dbId, deletedCount, remaining: filteredItems.length })
 
       // Also remove from all column data
       const dashboards = await kv.get<Dashboard[]>(KEYS.DASHBOARDS) || []
-      console.log(`🗑️ DB: Checking ${dashboards.length} dashboards for column data`)
 
       let columnsChecked = 0
       let columnsUpdated = 0
@@ -164,16 +160,22 @@ export const persistentDb = {
           if (columnDeletedCount > 0) {
             await kv.set(KEYS.COLUMN_DATA(column.id), filteredColumnItems)
             columnsUpdated++
-            console.log(`🗑️ DB: Removed ${columnDeletedCount} item(s) with dbId ${dbId} from column ${column.id} (${column.title}), ${filteredColumnItems.length} items remain`)
+            logger.info('db.deleteNewsItem.removedFromColumn', {
+              dbId,
+              columnId: column.id,
+              columnTitle: column.title,
+              deletedCount: columnDeletedCount,
+              remaining: filteredColumnItems.length
+            })
           }
         }
       }
 
-      console.log(`🗑️ DB: Checked ${columnsChecked} columns, updated ${columnsUpdated} columns`)
+      logger.debug('db.deleteNewsItem.columnSweep', { columnsChecked, columnsUpdated })
       return true
     } else {
       // Fallback to in-memory
-      console.log(`🗑️ DB: Using fallback storage for item ${dbId}`)
+      logger.debug('db.deleteNewsItem.fallbackStart', { dbId })
 
       const initialFallbackLength = fallbackNewsItems.length
       const originalLength = fallbackNewsItems.length
@@ -181,11 +183,11 @@ export const persistentDb = {
       const deletedFallbackCount = originalLength - fallbackNewsItems.length
 
       if (deletedFallbackCount === 0) {
-        console.log(`🗑️ DB: Item ${dbId} not found in fallback storage`)
+        logger.warn('db.deleteNewsItem.fallbackNotFound', { dbId })
         return false
       }
 
-      console.log(`🗑️ DB: Removed ${deletedFallbackCount} item(s) with dbId ${dbId} from fallback storage, ${fallbackNewsItems.length} items remain`)
+      logger.info('db.deleteNewsItem.fallbackRemoved', { dbId, deletedCount: deletedFallbackCount, remaining: fallbackNewsItems.length })
 
       // Also remove from column data
       let columnsChecked = 0
@@ -200,11 +202,16 @@ export const persistentDb = {
         if (columnDeletedCount > 0) {
           items.splice(0, items.length, ...filteredItems)
           columnsUpdated++
-          console.log(`🗑️ DB: Removed ${columnDeletedCount} item(s) with dbId ${dbId} from fallback column ${columnId}, ${items.length} items remain`)
+          logger.info('db.deleteNewsItem.fallbackColumnRemoved', {
+            dbId,
+            columnId,
+            deletedCount: columnDeletedCount,
+            remaining: items.length
+          })
         }
       })
 
-      console.log(`🗑️ DB: Checked ${columnsChecked} fallback columns, updated ${columnsUpdated} columns`)
+      logger.debug('db.deleteNewsItem.fallbackColumnSweep', { columnsChecked, columnsUpdated })
       return true
     }
   },
@@ -583,6 +590,7 @@ export const persistentDb = {
 
       if (updated > 0) {
         await kv.set(KEYS.NEWS_ITEMS, migratedItems)
+        logger.info('db.items.migratedCreatedInDb', { updated })
       }
     } else {
       // Fallback to in-memory
@@ -606,11 +614,11 @@ export const persistentDb = {
     const allItems = await persistentDb.getNewsItems()
     const columnItems = allItems.filter(item => item.workflowId === columnId)
 
-    console.log(`🔄 SYNC - Found ${columnItems.length} items for column ${columnId} in general storage`)
+    logger.debug('db.syncColumnData.start', { columnId, count: columnItems.length })
 
     await persistentDb.setColumnData(columnId, columnItems)
 
-    console.log(`✅ SYNC - Updated column ${columnId} with ${columnItems.length} items`)
+    logger.info('db.syncColumnData.completed', { columnId, updated: columnItems.length })
 
     return { success: true, itemsFound: columnItems.length, columnId }
   },
@@ -629,7 +637,7 @@ export const persistentDb = {
       }
     }
 
-    console.log(`✅ SYNC - Synced ${totalSynced} total items across all columns`)
+    logger.info('db.syncColumnDataAll.completed', { totalSynced })
 
     return { success: true, totalItemsSynced: totalSynced }
   },
