@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -66,32 +66,45 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Store scroll positions before updates
+  // Store scroll positions and column refs
   const scrollPositionsRef = useRef<{[columnId: string]: number}>({})
+  const columnRefsRef = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  // Save scroll positions before data update
-  const saveScrollPositions = useCallback(() => {
+  // Save scroll position for a specific column
+  const saveColumnScrollPosition = useCallback((columnId: string) => {
+    const element = columnRefsRef.current.get(columnId)
+    if (element) {
+      scrollPositionsRef.current[columnId] = element.scrollTop
+    }
+  }, [])
+
+  // Restore scroll position for a specific column
+  const restoreColumnScrollPosition = useCallback((columnId: string) => {
+    const element = columnRefsRef.current.get(columnId)
+    const savedPosition = scrollPositionsRef.current[columnId]
+    if (element && savedPosition > 0) {
+      element.scrollTop = savedPosition
+    }
+  }, [])
+
+  // Save all scroll positions
+  const saveAllScrollPositions = useCallback(() => {
     dashboard.columns?.forEach(column => {
-      const scrollElement = document.querySelector(`[data-column-id="${column.id}"]`) as HTMLElement
-      if (scrollElement) {
-        scrollPositionsRef.current[column.id] = scrollElement.scrollTop
-      }
+      saveColumnScrollPosition(column.id)
     })
-  }, [dashboard.columns])
+  }, [dashboard.columns, saveColumnScrollPosition])
 
-  // Restore scroll positions after data update
-  const restoreScrollPositions = useCallback(() => {
-    // Use a longer delay to ensure DOM is fully updated
-    setTimeout(() => {
-      dashboard.columns?.forEach(column => {
-        const scrollElement = document.querySelector(`[data-column-id="${column.id}"]`) as HTMLElement
-        const savedPosition = scrollPositionsRef.current[column.id]
-        if (scrollElement && savedPosition > 0) {
-          scrollElement.scrollTop = savedPosition
-        }
-      })
-    }, 100)
-  }, [dashboard.columns])
+  // Restore all scroll positions
+  const restoreAllScrollPositions = useCallback(() => {
+    dashboard.columns?.forEach(column => {
+      restoreColumnScrollPosition(column.id)
+    })
+  }, [dashboard.columns, restoreColumnScrollPosition])
+
+  // Use layout effect to restore scroll positions after each render
+  useLayoutEffect(() => {
+    restoreAllScrollPositions()
+  })
 
   // Memoized column data to prevent unnecessary re-sorting
   const memoizedColumnData = useMemo(() => {
@@ -156,7 +169,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         console.log('🔄 UPDATING STATE - Changes detected')
 
         // Save scroll positions before updating
-        saveScrollPositions()
+        saveAllScrollPositions()
 
         // Process new items only if there are actual changes
         const processedData: ColumnData = {}
@@ -174,16 +187,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         setColumnData(processedData)
         columnDataRef.current = processedData
         setLastUpdate(new Date())
-
-        // Restore scroll positions after state update
-        restoreScrollPositions()
       }
     } catch (error) {
       console.error('Failed to fetch column data:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [dashboard.id, dashboard.slug, saveScrollPositions, restoreScrollPositions]) // columnData intentionally excluded to prevent infinite polling
+  }, [dashboard.id, dashboard.slug, saveAllScrollPositions]) // columnData intentionally excluded to prevent infinite polling
 
   // Deep equality check to prevent unnecessary re-renders
   // Load archived columns
@@ -457,6 +467,25 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   }) => {
     const scrollRef = useRef<HTMLDivElement>(null)
 
+    // Register this column's ref and set up scroll event handling
+    useEffect(() => {
+      if (scrollRef.current) {
+        columnRefsRef.current.set(column.id, scrollRef.current)
+
+        const handleScroll = () => {
+          saveColumnScrollPosition(column.id)
+        }
+
+        const element = scrollRef.current
+        element.addEventListener('scroll', handleScroll, { passive: true })
+
+        return () => {
+          element.removeEventListener('scroll', handleScroll)
+          columnRefsRef.current.delete(column.id)
+        }
+      }
+    }, [column.id])
+
     return (
       <div
         key={column.id}
@@ -572,7 +601,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       <div
         className="flex-1 overflow-y-auto p-2 space-y-2"
         ref={scrollRef}
-        data-column-id={column.id}
       >
         {columnItems.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">
