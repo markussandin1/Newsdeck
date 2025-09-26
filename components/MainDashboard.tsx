@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect, useRef, memo, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -393,10 +393,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   // Stable column structure that never gets recreated
   const StableColumn = memo(({
     column,
-    children
+    children,
+    onCopyId,
+    onEditColumn,
+    onRemoveColumn,
+    copiedId
   }: {
     column: DashboardColumn
     children: React.ReactNode
+    onCopyId: (text: string | undefined, columnId: string, columnTitle: string, label?: string) => void
+    onEditColumn: (column: DashboardColumn) => void
+    onRemoveColumn: (columnId: string) => void
+    copiedId: string | null
   }) => {
     // console.log(`📌 STABLE COLUMN: Rendering ${column.id} - ${column.title}`)
 
@@ -451,7 +459,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     // Only re-render if column metadata changes, NOT content
     return prevProps.column.id === nextProps.column.id &&
            prevProps.column.title === nextProps.column.title &&
-           prevProps.column.flowId === nextProps.column.flowId
+           prevProps.column.flowId === nextProps.column.flowId &&
+           prevProps.copiedId === nextProps.copiedId
   })
 
   StableColumn.displayName = 'StableColumn'
@@ -459,10 +468,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   // Separate component for column content that can update independently
   const ColumnContent = memo(({
     columnId,
-    items
+    items,
+    onSelectNewsItem
   }: {
     columnId: string
     items: NewsItemType[]
+    onSelectNewsItem: (item: NewsItemType) => void
   }) => {
     // console.log(`📝 COLUMN CONTENT: Updating ${columnId} with ${items.length} items`)
 
@@ -543,175 +554,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
     // Use the new stable column architecture
     return (
-      <StableColumn key={column.id} column={column}>
-        <ColumnContent columnId={column.id} items={columnItems} />
+      <StableColumn
+        key={column.id}
+        column={column}
+        onCopyId={onCopyId}
+        onEditColumn={onEditColumn}
+        onRemoveColumn={onRemoveColumn}
+        copiedId={copiedId}
+      >
+        <ColumnContent columnId={column.id} items={columnItems} onSelectNewsItem={onSelectNewsItem} />
       </StableColumn>
     )
-      {/* Column Header */}
-      <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
-        {editingColumn === column.id ? (
-          // Edit Mode
-          <form onSubmit={(e) => {
-            e.preventDefault()
-            onUpdateColumn(column.id, editTitle, editDescription, editFlowId)
-          }} className="space-y-2">
-            <input
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full px-2 py-1 text-sm border rounded"
-              placeholder="Kolumnnamn"
-              required
-            />
-            <textarea
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-              className="w-full px-2 py-1 text-xs border rounded resize-none"
-              placeholder="Beskrivning (valfritt)"
-              rows={2}
-            />
-            <input
-              type="text"
-              value={editFlowId}
-              onChange={(e) => setEditFlowId(e.target.value)}
-              className="w-full px-2 py-1 text-xs border rounded"
-              placeholder="Workflow ID (valfritt)"
-            />
-            <div className="flex gap-1">
-              <button
-                type="submit"
-                className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-              >
-                ✓
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingColumn(null)}
-                className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-          </form>
-        ) : (
-          // View Mode
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2 flex-1">
-              <button
-                onClick={() => onCopyId(column.id, column.id, column.title)}
-                className="text-blue-500 hover:text-blue-700 p-1"
-                title="Kopiera kolumn-ID"
-              >
-                {copiedId === column.id ? '✓' : '📋'}
-              </button>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-800">
-                    {column.title}
-                  </h3>
-                  <button
-                    onClick={() => onEditColumn(column)}
-                    className="text-gray-400 hover:text-gray-600 text-xs"
-                    title="Redigera kolumn"
-                  >
-                    ✏️
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {columnItems.length} händelser
-                </div>
-                <div className="text-[11px] text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
-                  <span className="uppercase tracking-wide text-gray-400">Workflow</span>
-                  {column.flowId ? (
-                    <>
-                      <code className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-700 break-all">
-                        {column.flowId}
-                      </code>
-                      <button
-                        onClick={() => onCopyId(column.flowId, `${column.id}-flow`, column.title, 'Workflow ID')}
-                        className="text-blue-500 hover:text-blue-700"
-                        title="Kopiera workflow ID"
-                      >
-                        {copiedId === `${column.id}-flow` ? '✓' : '📋'}
-                      </button>
-                    </>
-                  ) : (
-                    <span className="italic text-gray-400">Ingen koppling</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onRemoveColumn(column.id)}
-              className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
-              title="Ta bort kolumn"
-            >
-              ×
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Column Content */}
-      <div
-        className="flex-1 overflow-y-auto p-2 space-y-2"
-        ref={scrollRef}
-        data-column={column.id}
-      >
-        {columnItems.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm">
-            <div className="mb-4 flex justify-center"><Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={32} height={32} className="w-8 h-8 object-contain" /></div>
-            <div className="mb-2">Väntar på händelser...</div>
-            <div className="text-xs text-gray-400">
-              Konfigurationen finns i kolumnhuvudet ↑
-            </div>
-          </div>
-        ) : (
-          columnItems.map((item, index) => (
-            <div key={`${column.id}-${item.id}-${index}`} className="mb-2">
-              <NewsItem
-                item={item}
-                compact={true}
-                onClick={() => onSelectNewsItem(item)}
-              />
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  )
-}, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary re-renders
-  const columnsEqual = prevProps.column.id === nextProps.column.id &&
-                      prevProps.column.title === nextProps.column.title &&
-                      prevProps.column.flowId === nextProps.column.flowId
-
-  const itemsEqual = prevProps.columnItems.length === nextProps.columnItems.length &&
-                     prevProps.columnItems.every((item, index) =>
-                       item.id === nextProps.columnItems[index]?.id &&
-                       item.isNew === nextProps.columnItems[index]?.isNew
-                     )
-
-  const editingStateEqual = prevProps.editingColumn === nextProps.editingColumn &&
-                           prevProps.editTitle === nextProps.editTitle &&
-                           prevProps.editDescription === nextProps.editDescription &&
-                           prevProps.editFlowId === nextProps.editFlowId
-
-  const otherPropsEqual = prevProps.copiedId === nextProps.copiedId
-
-  const shouldNotRerender = columnsEqual && itemsEqual && editingStateEqual && otherPropsEqual
-
-  if (!shouldNotRerender) {
-    console.log(`🔄 COLUMN RERENDER: Column ${nextProps.column.id} will re-render due to changes`)
-  } else {
-    console.log(`⏭️ COLUMN SKIP: Column ${nextProps.column.id} skipping re-render`)
   }
-
-  return shouldNotRerender
-})
-
-  NewsColumn.displayName = 'NewsColumn'
 
   return (
     <div className="min-h-screen bg-slate-50">
