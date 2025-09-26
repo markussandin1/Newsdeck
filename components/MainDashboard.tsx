@@ -66,58 +66,86 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Store scroll positions and column refs
-  const scrollPositionsRef = useRef<{[columnId: string]: number}>({})
-  const columnRefsRef = useRef<Map<string, HTMLDivElement>>(new Map())
-
-  // Save scroll position for a specific column
-  const saveColumnScrollPosition = useCallback((columnId: string) => {
-    const element = columnRefsRef.current.get(columnId)
-    if (element) {
-      const position = element.scrollTop
-      scrollPositionsRef.current[columnId] = position
-      console.log(`💾 SCROLL SAVE: Column ${columnId} position: ${position}`)
-    }
-  }, [])
-
-  // Restore scroll position for a specific column
-  const restoreColumnScrollPosition = useCallback((columnId: string) => {
-    const element = columnRefsRef.current.get(columnId)
-    const savedPosition = scrollPositionsRef.current[columnId]
-    if (element && savedPosition > 0) {
-      console.log(`📍 SCROLL RESTORE: Column ${columnId} from ${element.scrollTop} to ${savedPosition}`)
-      element.scrollTop = savedPosition
-      // Verify if it actually worked
-      setTimeout(() => {
-        console.log(`✅ SCROLL VERIFY: Column ${columnId} actual position: ${element.scrollTop}`)
-      }, 10)
-    }
-  }, [])
-
-  // Save all scroll positions
-  const saveAllScrollPositions = useCallback(() => {
-    console.log('💾 SAVING ALL SCROLL POSITIONS')
-    dashboard.columns?.forEach(column => {
-      saveColumnScrollPosition(column.id)
-    })
-  }, [dashboard.columns, saveColumnScrollPosition])
-
-  // Restore all scroll positions
-  const restoreAllScrollPositions = useCallback(() => {
-    console.log('📍 RESTORING ALL SCROLL POSITIONS')
-    dashboard.columns?.forEach(column => {
-      restoreColumnScrollPosition(column.id)
-    })
-  }, [dashboard.columns, restoreColumnScrollPosition])
-
-  // Use layout effect to restore scroll positions after each render
-  useLayoutEffect(() => {
-    console.log('🔄 LAYOUT EFFECT: Running scroll restoration')
-    // Add a small delay to ensure the new DOM elements are properly registered
-    setTimeout(() => {
-      restoreAllScrollPositions()
-    }, 0)
+  // Global scroll manager that works independently of React renders
+  const scrollManagerRef = useRef<{
+    positions: {[columnId: string]: number}
+    intervals: {[columnId: string]: NodeJS.Timeout}
+    isRestoring: boolean
+  }>({
+    positions: {},
+    intervals: {},
+    isRestoring: false
   })
+
+  // Continuous scroll position monitoring
+  const startScrollMonitoring = useCallback((columnId: string, element: HTMLDivElement) => {
+    // Clear existing interval if any
+    if (scrollManagerRef.current.intervals[columnId]) {
+      clearInterval(scrollManagerRef.current.intervals[columnId])
+    }
+
+    // Monitor scroll position every 50ms
+    scrollManagerRef.current.intervals[columnId] = setInterval(() => {
+      if (!scrollManagerRef.current.isRestoring) {
+        const currentPosition = element.scrollTop
+        if (currentPosition !== scrollManagerRef.current.positions[columnId]) {
+          scrollManagerRef.current.positions[columnId] = currentPosition
+          console.log(`💾 MONITOR: Column ${columnId} position: ${currentPosition}`)
+        }
+      }
+    }, 50)
+  }, [])
+
+  // Stop monitoring for a column
+  const stopScrollMonitoring = useCallback((columnId: string) => {
+    if (scrollManagerRef.current.intervals[columnId]) {
+      clearInterval(scrollManagerRef.current.intervals[columnId])
+      delete scrollManagerRef.current.intervals[columnId]
+    }
+  }, [])
+
+  // Aggressive scroll restoration with retries
+  const restoreScrollPositions = useCallback(() => {
+    console.log('🔧 AGGRESSIVE RESTORE: Starting restoration process')
+    scrollManagerRef.current.isRestoring = true
+
+    // Try to restore positions with multiple attempts
+    const attemptRestore = (attempt: number = 1) => {
+      console.log(`🔧 RESTORE ATTEMPT: ${attempt}`)
+
+      dashboard.columns?.forEach(column => {
+        const element = document.querySelector(`[data-column="${column.id}"]`) as HTMLDivElement
+        const savedPosition = scrollManagerRef.current.positions[column.id]
+
+        if (element && savedPosition > 0) {
+          console.log(`📍 RESTORE: Column ${column.id} to position ${savedPosition}`)
+          element.scrollTop = savedPosition
+
+          // Verify restoration worked
+          setTimeout(() => {
+            if (Math.abs(element.scrollTop - savedPosition) > 5) {
+              console.log(`❌ RESTORE FAILED: Column ${column.id}, trying again...`)
+              if (attempt < 5) {
+                attemptRestore(attempt + 1)
+              }
+            } else {
+              console.log(`✅ RESTORE SUCCESS: Column ${column.id}`)
+            }
+          }, 20)
+        }
+      })
+    }
+
+    // Start restoration attempts
+    setTimeout(() => attemptRestore(), 10)
+    setTimeout(() => attemptRestore(2), 50)
+    setTimeout(() => attemptRestore(3), 150)
+
+    // Re-enable monitoring after restoration
+    setTimeout(() => {
+      scrollManagerRef.current.isRestoring = false
+    }, 300)
+  }, [dashboard.columns])
 
   // Memoized column data to prevent unnecessary re-sorting
   const memoizedColumnData = useMemo(() => {
@@ -181,9 +209,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
         console.log('🔄 UPDATING STATE - Changes detected')
 
-        // Save scroll positions before updating
-        saveAllScrollPositions()
-
         // Process new items only if there are actual changes
         const processedData: ColumnData = {}
 
@@ -200,13 +225,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         setColumnData(processedData)
         columnDataRef.current = processedData
         setLastUpdate(new Date())
+
+        // Trigger aggressive scroll restoration after state update
+        setTimeout(() => {
+          restoreScrollPositions()
+        }, 100)
       }
     } catch (error) {
       console.error('Failed to fetch column data:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [dashboard.id, dashboard.slug, saveAllScrollPositions]) // columnData intentionally excluded to prevent infinite polling
+  }, [dashboard.id, dashboard.slug, restoreScrollPositions]) // columnData intentionally excluded to prevent infinite polling
 
   // Deep equality check to prevent unnecessary re-renders
   // Load archived columns
@@ -480,27 +510,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   }) => {
     const scrollRef = useRef<HTMLDivElement>(null)
 
-    // Register this column's ref and set up scroll event handling
+    // Register column with scroll manager
     useEffect(() => {
       if (scrollRef.current) {
-        console.log(`🔗 COLUMN REF: Registering ref for column ${column.id}`, scrollRef.current)
-        columnRefsRef.current.set(column.id, scrollRef.current)
-
-        const handleScroll = () => {
-          saveColumnScrollPosition(column.id)
-        }
-
-        const element = scrollRef.current
-        element.addEventListener('scroll', handleScroll, { passive: true })
-        console.log(`👂 SCROLL LISTENER: Added for column ${column.id}`)
+        console.log(`🔗 SCROLL MANAGER: Registering column ${column.id}`)
+        startScrollMonitoring(column.id, scrollRef.current)
 
         return () => {
-          console.log(`🗑️ CLEANUP: Removing scroll listener for column ${column.id}`)
-          element.removeEventListener('scroll', handleScroll)
-          columnRefsRef.current.delete(column.id)
+          console.log(`🗑️ SCROLL MANAGER: Unregistering column ${column.id}`)
+          stopScrollMonitoring(column.id)
         }
       }
-    }, [column.id])
+    }, [column.id, startScrollMonitoring, stopScrollMonitoring])
 
     return (
       <div
@@ -617,6 +638,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       <div
         className="flex-1 overflow-y-auto p-2 space-y-2"
         ref={scrollRef}
+        data-column={column.id}
       >
         {columnItems.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">
