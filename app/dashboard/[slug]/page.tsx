@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { Dashboard as DashboardType } from '@/lib/types'
 import MainDashboard from '@/components/MainDashboard'
@@ -44,9 +45,11 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 mb-4 mx-auto">
-            <img
+            <Image
               src="/newsdeck-icon.svg"
               alt="Newsdeck"
+              width={64}
+              height={64}
               className="w-full h-full object-contain animate-pulse"
             />
           </div>

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function HomePage() {
   const router = useRouter()
@@ -15,9 +16,11 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="text-center">
         <div className="w-16 h-16 mb-4 mx-auto">
-          <img
+          <Image
             src="/newsdeck-icon.svg"
             alt="Newsdeck logo"
+            width={64}
+            height={64}
             className="w-full h-full object-contain animate-pulse"
           />
         </div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 
 export default function AdminPage() {
@@ -305,9 +306,11 @@ export default function AdminPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 mb-4 mx-auto">
-            <img
+            <Image
               src="/newsdeck-icon.svg"
               alt="Newsdeck"
+              width={64}
+              height={64}
               className="w-full h-full object-contain animate-pulse"
             />
           </div>
