@@ -66,86 +66,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Global scroll manager that works independently of React renders
-  const scrollManagerRef = useRef<{
-    positions: {[columnId: string]: number}
-    intervals: {[columnId: string]: NodeJS.Timeout}
-    isRestoring: boolean
-  }>({
-    positions: {},
-    intervals: {},
-    isRestoring: false
-  })
-
-  // Continuous scroll position monitoring
-  const startScrollMonitoring = useCallback((columnId: string, element: HTMLDivElement) => {
-    // Clear existing interval if any
-    if (scrollManagerRef.current.intervals[columnId]) {
-      clearInterval(scrollManagerRef.current.intervals[columnId])
-    }
-
-    // Monitor scroll position every 50ms
-    scrollManagerRef.current.intervals[columnId] = setInterval(() => {
-      if (!scrollManagerRef.current.isRestoring) {
-        const currentPosition = element.scrollTop
-        if (currentPosition !== scrollManagerRef.current.positions[columnId]) {
-          scrollManagerRef.current.positions[columnId] = currentPosition
-          console.log(`💾 MONITOR: Column ${columnId} position: ${currentPosition}`)
-        }
-      }
-    }, 50)
-  }, [])
-
-  // Stop monitoring for a column
-  const stopScrollMonitoring = useCallback((columnId: string) => {
-    if (scrollManagerRef.current.intervals[columnId]) {
-      clearInterval(scrollManagerRef.current.intervals[columnId])
-      delete scrollManagerRef.current.intervals[columnId]
-    }
-  }, [])
-
-  // Aggressive scroll restoration with retries
-  const restoreScrollPositions = useCallback(() => {
-    console.log('🔧 AGGRESSIVE RESTORE: Starting restoration process')
-    scrollManagerRef.current.isRestoring = true
-
-    // Try to restore positions with multiple attempts
-    const attemptRestore = (attempt: number = 1) => {
-      console.log(`🔧 RESTORE ATTEMPT: ${attempt}`)
-
-      dashboard.columns?.forEach(column => {
-        const element = document.querySelector(`[data-column="${column.id}"]`) as HTMLDivElement
-        const savedPosition = scrollManagerRef.current.positions[column.id]
-
-        if (element && savedPosition > 0) {
-          console.log(`📍 RESTORE: Column ${column.id} to position ${savedPosition}`)
-          element.scrollTop = savedPosition
-
-          // Verify restoration worked
-          setTimeout(() => {
-            if (Math.abs(element.scrollTop - savedPosition) > 5) {
-              console.log(`❌ RESTORE FAILED: Column ${column.id}, trying again...`)
-              if (attempt < 5) {
-                attemptRestore(attempt + 1)
-              }
-            } else {
-              console.log(`✅ RESTORE SUCCESS: Column ${column.id}`)
-            }
-          }, 20)
-        }
-      })
-    }
-
-    // Start restoration attempts
-    setTimeout(() => attemptRestore(), 10)
-    setTimeout(() => attemptRestore(2), 50)
-    setTimeout(() => attemptRestore(3), 150)
-
-    // Re-enable monitoring after restoration
-    setTimeout(() => {
-      scrollManagerRef.current.isRestoring = false
-    }, 300)
-  }, [dashboard.columns])
+  // Simple approach: Just don't recreate columns unnecessarily
 
   // Memoized column data to prevent unnecessary re-sorting
   const memoizedColumnData = useMemo(() => {
@@ -226,17 +147,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         columnDataRef.current = processedData
         setLastUpdate(new Date())
 
-        // Trigger aggressive scroll restoration after state update
-        setTimeout(() => {
-          restoreScrollPositions()
-        }, 100)
+        // No special scroll handling needed - columns should be stable
       }
     } catch (error) {
       console.error('Failed to fetch column data:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [dashboard.id, dashboard.slug, restoreScrollPositions]) // columnData intentionally excluded to prevent infinite polling
+  }, [dashboard.id, dashboard.slug]) // columnData intentionally excluded to prevent infinite polling
 
   // Deep equality check to prevent unnecessary re-renders
   // Load archived columns
@@ -472,8 +390,122 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     router.push(`/dashboard/${slug}`)
   }, [router])
 
-  // Memoized column component for better performance with proper comparison
-  const NewsColumn = memo(({
+  // Stable column structure that never gets recreated
+  const StableColumn = memo(({
+    column,
+    children
+  }: {
+    column: DashboardColumn
+    children: React.ReactNode
+  }) => {
+    // console.log(`📌 STABLE COLUMN: Rendering ${column.id} - ${column.title}`)
+
+    return (
+      <div className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col">
+        {/* Column Header - this part can update */}
+        <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2 flex-1">
+              <button
+                onClick={() => onCopyId(column.id, column.id, column.title)}
+                className="text-blue-500 hover:text-blue-700 p-1"
+                title="Kopiera kolumn-ID"
+              >
+                {copiedId === column.id ? '✓' : '📋'}
+              </button>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-800">
+                    {column.title}
+                  </h3>
+                  <button
+                    onClick={() => onEditColumn(column)}
+                    className="text-gray-400 hover:text-gray-600 text-xs"
+                    title="Redigera kolumn"
+                  >
+                    ✏️
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {memoizedColumnData[column.id]?.length || 0} händelser
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => onRemoveColumn(column.id)}
+              className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
+              title="Ta bort kolumn"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Stable scrollable content area */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {children}
+        </div>
+      </div>
+    )
+  }, (prevProps, nextProps) => {
+    // Only re-render if column metadata changes, NOT content
+    return prevProps.column.id === nextProps.column.id &&
+           prevProps.column.title === nextProps.column.title &&
+           prevProps.column.flowId === nextProps.column.flowId
+  })
+
+  StableColumn.displayName = 'StableColumn'
+
+  // Separate component for column content that can update independently
+  const ColumnContent = memo(({
+    columnId,
+    items
+  }: {
+    columnId: string
+    items: NewsItemType[]
+  }) => {
+    // console.log(`📝 COLUMN CONTENT: Updating ${columnId} with ${items.length} items`)
+
+    if (items.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500 text-sm">
+          <div className="mb-4 flex justify-center">
+            <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={32} height={32} className="w-8 h-8 object-contain" />
+          </div>
+          <div className="mb-2">Väntar på händelser...</div>
+          <div className="text-xs text-gray-400">
+            Konfigurationen finns i kolumnhuvudet ↑
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <>
+        {items.map((item, index) => (
+          <div key={`${columnId}-${item.id}-${index}`} className="mb-2">
+            <NewsItem
+              item={item}
+              compact={true}
+              onClick={() => onSelectNewsItem(item)}
+            />
+          </div>
+        ))}
+      </>
+    )
+  }, (prevProps, nextProps) => {
+    // Only re-render if items actually changed
+    return prevProps.items.length === nextProps.items.length &&
+           prevProps.items.every((item, index) =>
+             item.id === nextProps.items[index]?.id &&
+             item.isNew === nextProps.items[index]?.isNew
+           )
+  })
+
+  ColumnContent.displayName = 'ColumnContent'
+
+  // Legacy NewsColumn for backwards compatibility - now much simpler
+  const NewsColumn = ({
     column,
     columnItems,
     onEditColumn,
@@ -508,26 +540,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     setEditingColumn: (id: string | null) => void
     copiedId: string | null
   }) => {
-    const scrollRef = useRef<HTMLDivElement>(null)
 
-    // Register column with scroll manager
-    useEffect(() => {
-      if (scrollRef.current) {
-        console.log(`🔗 SCROLL MANAGER: Registering column ${column.id}`)
-        startScrollMonitoring(column.id, scrollRef.current)
-
-        return () => {
-          console.log(`🗑️ SCROLL MANAGER: Unregistering column ${column.id}`)
-          stopScrollMonitoring(column.id)
-        }
-      }
-    }, [column.id, startScrollMonitoring, stopScrollMonitoring])
-
+    // Use the new stable column architecture
     return (
-      <div
-        key={column.id}
-        className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
-      >
+      <StableColumn key={column.id} column={column}>
+        <ColumnContent columnId={column.id} items={columnItems} />
+      </StableColumn>
+    )
       {/* Column Header */}
       <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
         {editingColumn === column.id ? (
