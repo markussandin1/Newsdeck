@@ -66,36 +66,32 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Global scroll position preservation
-  const preserveScrollPositions = useCallback(() => {
-    const scrollPositions: {[columnId: string]: number} = {}
+  // Store scroll positions before updates
+  const scrollPositionsRef = useRef<{[columnId: string]: number}>({})
 
-    // Save all current scroll positions
+  // Save scroll positions before data update
+  const saveScrollPositions = useCallback(() => {
     dashboard.columns?.forEach(column => {
       const scrollElement = document.querySelector(`[data-column-id="${column.id}"]`) as HTMLElement
       if (scrollElement) {
-        scrollPositions[column.id] = scrollElement.scrollTop
+        scrollPositionsRef.current[column.id] = scrollElement.scrollTop
       }
-    })
-
-    // Restore positions on next frame
-    requestAnimationFrame(() => {
-      dashboard.columns?.forEach(column => {
-        const scrollElement = document.querySelector(`[data-column-id="${column.id}"]`) as HTMLElement
-        if (scrollElement && scrollPositions[column.id] > 0) {
-          scrollElement.scrollTop = scrollPositions[column.id]
-        }
-      })
     })
   }, [dashboard.columns])
 
-  // Watch for columnData changes and preserve scroll positions
-  useEffect(() => {
-    if (Object.keys(columnData).length > 0) {
-      // Delay to ensure DOM has updated
-      setTimeout(preserveScrollPositions, 50)
-    }
-  }, [columnData, preserveScrollPositions])
+  // Restore scroll positions after data update
+  const restoreScrollPositions = useCallback(() => {
+    // Use a longer delay to ensure DOM is fully updated
+    setTimeout(() => {
+      dashboard.columns?.forEach(column => {
+        const scrollElement = document.querySelector(`[data-column-id="${column.id}"]`) as HTMLElement
+        const savedPosition = scrollPositionsRef.current[column.id]
+        if (scrollElement && savedPosition > 0) {
+          scrollElement.scrollTop = savedPosition
+        }
+      })
+    }, 100)
+  }, [dashboard.columns])
 
   // Memoized column data to prevent unnecessary re-sorting
   const memoizedColumnData = useMemo(() => {
@@ -159,6 +155,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
         console.log('🔄 UPDATING STATE - Changes detected')
 
+        // Save scroll positions before updating
+        saveScrollPositions()
+
         // Process new items only if there are actual changes
         const processedData: ColumnData = {}
 
@@ -176,15 +175,15 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         columnDataRef.current = processedData
         setLastUpdate(new Date())
 
-        // Preserve scroll positions after state update
-        preserveScrollPositions()
+        // Restore scroll positions after state update
+        restoreScrollPositions()
       }
     } catch (error) {
       console.error('Failed to fetch column data:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [dashboard.id, dashboard.slug, preserveScrollPositions]) // columnData intentionally excluded to prevent infinite polling
+  }, [dashboard.id, dashboard.slug, saveScrollPositions, restoreScrollPositions]) // columnData intentionally excluded to prevent infinite polling
 
   // Deep equality check to prevent unnecessary re-renders
   // Load archived columns
