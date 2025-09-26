@@ -406,7 +406,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     onRemoveColumn: (columnId: string) => void
     copiedId: string | null
   }) => {
-    // console.log(`📌 STABLE COLUMN: Rendering ${column.id} - ${column.title}`)
+    console.log(`📌 STABLE COLUMN: Rendering ${column.id} - ${column.title}`)
 
     return (
       <div className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col">
@@ -475,7 +475,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     items: NewsItemType[]
     onSelectNewsItem: (item: NewsItemType) => void
   }) => {
-    // console.log(`📝 COLUMN CONTENT: Updating ${columnId} with ${items.length} items`)
+    console.log(`📝 COLUMN CONTENT: Updating ${columnId} with ${items.length} items`)
 
     if (items.length === 0) {
       return (
