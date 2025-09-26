@@ -113,7 +113,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   // Use layout effect to restore scroll positions after each render
   useLayoutEffect(() => {
     console.log('🔄 LAYOUT EFFECT: Running scroll restoration')
-    restoreAllScrollPositions()
+    // Add a small delay to ensure the new DOM elements are properly registered
+    setTimeout(() => {
+      restoreAllScrollPositions()
+    }, 0)
   })
 
   // Memoized column data to prevent unnecessary re-sorting
@@ -439,7 +442,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     router.push(`/dashboard/${slug}`)
   }, [router])
 
-  // Memoized column component for better performance
+  // Memoized column component for better performance with proper comparison
   const NewsColumn = memo(({
     column,
     columnItems,
@@ -637,6 +640,34 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       </div>
     </div>
   )
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  const columnsEqual = prevProps.column.id === nextProps.column.id &&
+                      prevProps.column.title === nextProps.column.title &&
+                      prevProps.column.flowId === nextProps.column.flowId
+
+  const itemsEqual = prevProps.columnItems.length === nextProps.columnItems.length &&
+                     prevProps.columnItems.every((item, index) =>
+                       item.id === nextProps.columnItems[index]?.id &&
+                       item.isNew === nextProps.columnItems[index]?.isNew
+                     )
+
+  const editingStateEqual = prevProps.editingColumn === nextProps.editingColumn &&
+                           prevProps.editTitle === nextProps.editTitle &&
+                           prevProps.editDescription === nextProps.editDescription &&
+                           prevProps.editFlowId === nextProps.editFlowId
+
+  const otherPropsEqual = prevProps.copiedId === nextProps.copiedId
+
+  const shouldNotRerender = columnsEqual && itemsEqual && editingStateEqual && otherPropsEqual
+
+  if (!shouldNotRerender) {
+    console.log(`🔄 COLUMN RERENDER: Column ${nextProps.column.id} will re-render due to changes`)
+  } else {
+    console.log(`⏭️ COLUMN SKIP: Column ${nextProps.column.id} skipping re-render`)
+  }
+
+  return shouldNotRerender
 })
 
   NewsColumn.displayName = 'NewsColumn'
