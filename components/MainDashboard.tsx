@@ -697,26 +697,76 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           .map((column) => {
             const columnItems = memoizedColumnData[column.id] || []
 
+            // Use a very stable column container that never changes
             return (
-              <NewsColumn
+              <div
                 key={column.id}
-                column={column}
-                columnItems={columnItems}
-                onEditColumn={startEditing}
-                onRemoveColumn={removeColumn}
-                onCopyId={copyToClipboard}
-                onUpdateColumn={updateColumn}
-                onSelectNewsItem={setSelectedNewsItem}
-                editingColumn={editingColumn}
-                editTitle={editTitle}
-                editDescription={editDescription}
-                editFlowId={editFlowId}
-                setEditTitle={setEditTitle}
-                setEditDescription={setEditDescription}
-                setEditFlowId={setEditFlowId}
-                setEditingColumn={setEditingColumn}
-                copiedId={copiedId}
-              />
+                className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
+              >
+                {/* Static header */}
+                <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2 flex-1">
+                      <button
+                        onClick={() => copyToClipboard(column.id, column.id, column.title)}
+                        className="text-blue-500 hover:text-blue-700 p-1"
+                        title="Kopiera kolumn-ID"
+                      >
+                        {copiedId === column.id ? '✓' : '📋'}
+                      </button>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-800">
+                            {column.title}
+                          </h3>
+                          <button
+                            onClick={() => startEditing(column)}
+                            className="text-gray-400 hover:text-gray-600 text-xs"
+                            title="Redigera kolumn"
+                          >
+                            ✏️
+                          </button>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {columnItems.length} händelser
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeColumn(column.id)}
+                      className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
+                      title="Ta bort kolumn"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+
+                {/* Static scrollable area */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  {columnItems.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      <div className="mb-4 flex justify-center">
+                        <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={32} height={32} className="w-8 h-8 object-contain" />
+                      </div>
+                      <div className="mb-2">Väntar på händelser...</div>
+                      <div className="text-xs text-gray-400">
+                        Konfigurationen finns i kolumnhuvudet ↑
+                      </div>
+                    </div>
+                  ) : (
+                    columnItems.map((item, index) => (
+                      <div key={`${column.id}-${item.id}-${index}`} className="mb-2">
+                        <NewsItem
+                          item={item}
+                          compact={true}
+                          onClick={() => setSelectedNewsItem(item)}
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             )
           })}
 
