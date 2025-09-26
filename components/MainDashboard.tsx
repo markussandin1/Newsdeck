@@ -74,7 +74,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const saveColumnScrollPosition = useCallback((columnId: string) => {
     const element = columnRefsRef.current.get(columnId)
     if (element) {
-      scrollPositionsRef.current[columnId] = element.scrollTop
+      const position = element.scrollTop
+      scrollPositionsRef.current[columnId] = position
+      console.log(`💾 SCROLL SAVE: Column ${columnId} position: ${position}`)
     }
   }, [])
 
@@ -83,12 +85,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     const element = columnRefsRef.current.get(columnId)
     const savedPosition = scrollPositionsRef.current[columnId]
     if (element && savedPosition > 0) {
+      console.log(`📍 SCROLL RESTORE: Column ${columnId} from ${element.scrollTop} to ${savedPosition}`)
       element.scrollTop = savedPosition
+      // Verify if it actually worked
+      setTimeout(() => {
+        console.log(`✅ SCROLL VERIFY: Column ${columnId} actual position: ${element.scrollTop}`)
+      }, 10)
     }
   }, [])
 
   // Save all scroll positions
   const saveAllScrollPositions = useCallback(() => {
+    console.log('💾 SAVING ALL SCROLL POSITIONS')
     dashboard.columns?.forEach(column => {
       saveColumnScrollPosition(column.id)
     })
@@ -96,6 +104,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   // Restore all scroll positions
   const restoreAllScrollPositions = useCallback(() => {
+    console.log('📍 RESTORING ALL SCROLL POSITIONS')
     dashboard.columns?.forEach(column => {
       restoreColumnScrollPosition(column.id)
     })
@@ -103,6 +112,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   // Use layout effect to restore scroll positions after each render
   useLayoutEffect(() => {
+    console.log('🔄 LAYOUT EFFECT: Running scroll restoration')
     restoreAllScrollPositions()
   })
 
@@ -470,6 +480,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     // Register this column's ref and set up scroll event handling
     useEffect(() => {
       if (scrollRef.current) {
+        console.log(`🔗 COLUMN REF: Registering ref for column ${column.id}`, scrollRef.current)
         columnRefsRef.current.set(column.id, scrollRef.current)
 
         const handleScroll = () => {
@@ -478,8 +489,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
         const element = scrollRef.current
         element.addEventListener('scroll', handleScroll, { passive: true })
+        console.log(`👂 SCROLL LISTENER: Added for column ${column.id}`)
 
         return () => {
+          console.log(`🗑️ CLEANUP: Removing scroll listener for column ${column.id}`)
           element.removeEventListener('scroll', handleScroll)
           columnRefsRef.current.delete(column.id)
         }
