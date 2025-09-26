@@ -42,6 +42,7 @@ interface ColumnData {
 export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDashboardProps) {
   const router = useRouter()
   const [columnData, setColumnData] = useState<ColumnData>({})
+  const columnDataRef = useRef<ColumnData>({})
   const [lastUpdate, setLastUpdate] = useState(new Date())
   const [isLoading, setIsLoading] = useState(false)
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
@@ -140,7 +141,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         const incomingData: ColumnData = data.columnData ? { ...data.columnData } : {}
 
         // First check if the raw data has changed at all
-        const rawDataChanged = !deepEqual(columnData, incomingData)
+        const previousData = columnDataRef.current
+        const rawDataChanged = !deepEqual(previousData, incomingData)
 
         console.log('🔍 POLL DEBUG:', {
           rawDataChanged,
@@ -160,7 +162,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         const processedData: ColumnData = {}
 
         Object.entries(incomingData).forEach(([columnId, newItems]) => {
-          const previousItems = columnData[columnId] ?? []
+          const previousItems = previousData[columnId] ?? []
 
           processedData[columnId] = newItems.map(item => ({
             ...item,
@@ -170,6 +172,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
         // Update state only when there are actual changes
         setColumnData(processedData)
+        columnDataRef.current = processedData
         setLastUpdate(new Date())
 
         // Preserve scroll positions after state update
@@ -180,7 +183,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     } finally {
       setIsLoading(false)
     }
-  }, [columnData, dashboard.id, dashboard.slug, preserveScrollPositions])
+  }, [dashboard.id, dashboard.slug, preserveScrollPositions])
 
   // Deep equality check to prevent unnecessary re-renders
   // Load archived columns
