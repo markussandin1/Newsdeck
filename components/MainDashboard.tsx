@@ -65,6 +65,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
+  const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
 
   // Simple approach: Just don't recreate columns unnecessarily
 
@@ -91,7 +94,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   const fetchColumnData = useCallback(async () => {
     if (!dashboard?.id) {
-      console.log('Dashboard not loaded yet, skipping fetchColumnData')
       return
     }
 
@@ -116,19 +118,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         const previousData = columnDataRef.current
         const rawDataChanged = !deepEqual(previousData, incomingData)
 
-        console.log('🔍 POLL DEBUG:', {
-          rawDataChanged,
-          oldItemCounts: Object.keys(columnData).map(k => `${k}: ${columnData[k]?.length || 0}`),
-          newItemCounts: Object.keys(incomingData).map(k => `${k}: ${incomingData[k]?.length || 0}`)
-        })
-
         if (!rawDataChanged) {
           // No changes detected, skip all updates
-          console.log('⏭️ SKIPPING UPDATE - No changes detected')
           return
         }
-
-        console.log('🔄 UPDATING STATE - Changes detected')
 
         // Process new items only if there are actual changes
         const processedData: ColumnData = {}
@@ -390,6 +383,111 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     router.push(`/dashboard/${slug}`)
   }, [router])
 
+  const reorderColumns = async (draggedColumnId: string, targetColumnId: string) => {
+    const columns = dashboard?.columns?.filter(col => !col.isArchived) || []
+    const draggedIndex = columns.findIndex(col => col.id === draggedColumnId)
+    const targetIndex = columns.findIndex(col => col.id === targetColumnId)
+
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    const reorderedColumns = [...columns]
+    const [draggedColumn] = reorderedColumns.splice(draggedIndex, 1)
+    reorderedColumns.splice(targetIndex, 0, draggedColumn)
+
+    // Update order property
+    const updatedColumns = reorderedColumns.map((col, index) => ({
+      ...col,
+      order: index
+    }))
+
+    // Include archived columns to preserve them
+    const archivedColumns = dashboard?.columns?.filter(col => col.isArchived) || []
+    const allColumns = [...updatedColumns, ...archivedColumns]
+
+    try {
+      let updateEndpoint = `/api/dashboards/${dashboard.slug || dashboard.id}`
+      if (dashboard.id === 'main-dashboard') {
+        updateEndpoint = '/api/dashboards/main-dashboard'
+      }
+
+      const response = await fetch(updateEndpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ columns: allColumns })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        onDashboardUpdate(data.dashboard)
+      }
+    } catch (error) {
+      console.error('Failed to reorder columns:', error)
+    }
+  }
+
+  const handleDragStart = (e: React.DragEvent, columnId: string) => {
+    setDraggedColumn(columnId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', columnId)
+
+    // Use a simple transparent image as drag image to avoid positioning issues
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.globalAlpha = 0.01
+      ctx.fillStyle = 'black'
+      ctx.fillRect(0, 0, 1, 1)
+    }
+    e.dataTransfer.setDragImage(canvas, 0, 0)
+
+    // Show custom drag preview
+    setDragPreview({ x: e.clientX, y: e.clientY, visible: true })
+
+    // Add mouse move listener for drag preview
+    const handleMouseMove = (event: MouseEvent) => {
+      setDragPreview({ x: event.clientX, y: event.clientY, visible: true })
+    }
+
+    document.addEventListener('dragover', handleMouseMove)
+
+    // Clean up listener on drag end
+    const cleanup = () => {
+      document.removeEventListener('dragover', handleMouseMove)
+      document.removeEventListener('dragend', cleanup)
+    }
+    document.addEventListener('dragend', cleanup)
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedColumn(null)
+    setDragOverColumn(null)
+    setDragPreview({ x: 0, y: 0, visible: false })
+  }
+
+  const handleDragOver = (e: React.DragEvent, columnId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverColumn(columnId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverColumn(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
+    e.preventDefault()
+    const draggedColumnId = e.dataTransfer.getData('text/plain')
+
+    if (draggedColumnId && draggedColumnId !== targetColumnId) {
+      reorderColumns(draggedColumnId, targetColumnId)
+    }
+
+    setDraggedColumn(null)
+    setDragOverColumn(null)
+  }
+
   // Stable column structure that never gets recreated
   const StableColumn = memo(({
     column,
@@ -406,8 +504,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     onRemoveColumn: (columnId: string) => void
     copiedId: string | null
   }) => {
-    console.log(`📌 STABLE COLUMN: Rendering ${column.id} - ${column.title}`)
-
     return (
       <div className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col">
         {/* Column Header - this part can update */}
@@ -475,8 +571,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     items: NewsItemType[]
     onSelectNewsItem: (item: NewsItemType) => void
   }) => {
-    console.log(`📝 COLUMN CONTENT: Updating ${columnId} with ${items.length} items`)
-
     if (items.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500 text-sm">
@@ -650,16 +744,39 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             return (
               <div
                 key={column.id}
-                className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col"
+                data-column-id={column.id}
+                onDragOver={(e) => handleDragOver(e, column.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, column.id)}
+                className={`flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col transition-colors ${
+                  draggedColumn === column.id ? 'opacity-50' : ''
+                } ${
+                  dragOverColumn === column.id && draggedColumn !== column.id ? 'border-l-4 border-blue-500 bg-blue-50' : ''
+                }`}
               >
-                {/* Static header */}
-                <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
+                {/* Static header with drag handle */}
+                <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl relative">
+                  {/* Drag handle */}
+                  <div
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, column.id)}
+                    onDragEnd={handleDragEnd}
+                    className="absolute left-0 top-0 bottom-0 w-6 cursor-move hover:bg-gray-100 rounded-l-xl flex flex-col items-center justify-center gap-1 opacity-40 hover:opacity-80 transition-all"
+                    title="Dra för att flytta kolumn"
+                  >
+                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                  </div>
                   {editingColumn === column.id ? (
                     // Edit Mode
                     <form onSubmit={(e) => {
                       e.preventDefault()
                       updateColumn(column.id, editTitle, editDescription, editFlowId)
-                    }} className="space-y-2">
+                    }} className="space-y-2 ml-6">
                       <input
                         type="text"
                         value={editTitle}
@@ -700,7 +817,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                     </form>
                   ) : (
                     // View Mode
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start ml-6">
                       <div className="flex items-center gap-2 flex-1">
                         <button
                           onClick={() => copyToClipboard(column.id, column.id, column.title)}
@@ -993,6 +1110,47 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         item={selectedNewsItem}
         onClose={() => setSelectedNewsItem(null)}
       />
+
+      {/* Custom Drag Preview */}
+      {dragPreview.visible && draggedColumn && (
+        <div
+          className="fixed pointer-events-none z-[9999]"
+          style={{
+            left: dragPreview.x - 160, // Center the 320px wide column
+            top: dragPreview.y - 50,
+            transform: 'rotate(2deg) scale(0.8)',
+          }}
+        >
+          {(() => {
+            const column = dashboard?.columns?.find(col => col.id === draggedColumn)
+            if (!column) return null
+
+            return (
+              <div className="w-80 bg-white border-2 border-blue-500 rounded-xl shadow-2xl opacity-90">
+                <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
+                  <div className="flex justify-between items-start ml-6">
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-800">
+                            {column.title}
+                          </h3>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {memoizedColumnData[column.id]?.length || 0} händelser
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  Drar kolumn...
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      )}
 
       {/* Create Dashboard Modal */}
       {showCreateDashboardModal && (

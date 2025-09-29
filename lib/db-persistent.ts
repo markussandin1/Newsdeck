@@ -254,13 +254,11 @@ export const persistentDb = {
 
   getDashboards: async () => {
     if (isKVAvailable()) {
-      console.log('🔸 Using KV database for dashboards')
       const dashboards = await kv.get<Dashboard[]>(KEYS.DASHBOARDS) || []
       return dashboards.sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )
     } else {
-      console.log('🔸 Using fallback database for dashboards', fallbackDashboards.length, 'dashboards')
       // Ensure we always have at least the main dashboard
       if (fallbackDashboards.length === 0) {
         fallbackDashboards.push(DEFAULT_DASHBOARD)

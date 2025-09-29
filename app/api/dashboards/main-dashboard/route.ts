@@ -13,7 +13,6 @@ export async function GET() {
       for (const column of dashboard.columns) {
         try {
           const items = await db.getColumnData(column.id) || []
-          console.log(`🔍 DEBUG - Column ${column.id} (${column.title}) has ${items.length} items`)
           columnData[column.id] = items
         } catch (error) {
           console.error(`Error fetching data for column ${column.id}:`, error)
