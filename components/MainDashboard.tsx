@@ -779,103 +779,135 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   </div>
                   {editingColumn === column.id ? (
                     // Edit Mode
-                    <form onSubmit={(e) => {
-                      e.preventDefault()
-                      updateColumn(column.id, editTitle, editDescription, editFlowId)
-                    }} className="space-y-2 ml-6">
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full px-2 py-1 text-sm border rounded"
-                        placeholder="Kolumnnamn"
-                        required
-                      />
-                      <textarea
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        className="w-full px-2 py-1 text-xs border rounded resize-none"
-                        placeholder="Beskrivning (valfritt)"
-                        rows={2}
-                      />
-                      <input
-                        type="text"
-                        value={editFlowId}
-                        onChange={(e) => setEditFlowId(e.target.value)}
-                        className="w-full px-2 py-1 text-xs border rounded"
-                        placeholder="Workflow ID (valfritt)"
-                      />
-                      <div className="flex gap-1">
-                        <button
-                          type="submit"
-                          className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                        >
-                          ✓
-                        </button>
+                    <div className="ml-6 space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between border-b border-gray-300 pb-2">
+                        <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                          ⚙️ Inställningar
+                        </h4>
                         <button
                           type="button"
                           onClick={() => setEditingColumn(null)}
-                          className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                          className="text-gray-400 hover:text-gray-600 text-lg"
+                          title="Stäng"
                         >
-                          ✕
+                          ×
                         </button>
                       </div>
-                    </form>
+
+                      <form onSubmit={(e) => {
+                        e.preventDefault()
+                        updateColumn(column.id, editTitle, editDescription, editFlowId)
+                      }} className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Kolumnnamn *
+                          </label>
+                          <input
+                            type="text"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="t.ex. Breaking News"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Beskrivning
+                          </label>
+                          <textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Valfri beskrivning..."
+                            rows={2}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            📌 Kolumn-ID
+                          </label>
+                          <div className="flex gap-1">
+                            <input
+                              type="text"
+                              value={column.id}
+                              readOnly
+                              className="flex-1 px-2 py-1.5 text-xs bg-gray-100 border border-gray-300 rounded font-mono text-gray-600"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(column.id, column.id, column.title)}
+                              className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                              title="Kopiera kolumn-ID"
+                            >
+                              {copiedId === column.id ? '✓' : '📋'}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-gray-500 mt-1">
+                            Skicka data direkt hit med Kolumn-ID.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            🎯 Workflow-koppling
+                          </label>
+                          <input
+                            type="text"
+                            value={editFlowId}
+                            onChange={(e) => setEditFlowId(e.target.value)}
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="UUID från workflow-app"
+                          />
+                          <p className="text-[10px] text-gray-500 mt-1">
+Visa händelser från ett specifikt workflow.                          </p>
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t border-gray-300">
+                          <button
+                            type="submit"
+                            className="flex-1 px-3 py-2 bg-green-500 text-white text-xs rounded hover:bg-green-600 font-medium"
+                          >
+                            💾 Spara ändringar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Är du säker på att du vill arkivera "${column.title}"?`)) {
+                                removeColumn(column.id)
+                                setEditingColumn(null)
+                              }
+                            }}
+                            className="px-3 py-2 bg-red-500 text-white text-xs rounded hover:bg-red-600 font-medium"
+                            title="Arkivera kolumn"
+                          >
+                            🗄️ Arkivera
+                          </button>
+                        </div>
+                      </form>
+                    </div>
                   ) : (
                     // View Mode
                     <div className="flex justify-between items-start ml-6">
-                      <div className="flex items-center gap-2 flex-1">
-                        <button
-                          onClick={() => copyToClipboard(column.id, column.id, column.title)}
-                          className="text-blue-500 hover:text-blue-700 p-1"
-                          title="Kopiera kolumn-ID"
-                        >
-                          {copiedId === column.id ? '✓' : '📋'}
-                        </button>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-800">
-                              {column.title}
-                            </h3>
-                            <button
-                              onClick={() => startEditing(column)}
-                              className="text-gray-400 hover:text-gray-600 text-xs"
-                              title="Redigera kolumn"
-                            >
-                              ✏️
-                            </button>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {columnItems.length} händelser
-                          </div>
-                          <div className="text-[11px] text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
-                            <span className="uppercase tracking-wide text-gray-400">Workflow</span>
-                            {column.flowId ? (
-                              <>
-                                <code className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-700 break-all">
-                                  {column.flowId}
-                                </code>
-                                <button
-                                  onClick={() => copyToClipboard(column.flowId, `${column.id}-flow`, column.title, 'Workflow ID')}
-                                  className="text-blue-500 hover:text-blue-700"
-                                  title="Kopiera workflow ID"
-                                >
-                                  {copiedId === `${column.id}-flow` ? '✓' : '📋'}
-                                </button>
-                              </>
-                            ) : (
-                              <span className="italic text-gray-400">Ingen koppling</span>
-                            )}
-                          </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-800">
+                            {column.title}
+                          </h3>
+                          <button
+                            onClick={() => startEditing(column)}
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                            title="Inställningar"
+                          >
+                            ⚙️
+                          </button>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {columnItems.length} händelser
                         </div>
                       </div>
-                      <button
-                        onClick={() => removeColumn(column.id)}
-                        className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
-                        title="Ta bort kolumn"
-                      >
-                        ×
-                      </button>
                     </div>
                   )}
                 </div>
