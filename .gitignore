@@ -62,3 +62,8 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+
+# Local files
+.claude/
+fix-column-data-schema.sql
+init-db.sql
