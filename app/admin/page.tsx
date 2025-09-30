@@ -60,8 +60,8 @@ export default function AdminPage() {
         if (dashboard && dashboard.slug) {
           endpoint = `/api/dashboards/${dashboard.slug}`
         } else {
-          // Fallback: try using the ID directly
-          endpoint = `/api/dashboards/${dashboardId}`
+          console.error(`Dashboard with ID ${dashboardId} not found or has no slug.`)
+          return
         }
       }
 

@@ -100,7 +100,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     try {
       setIsLoading(true)
       // Use the correct endpoint based on dashboard type
-      let endpoint = `/api/dashboards/${dashboard.slug || dashboard.id}`
+      let endpoint = `/api/dashboards/${dashboard.slug}`
       if (dashboard.id === 'main-dashboard') {
         endpoint = '/api/dashboards/main-dashboard'
       }
@@ -238,7 +238,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         const updatedColumns = [...(dashboard?.columns || []), data.column]
 
         // Use the correct endpoint based on dashboard type
-        let updateEndpoint = `/api/dashboards/${dashboard.slug || dashboard.id}`
+        let updateEndpoint = `/api/dashboards/${dashboard.slug}`
         if (dashboard.id === 'main-dashboard') {
           updateEndpoint = '/api/dashboards/main-dashboard'
         }
@@ -318,7 +318,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         )
 
         // Use the correct endpoint based on dashboard type
-        let updateEndpoint = `/api/dashboards/${dashboard.slug || dashboard.id}`
+        let updateEndpoint = `/api/dashboards/${dashboard.slug}`
         if (dashboard.id === 'main-dashboard') {
           updateEndpoint = '/api/dashboards/main-dashboard'
         }

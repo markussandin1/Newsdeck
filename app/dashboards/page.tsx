@@ -47,10 +47,10 @@ export default function DashboardsPage() {
     setActiveTab(tab)
   }
 
-  const handleFollow = async (dashboardId: string, currentlyFollowing: boolean) => {
+  const handleFollow = async (slug: string, currentlyFollowing: boolean) => {
     try {
       const method = currentlyFollowing ? 'DELETE' : 'POST'
-      const response = await fetch(`/api/dashboards/${dashboardId}/follow`, {
+      const response = await fetch(`/api/dashboards/${slug}/follow`, {
         method
       })
 
@@ -232,7 +232,7 @@ export default function DashboardsPage() {
                   </Link>
                   {activeTab === 'all' && (
                     <button
-                      onClick={() => handleFollow(dashboard.id, dashboard.isFollowing || false)}
+                      onClick={() => handleFollow(dashboard.slug, dashboard.isFollowing || false)}
                       className={`px-4 py-2 text-sm rounded-lg font-medium ${
                         dashboard.isFollowing
                           ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'

@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
 
+async function getDashboardIdFromSlug(slug: string): Promise<string | null> {
+  if (slug === 'main' || slug === 'main-dashboard') {
+    return 'main-dashboard'
+  }
+  const dashboard = await db.getDashboardBySlug(slug)
+  return dashboard?.id || null
+}
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const session = await auth()
@@ -16,11 +24,10 @@ export async function POST(
       )
     }
 
-    const { id: dashboardId } = await params
+    const { slug } = await params
+    const dashboardId = await getDashboardIdFromSlug(slug)
 
-    // Check if dashboard exists
-    const dashboard = await db.getDashboard(dashboardId)
-    if (!dashboard) {
+    if (!dashboardId) {
       return NextResponse.json(
         { error: 'Dashboard not found' },
         { status: 404 }
@@ -44,7 +51,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const session = await auth()
@@ -56,7 +63,15 @@ export async function DELETE(
       )
     }
 
-    const { id: dashboardId } = await params
+    const { slug } = await params
+    const dashboardId = await getDashboardIdFromSlug(slug)
+
+    if (!dashboardId) {
+      return NextResponse.json(
+        { error: 'Dashboard not found' },
+        { status: 404 }
+      )
+    }
 
     await db.unfollowDashboard(session.user.email, dashboardId)
 
