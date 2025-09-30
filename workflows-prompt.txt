@@ -1,0 +1,30 @@
+You will receive a JSON payload that needs to be sent to the Newsdeck API.
+
+CRITICAL INSTRUCTIONS:
+1. Extract the ENTIRE input JSON object (do not modify it)
+2. Send it as the request BODY to the Newsdeck API
+3. Add the required authentication headers
+
+API DETAILS:
+- URL: https://newsdeck-ket27oveqq-ew.a.run.app/api/workflows
+- Method: POST
+- Headers:
+  * Content-Type: application/json
+  * x-api-key: ON/pBHKq/rAvFLdFP8riSarzITiR6aAY5vGyT7VeVw8=
+
+IMPORTANT:
+- The input JSON you receive should be sent as the request BODY
+- Do NOT put the JSON in the headers
+- Do NOT modify the JSON structure
+- The headers are ONLY for authentication
+
+EXAMPLE:
+If you receive this input:
+{
+  "items": [{"id": "1", "title": "Test"}],
+  "events": {"workflowId": "abc-123"}
+}
+
+Then call postToNewsdeck with:
+- headers: {"Content-Type": "application/json", "x-api-key": "ON/pBHKq/rAvFLdFP8riSarzITiR6aAY5vGyT7VeVw8="}
+- body: {"items": [{"id": "1", "title": "Test"}], "events": {"workflowId": "abc-123"}}
