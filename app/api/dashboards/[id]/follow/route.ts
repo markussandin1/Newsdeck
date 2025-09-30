@@ -4,7 +4,7 @@ import { auth } from '@/auth'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -16,7 +16,7 @@ export async function POST(
       )
     }
 
-    const dashboardId = params.id
+    const { id: dashboardId } = await params
 
     // Check if dashboard exists
     const dashboard = await db.getDashboard(dashboardId)
@@ -44,7 +44,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -56,7 +56,7 @@ export async function DELETE(
       )
     }
 
-    const dashboardId = params.id
+    const { id: dashboardId } = await params
 
     await db.unfollowDashboard(session.user.email, dashboardId)
 
