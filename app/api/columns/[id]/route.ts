@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { NewsItem } from '@/lib/types'
 import { db } from '@/lib/db'
-import { v4 as uuidv4 } from 'uuid'
+import { verifyApiKey, unauthorizedResponse, verifySession, sessionUnauthorizedResponse } from '@/lib/api-auth'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Check API key authentication
+  if (!verifyApiKey(request)) {
+    return unauthorizedResponse()
+  }
   try {
     const { id } = await params
     const columnData = await db.getColumnData(id)
@@ -26,89 +29,19 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params
-    const body = await request.json()
-    
-    // DEBUG: Log what we actually receive
-    console.log('🔍 DEBUG - Received body:', JSON.stringify(body, null, 2))
-    console.log('🔍 DEBUG - Body type:', typeof body)
-    console.log('🔍 DEBUG - Is array:', Array.isArray(body))
-    
-    // Handle both single item and array of items
-    let items = Array.isArray(body) ? body : [body]
-    
-    // WORKAROUND: Handle object with numeric keys (from postToNewsdeck function)
-    if (typeof body === 'object' && !Array.isArray(body) && body !== null) {
-      const keys = Object.keys(body)
-      if (keys.every(key => /^\d+$/.test(key))) {
-        items = Object.values(body)
-        console.log('🔧 WORKAROUND: Converted object with numeric keys to array')
-      }
-    }
-    const validatedItems: NewsItem[] = []
-    
-    for (const item of items) {
-      // Basic validation
-      if (!item.id || !item.title) {
-        return NextResponse.json(
-          { error: 'Each item must have id and title' },
-          { status: 400 }
-        )
-      }
-      
-      // Create NewsItem with column ID as workflowId for backward compatibility
-      const newsItem: NewsItem = {
-        id: item.id,
-        dbId: uuidv4(), // Generate unique UUID for this database entry
-        workflowId: id, // Use column ID as workflow ID
-        flowId: item.flowId, // UUID från workflow-applikationen (om tillgänglig)
-        source: item.source || 'workflows',
-        url: item.URL || item.url || (typeof item.source === 'string' && item.source.startsWith('http') ? item.source : undefined),
-        timestamp: item.timestamp || new Date().toISOString(),
-        title: item.title,
-        description: item.description,
-        newsValue: item.newsValue ?? 3,
-        category: item.category,
-        severity: item.severity,
-        location: item.location,
-        extra: item.extra,
-        raw: item.raw
-      }
-      
-      validatedItems.push(newsItem)
-    }
-    
-    // Store items in column-specific storage
-    await db.setColumnData(id, validatedItems)
-    
-    // Also add to general news storage for admin/debugging
-    await db.addNewsItems(validatedItems)
-    
-    return NextResponse.json({
-      success: true,
-      message: `Added ${validatedItems.length} items to column ${id}`,
-      columnId: id,
-      itemsAdded: validatedItems.length
-    })
-    
-  } catch (error) {
-    console.error('Error adding items to column:', error)
-    return NextResponse.json(
-      { error: 'Invalid request format' },
-      { status: 400 }
-    )
-  }
-}
+// POST endpoint removed - use /api/workflows instead
+// This endpoint is deprecated in favor of the workflow-based ingestion system
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Check session authentication (for internal UI operations)
+  const isAuthenticated = await verifySession()
+  if (!isAuthenticated) {
+    return sessionUnauthorizedResponse()
+  }
+
   try {
     const { id } = await params
     const { title, description, flowId } = await request.json()
@@ -157,7 +90,7 @@ export async function PUT(
       description: description?.trim() || undefined,
       flowId: flowId?.trim() || undefined
     })
-    
+
   } catch (error) {
     console.error('Error updating column:', error)
     return NextResponse.json(
@@ -171,18 +104,24 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Check session authentication (for internal UI operations)
+  const isAuthenticated = await verifySession()
+  if (!isAuthenticated) {
+    return sessionUnauthorizedResponse()
+  }
+
   try {
     const { id } = await params
-    
+
     // Clear column data
     await db.setColumnData(id, [])
-    
+
     return NextResponse.json({
       success: true,
       message: `Cleared all data from column ${id}`,
       columnId: id
     })
-    
+
   } catch (error) {
     console.error('Error clearing column data:', error)
     return NextResponse.json(

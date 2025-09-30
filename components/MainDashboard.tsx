@@ -307,22 +307,28 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           flowId: flowId !== undefined ? flowId.trim() : undefined
         })
       })
-      
+
       const data = await response.json()
       if (data.success) {
-        // Update the main dashboard with updated column
-        const updatedColumns = (dashboard?.columns || []).map(col => 
-          col.id === columnId 
+        // Update the dashboard with updated column
+        const updatedColumns = (dashboard?.columns || []).map(col =>
+          col.id === columnId
             ? { ...col, title: title.trim(), description: description?.trim(), flowId: flowId?.trim() || undefined }
             : col
         )
-        
-        const dashboardResponse = await fetch('/api/dashboards/main-dashboard', {
+
+        // Use the correct endpoint based on dashboard type
+        let updateEndpoint = `/api/dashboards/${dashboard.slug || dashboard.id}`
+        if (dashboard.id === 'main-dashboard') {
+          updateEndpoint = '/api/dashboards/main-dashboard'
+        }
+
+        const dashboardResponse = await fetch(updateEndpoint, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ columns: updatedColumns })
         })
-        
+
         const dashboardData = await dashboardResponse.json()
         if (dashboardData.success) {
           onDashboardUpdate(dashboardData.dashboard)

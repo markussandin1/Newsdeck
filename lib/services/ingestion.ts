@@ -87,7 +87,20 @@ const normalisePayload = (body: unknown): NormalisedPayload => {
     throw new IngestionError('Request body must be a JSON object')
   }
 
-  const payload = body as Record<string, unknown>
+  let payload = body as Record<string, unknown>
+
+  // Handle wrapped payloads like { "data-0": {...}, "data-1": { items, events } }
+  // Extract the first object that contains an "items" array
+  if (!Array.isArray(payload.items)) {
+    const dataKeys = Object.keys(payload).filter(k => k.startsWith('data-'))
+    for (const key of dataKeys) {
+      const dataObj = payload[key]
+      if (isRecord(dataObj) && Array.isArray(dataObj.items)) {
+        payload = dataObj as Record<string, unknown>
+        break
+      }
+    }
+  }
 
   const events = isRecord(payload.events) ? payload.events : undefined
 
