@@ -1,4 +1,5 @@
 import NextAuth from "next-auth"
+import type { NextAuthConfig } from "next-auth"
 import Google from "next-auth/providers/google"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -17,14 +18,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     })
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user }) {
       // Only allow @bonniernews.se email addresses
       if (user.email && user.email.endsWith("@bonniernews.se")) {
         return true
       }
       return false
     },
-    async session({ session, token }) {
+    async session({ session }) {
       return session
     }
   },
@@ -33,4 +34,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     error: "/auth/error"
   },
   secret: process.env.NEXTAUTH_SECRET
-})
+} satisfies NextAuthConfig)
