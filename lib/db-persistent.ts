@@ -20,7 +20,9 @@ const DEFAULT_DASHBOARD: Dashboard = {
   columns: [],
   createdAt: new Date().toISOString(),
   viewCount: 0,
-  isDefault: true
+  isDefault: true,
+  createdBy: 'system',
+  createdByName: 'System'
 }
 
 // Fallback to in-memory storage if KV is not available (for local development)
@@ -327,17 +329,17 @@ export const persistentDb = {
   },
 
   // Create new dashboard
-  createDashboard: async (name: string, description?: string) => {
+  createDashboard: async (name: string, description?: string, createdBy?: string, createdByName?: string) => {
     const { generateSlug, ensureUniqueSlug } = await import('./utils')
-    
+
     // Get existing slugs to ensure uniqueness
     const existingDashboards = await persistentDb.getDashboards()
     const existingSlugs = existingDashboards.map(d => d.slug)
-    
+
     // Generate unique slug
     const baseSlug = generateSlug(name)
     const uniqueSlug = ensureUniqueSlug(baseSlug, existingSlugs)
-    
+
     const newDashboard: Dashboard = {
       id: `dashboard-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name,
@@ -345,9 +347,11 @@ export const persistentDb = {
       description,
       columns: [],
       createdAt: new Date().toISOString(),
+      createdBy: createdBy || 'system',
+      createdByName: createdByName || 'System',
       viewCount: 0
     }
-    
+
     await persistentDb.addDashboard(newDashboard)
     return newDashboard
   },

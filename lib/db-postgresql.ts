@@ -87,7 +87,9 @@ const DEFAULT_DASHBOARD: Dashboard = {
   columns: [],
   createdAt: new Date().toISOString(),
   viewCount: 0,
-  isDefault: true
+  isDefault: true,
+  createdBy: 'system',
+  createdByName: 'System'
 }
 
 export const persistentDb = {
