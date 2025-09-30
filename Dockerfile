@@ -28,6 +28,9 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DOCKER_BUILD=true
 
+# Mock database URL for build (not used at build time, only at runtime)
+ENV DATABASE_URL="postgresql://mock:mock@localhost:5432/mock"
+
 # Build the application (this creates .next/standalone)
 RUN npm run build
 
