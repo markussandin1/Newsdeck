@@ -172,11 +172,13 @@ export default function AdminPage() {
     }
   }
 
+  // Initial fetch on mount only
   useEffect(() => {
     fetchDashboards()
-    fetchRecentItems()
-  }, [fetchDashboards, fetchRecentItems])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
+  // Fetch columns and items when dashboard changes
   useEffect(() => {
     if (selectedDashboard && dashboards.length > 0) {
       console.log(`🔄 Admin: Dashboard changed to ${selectedDashboard}, fetching columns and recent items...`)
@@ -184,7 +186,8 @@ export default function AdminPage() {
       fetchColumns(selectedDashboard)
       fetchRecentItems(selectedDashboard)
     }
-  }, [dashboards, fetchColumns, fetchRecentItems, selectedDashboard])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDashboard])
 
   const handleDashboardChange = (dashboardId: string) => {
     setSelectedDashboard(dashboardId)

@@ -3,8 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ingestNewsItems, IngestionError } from '@/lib/services/ingestion'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { verifyApiKey, unauthorizedResponse } from '@/lib/api-auth'
 
 export async function POST(request: NextRequest) {
+  // Check API key authentication
+  if (!verifyApiKey(request)) {
+    return unauthorizedResponse()
+  }
+
   let body: unknown
 
   try {
