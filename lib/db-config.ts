@@ -1,33 +1,19 @@
-// Database configuration switcher
-// This file allows easy switching between different database providers
+// Database configuration - PostgreSQL only
+// This file provides the active database instance for the application
 
-import { persistentDb as vercelKvDb } from './db-persistent'
+import { persistentDb as pgDb } from './db-postgresql'
 
-// Import other database implementations as needed
-// import { supabaseDb } from './db-supabase'
-// import { planetscaleDb } from './db-planetscale'
-
-// Determine which database to use based on environment variables
-const getActiveDatabase = () => {
-  // Check for Vercel KV
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-    console.log('🟢 Using Vercel KV database')
-    return vercelKvDb
-  }
-  
-  // Check for other database providers...
-  // if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
-  //   console.log('🟢 Using Supabase database')
-  //   return supabaseDb
-  // }
-  
-  // Default to Vercel KV with in-memory fallback
-  console.log('🟡 No external database configured. Using in-memory fallback for development.')
-  return vercelKvDb
+// Check if DATABASE_URL is configured
+if (!process.env.DATABASE_URL) {
+  console.error('❌ CRITICAL: DATABASE_URL environment variable is not set!')
+  console.error('The application REQUIRES a PostgreSQL database to function.')
+  console.error('Please set DATABASE_URL in your environment variables.')
+} else {
+  console.log('🟢 PostgreSQL database configured')
 }
 
-// Export the active database instance
-export const activeDb = getActiveDatabase()
+// Export the PostgreSQL database instance
+export const activeDb = pgDb
 
 // Re-export as default db interface
 export const db = activeDb
@@ -35,18 +21,26 @@ export const db = activeDb
 // Helper function to get database status
 export const getDatabaseStatus = async () => {
   try {
+    if (!process.env.DATABASE_URL) {
+      return {
+        connected: false,
+        type: 'PostgreSQL',
+        status: 'DATABASE_URL not configured',
+        error: 'Missing DATABASE_URL environment variable'
+      }
+    }
+
     const isConnected = await activeDb.isConnected()
-    const type = process.env.KV_REST_API_URL ? 'Vercel KV' : 'In-Memory Fallback'
-    
+
     return {
       connected: isConnected,
-      type,
-      status: isConnected ? 'Connected' : 'Using fallback storage'
+      type: 'PostgreSQL',
+      status: isConnected ? 'Connected' : 'Connection failed'
     }
   } catch (error) {
     return {
       connected: false,
-      type: 'Unknown',
+      type: 'PostgreSQL',
       status: 'Error checking connection',
       error: error instanceof Error ? error.message : 'Unknown error'
     }
