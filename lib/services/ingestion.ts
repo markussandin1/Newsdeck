@@ -198,8 +198,8 @@ export const ingestNewsItems = async (
       description: typeof item.description === 'string' ? item.description : undefined,
       newsValue: typeof item.newsValue === 'number' ? item.newsValue : 3,
       category: typeof item.category === 'string' ? item.category : undefined,
-      severity: typeof item.severity === 'string' || item.severity === null
-        ? item.severity
+      severity: (typeof item.severity === 'string' || item.severity === null)
+        ? (item.severity as string | null)
         : undefined,
       location: item.location,
       extra: {

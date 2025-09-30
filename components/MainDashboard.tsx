@@ -466,7 +466,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     document.addEventListener('dragend', cleanup)
   }
 
-  const handleDragEnd = (e: React.DragEvent) => {
+  const handleDragEnd = () => {
     setDraggedColumn(null)
     setDragOverColumn(null)
     setDragPreview({ x: 0, y: 0, visible: false })
