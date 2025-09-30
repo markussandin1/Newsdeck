@@ -649,6 +649,38 @@ export const persistentDb = {
     return { success: true, totalItemsSynced: totalSynced }
   },
 
+  // User preferences (not supported in KV version)
+  getUserPreferences: async (userId: string) => {
+    logger.warn('db.getUserPreferences.notSupported', { userId })
+    return null
+  },
+
+  setUserPreferences: async (userId: string, _preferences: { defaultDashboardId?: string }) => {
+    logger.warn('db.setUserPreferences.notSupported', { userId })
+    return null
+  },
+
+  // Dashboard follows (not supported in KV version)
+  getUserDashboardFollows: async (userId: string) => {
+    logger.warn('db.getUserDashboardFollows.notSupported', { userId })
+    return []
+  },
+
+  getDashboardFollowers: async (dashboardId: string) => {
+    logger.warn('db.getDashboardFollowers.notSupported', { dashboardId })
+    return []
+  },
+
+  followDashboard: async (userId: string, dashboardId: string) => {
+    logger.warn('db.followDashboard.notSupported', { userId, dashboardId })
+    return { success: false }
+  },
+
+  unfollowDashboard: async (userId: string, dashboardId: string) => {
+    logger.warn('db.unfollowDashboard.notSupported', { userId, dashboardId })
+    return { success: false }
+  },
+
   // Health check
   isConnected: () => {
     return isKVAvailable()
