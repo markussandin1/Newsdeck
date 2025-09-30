@@ -30,7 +30,7 @@ export async function GET(
     const columnData: Record<string, NewsItem[]> = {}
     
     if (dashboard.columns) {
-      for (const column of dashboard.columns.filter(col => !col.isArchived)) {
+      for (const column of dashboard.columns.filter((col: { isArchived?: boolean }) => !col.isArchived)) {
         try {
           const items = await db.getColumnData(column.id) || []
           columnData[column.id] = items

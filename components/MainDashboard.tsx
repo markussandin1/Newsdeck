@@ -623,9 +623,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         <div className="px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="w-16 h-16 flex items-center justify-center">
-                <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={64} height={64} className="w-16 h-16 object-contain" />
-              </div>
+              <Link href="/dashboards">
+                <div className="w-16 h-16 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
+                  <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={64} height={64} className="w-16 h-16 object-contain" />
+                </div>
+              </Link>
               <div className="relative" ref={dropdownRef}>
                 <button 
                   className="flex items-center gap-2 hover:bg-slate-100 rounded-lg px-3 py-2 smooth-transition"

@@ -55,9 +55,26 @@ export interface Dashboard {
   description?: string;         // Optional description
   columns: DashboardColumn[];   // Array av kolumner istället för filters
   createdAt: string;
+  createdBy: string;            // User ID of creator
+  createdByName: string;        // Display name of creator
   viewCount?: number;
   lastViewed?: string;
   isDefault?: boolean;          // Mark default dashboard (main-dashboard)
+  isFollowing?: boolean;        // Current user follows this dashboard (client-side only)
+  followerCount?: number;       // Number of users following (client-side only)
+}
+
+export interface UserPreferences {
+  userId: string;
+  defaultDashboardId?: string;  // Hem-dashboard
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardFollow {
+  userId: string;
+  dashboardId: string;
+  followedAt: string;
 }
 
 // Fake workflow data för POC

@@ -1,17 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { auth } from '@/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    const { searchParams } = new URL(request.url)
+    const mine = searchParams.get('mine') === 'true'
+
     const dashboards = await db.getDashboards()
-    
+
+    // Filter dashboards based on query
+    let filteredDashboards = dashboards
+    if (mine && session?.user?.email) {
+      // Get dashboards created by user OR followed by user
+      const userId = session.user.email
+      const following = await db.getUserDashboardFollows(userId)
+      const followingIds = new Set(following.map(f => f.dashboardId))
+
+      filteredDashboards = dashboards.filter(d =>
+        d.createdBy === userId || followingIds.has(d.id)
+      )
+    }
+
+    // Add follower count and isFollowing for current user
+    const enrichedDashboards = await Promise.all(
+      filteredDashboards.map(async dashboard => {
+        const followers = await db.getDashboardFollowers(dashboard.id)
+        return {
+          ...dashboard,
+          columnCount: dashboard.columns.filter((col: { isArchived?: boolean }) => !col.isArchived).length,
+          followerCount: followers.length,
+          isFollowing: session?.user?.email
+            ? followers.some(f => f.userId === session.user.email)
+            : false
+        }
+      })
+    )
+
     return NextResponse.json({
       success: true,
-      count: dashboards.length,
-      dashboards: dashboards.map(dashboard => ({
-        ...dashboard,
-        columnCount: dashboard.columns.filter(col => !col.isArchived).length
-      }))
+      count: enrichedDashboards.length,
+      dashboards: enrichedDashboards
     })
   } catch (error) {
     console.error('Error fetching dashboards:', error)
@@ -24,6 +54,15 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { name, description, columns } = body
 
@@ -34,7 +73,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const newDashboard = await db.createDashboard(name.trim(), description?.trim())
+    const createdBy = session.user.email
+    const createdByName = session.user.name || session.user.email.split('@')[0]
+
+    const newDashboard = await db.createDashboard(
+      name.trim(),
+      description?.trim(),
+      createdBy,
+      createdByName
+    )
 
     // If columns were provided, add them to the dashboard
     if (columns && Array.isArray(columns) && columns.length > 0) {
