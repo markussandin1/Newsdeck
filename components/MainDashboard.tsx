@@ -750,7 +750,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   🔄 Uppdatera
                 </button>
                 <Link
-                  href="/admin"
+                  href={`/admin?dashboardId=${dashboard.id}`}
                   className="px-3 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 smooth-transition text-sm font-medium"
                 >
                   Admin

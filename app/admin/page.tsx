@@ -1,11 +1,15 @@
 'use client'
 
 import { useCallback, useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 
 export default function AdminPage() {
+  const searchParams = useSearchParams()
+  const dashboardIdFromUrl = searchParams.get('dashboardId')
+
   const [dashboards, setDashboards] = useState<Dashboard[]>([])
   const [selectedDashboard, setSelectedDashboard] = useState<string>('')
   const [columns, setColumns] = useState<DashboardColumn[]>([])
@@ -31,20 +35,26 @@ export default function AdminPage() {
           return dashboardWithoutCount
         })
         setDashboards(normalizedDashboards)
-        // Auto-select main dashboard if available
-        const mainDash = normalizedDashboards.find(d => d.id === 'main-dashboard')
-        if (mainDash && !selectedDashboard) {
-          console.log(`🎯 Admin: Auto-selecting main dashboard`)
-          setSelectedDashboard(mainDash.id)
-        } else if (normalizedDashboards.length > 0 && !selectedDashboard) {
-          console.log(`🎯 Admin: Auto-selecting first dashboard: ${normalizedDashboards[0].name}`)
-          setSelectedDashboard(normalizedDashboards[0].id)
+
+        // Priority: URL param > main dashboard > first dashboard
+        if (dashboardIdFromUrl && normalizedDashboards.find(d => d.id === dashboardIdFromUrl)) {
+          console.log(`🎯 Admin: Auto-selecting dashboard from URL: ${dashboardIdFromUrl}`)
+          setSelectedDashboard(dashboardIdFromUrl)
+        } else if (!selectedDashboard) {
+          const mainDash = normalizedDashboards.find(d => d.id === 'main-dashboard')
+          if (mainDash) {
+            console.log(`🎯 Admin: Auto-selecting main dashboard`)
+            setSelectedDashboard(mainDash.id)
+          } else if (normalizedDashboards.length > 0) {
+            console.log(`🎯 Admin: Auto-selecting first dashboard: ${normalizedDashboards[0].name}`)
+            setSelectedDashboard(normalizedDashboards[0].id)
+          }
         }
       }
     } catch (error) {
       console.error('Failed to fetch dashboards:', error)
     }
-  }, [selectedDashboard])
+  }, [selectedDashboard, dashboardIdFromUrl])
 
   const fetchColumns = useCallback(async (dashboardId: string) => {
     if (!dashboardId) return
@@ -420,7 +430,7 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {columns.map((column) => (
+                {columns.filter(col => !col.isArchived).map((column) => (
                   <div key={column.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
@@ -489,7 +499,7 @@ export default function AdminPage() {
                     className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Välj kolumn...</option>
-                    {columns.map((column) => (
+                    {columns.filter(col => !col.isArchived).map((column) => (
                       <option key={column.id} value={column.id}>
                         {column.title}
                       </option>
