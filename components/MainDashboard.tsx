@@ -69,6 +69,27 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
 
+  // Extract UUID from workflow URL
+  const extractWorkflowId = (input: string): string => {
+    const trimmed = input.trim()
+
+    // If it looks like a URL, extract the UUID from it
+    if (trimmed.includes('://') || trimmed.includes('/workflows/')) {
+      // Match UUID pattern (8-4-4-4-12 hex digits)
+      const uuidMatch = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
+      if (uuidMatch) {
+        return uuidMatch[1]
+      }
+
+      // Fallback: take last segment after /
+      const segments = trimmed.split('/')
+      return segments[segments.length - 1]
+    }
+
+    // Otherwise return as-is (already a UUID or custom ID)
+    return trimmed
+  }
+
   // Simple approach: Just don't recreate columns unnecessarily
 
   // Memoized column data to prevent unnecessary re-sorting
@@ -860,11 +881,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                             type="text"
                             value={editFlowId}
                             onChange={(e) => setEditFlowId(e.target.value)}
+                            onBlur={(e) => setEditFlowId(extractWorkflowId(e.target.value))}
                             className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="UUID från workflow-app"
+                            placeholder="Klistra in URL eller UUID"
                           />
                           <p className="text-[10px] text-gray-500 mt-1">
-Visa händelser från ett specifikt workflow.                          </p>
+                            Klistra in hela workflow-URLen - UUID:t extraheras automatiskt.
+                          </p>
                         </div>
 
                         <div className="flex gap-2 pt-2 border-t border-gray-300">
@@ -1045,11 +1068,12 @@ Visa händelser från ett specifikt workflow.                          </p>
                         type="text"
                         value={newColumnFlowId}
                         onChange={(e) => setNewColumnFlowId(e.target.value)}
+                        onBlur={(e) => setNewColumnFlowId(extractWorkflowId(e.target.value))}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="t.ex. workflow-uuid-123"
+                        placeholder="Klistra in URL eller UUID från workflow"
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        UUID från din workflow-applikation för automatisk data-routing
+                        Klistra in hela workflow-URLen - UUID:t extraheras automatiskt
                       </p>
                     </div>
                   </div>
