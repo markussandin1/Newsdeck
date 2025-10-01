@@ -8,8 +8,12 @@ export async function PUT(
   try {
     const params = await context.params
     const columnId = params.id
-    
-    const updatedDashboard = await db.removeColumnFromDashboard('main-dashboard', columnId)
+
+    // Get dashboardId from query params
+    const { searchParams } = new URL(request.url)
+    const dashboardId = searchParams.get('dashboardId') || 'main-dashboard'
+
+    const updatedDashboard = await db.removeColumnFromDashboard(dashboardId, columnId)
     
     if (!updatedDashboard) {
       return NextResponse.json(

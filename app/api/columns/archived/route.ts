@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const archivedColumns = await db.getArchivedColumns('main-dashboard')
+    // Get dashboardId from query params
+    const { searchParams } = new URL(request.url)
+    const dashboardId = searchParams.get('dashboardId') || 'main-dashboard'
+
+    const archivedColumns = await db.getArchivedColumns(dashboardId)
     
     return NextResponse.json({
       success: true,

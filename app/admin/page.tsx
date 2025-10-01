@@ -108,29 +108,58 @@ export default function AdminPage() {
         const result = await response.json() as { success: boolean; items: NewsItem[] }
         if (result.success) {
           console.log(`✅ Admin: Found ${result.items.length} total items (no dashboard filter)`)
-          setRecentItems(result.items.slice(0, 20))
+          setRecentItems(result.items.slice(0, 50))
         }
         return
       }
 
-      // Get dashboard columns to filter items
+      // Get dashboard columns
       const dashboard = dashboards.find(d => d.id === targetDashboard)
-      if (!dashboard || !dashboard.columns) {
+      if (!dashboard || !dashboard.columns || dashboard.columns.length === 0) {
         console.log(`⚠️ Admin: Dashboard ${targetDashboard} has no columns`)
         setRecentItems([])
         return
       }
 
-      // Get all items and filter by column IDs (workflowId)
-      const response = await fetch('/api/news-items')
-      const result = await response.json() as { success: boolean; items: NewsItem[] }
-      if (result.success) {
-        const columnIds = dashboard.columns.map((col: DashboardColumn) => col.id)
-        const filteredItems = result.items.filter((item: NewsItem) =>
-          columnIds.includes(item.workflowId)
-        )
-        console.log(`✅ Admin: Found ${filteredItems.length} items for dashboard ${targetDashboard} (${columnIds.length} columns)`)
-        setRecentItems(filteredItems.slice(0, 20))
+      // Fetch items from each column's data
+      const columnIds = dashboard.columns.filter(col => !col.isArchived).map((col: DashboardColumn) => col.id)
+      const allColumnItems: NewsItem[] = []
+
+      // Use the correct endpoint based on dashboard
+      let endpoint
+      if (targetDashboard === 'main-dashboard') {
+        endpoint = '/api/dashboards/main-dashboard'
+      } else {
+        endpoint = `/api/dashboards/${dashboard.slug}`
+      }
+
+      const dashboardResponse = await fetch(endpoint)
+      const dashboardResult = await dashboardResponse.json() as {
+        success: boolean
+        columnData?: Record<string, NewsItem[]>
+      }
+
+      if (dashboardResult.success && dashboardResult.columnData) {
+        // Collect all items from all columns
+        for (const columnId of columnIds) {
+          const columnItems = dashboardResult.columnData[columnId] || []
+          allColumnItems.push(...columnItems)
+        }
+
+        // Remove duplicates based on dbId and sort by newest first
+        const uniqueItems = Array.from(
+          new Map(allColumnItems.map(item => [item.dbId || item.id, item])).values()
+        ).sort((a, b) => {
+          const timeA = new Date(a.createdInDb || a.timestamp).getTime()
+          const timeB = new Date(b.createdInDb || b.timestamp).getTime()
+          return timeB - timeA
+        })
+
+        console.log(`✅ Admin: Found ${uniqueItems.length} unique items for dashboard ${targetDashboard} (${columnIds.length} columns)`)
+        setRecentItems(uniqueItems.slice(0, 50))
+      } else {
+        console.log(`⚠️ Admin: No column data found for dashboard ${targetDashboard}`)
+        setRecentItems([])
       }
     } catch (error) {
       console.error('Failed to fetch recent items:', error)

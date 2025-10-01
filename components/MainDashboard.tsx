@@ -174,7 +174,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   // Load archived columns
   const loadArchivedColumns = useCallback(async () => {
     try {
-      const response = await fetch(`/api/columns/archived`)
+      const response = await fetch(`/api/columns/archived?dashboardId=${dashboard.id}`)
       const data = await response.json() as { success: boolean; columns: DashboardColumn[] }
       if (data.success) {
         setArchivedColumns(data.columns)
@@ -182,7 +182,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     } catch (error) {
       console.error('Failed to load archived columns:', error)
     }
-  }, [])
+  }, [dashboard.id])
 
   // Load all dashboards
   const loadAllDashboards = useCallback(async () => {
@@ -286,10 +286,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   const restoreColumn = async (columnId: string) => {
     try {
-      const response = await fetch(`/api/columns/${columnId}/restore`, {
+      const response = await fetch(`/api/columns/${columnId}/restore?dashboardId=${dashboard.id}`, {
         method: 'PUT'
       })
-      
+
       const data = await response.json()
       if (data.success) {
         onDashboardUpdate(data.dashboard)
@@ -303,10 +303,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   const removeColumn = async (columnId: string) => {
     try {
-      const response = await fetch(`/api/columns/${columnId}/archive`, {
+      const response = await fetch(`/api/columns/${columnId}/archive?dashboardId=${dashboard.id}`, {
         method: 'PUT'
       })
-      
+
       const data = await response.json()
       if (data.success) {
         onDashboardUpdate(data.dashboard)
