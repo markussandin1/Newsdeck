@@ -223,14 +223,15 @@ export const ingestNewsItems = async (
 
   // IMPORTANT: Add items to news_items FIRST before setting column_data
   // (foreign key constraint requires news_item_db_id to exist)
-  await db.addNewsItems(validatedItems)
+  // addNewsItems returns items with correct db_id from database
+  const insertedItems = await db.addNewsItems(validatedItems)
 
   let columnsUpdated = 0
   const columnTotals: Record<string, number> = {}
 
   for (const targetColumnId of Array.from(matchingColumns)) {
     const existingItems = await db.getColumnData(targetColumnId) || []
-    const combined = [...existingItems, ...validatedItems]
+    const combined = [...existingItems, ...insertedItems]  // Use insertedItems with correct db_id
     await db.setColumnData(targetColumnId, combined)
     columnTotals[targetColumnId] = combined.length
     columnsUpdated += 1
