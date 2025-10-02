@@ -221,6 +221,10 @@ export const ingestNewsItems = async (
     resolveMatchingColumns(dashboards, workflowId).forEach(id => matchingColumns.add(id))
   }
 
+  // IMPORTANT: Add items to news_items FIRST before setting column_data
+  // (foreign key constraint requires news_item_db_id to exist)
+  await db.addNewsItems(validatedItems)
+
   let columnsUpdated = 0
   const columnTotals: Record<string, number> = {}
 
@@ -231,8 +235,6 @@ export const ingestNewsItems = async (
     columnTotals[targetColumnId] = combined.length
     columnsUpdated += 1
   }
-
-  await db.addNewsItems(validatedItems)
 
   return {
     columnId,
