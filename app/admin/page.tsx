@@ -19,6 +19,7 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [recentItems, setRecentItems] = useState<NewsItem[]>([])
   const [itemsLoading, setItemsLoading] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
   const fetchDashboards = useCallback(async () => {
     try {
@@ -203,7 +204,11 @@ export default function AdminPage() {
         setFeedback({ type: 'success', message: result.message })
         fetchRecentItems(selectedDashboard) // Refresh the list for current dashboard
       } else {
-        setFeedback({ type: 'error', message: result.error })
+        console.error('Delete failed:', response.status, result)
+        setFeedback({
+          type: 'error',
+          message: result.error || result.message || `Fel ${response.status}: Kunde inte ta bort händelsen`
+        })
       }
     } catch (error) {
       console.error('Failed to delete news item:', error)
@@ -211,9 +216,22 @@ export default function AdminPage() {
     }
   }
 
+  // Check authentication status
+  const checkAuth = useCallback(async () => {
+    try {
+      // Try a simple authenticated endpoint to check session
+      const response = await fetch('/api/auth/session')
+      setIsAuthenticated(response.ok)
+    } catch (error) {
+      console.error('Failed to check auth:', error)
+      setIsAuthenticated(false)
+    }
+  }, [])
+
   // Initial fetch on mount only
   useEffect(() => {
     fetchDashboards()
+    checkAuth()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -328,18 +346,29 @@ export default function AdminPage() {
   }
 
   const clearColumnData = async (columnId: string) => {
+    if (!confirm('Är du säker på att du vill radera all data från denna kolumn?')) {
+      return
+    }
+
     try {
       const response = await fetch(`/api/columns/${columnId}`, {
         method: 'DELETE'
       })
-      
+
       const result = await response.json()
       if (response.ok) {
         setFeedback({ type: 'success', message: result.message })
+        fetchRecentItems(selectedDashboard) // Refresh the list
+      } else {
+        console.error('Clear column failed:', response.status, result)
+        setFeedback({
+          type: 'error',
+          message: result.error || result.message || `Fel ${response.status}: Kunde inte rensa kolumndata`
+        })
       }
     } catch (error) {
       console.error('Failed to clear column data:', error)
-      setFeedback({ type: 'error', message: 'Failed to clear column data' })
+      setFeedback({ type: 'error', message: 'Kunde inte rensa kolumndata' })
     }
   }
 
@@ -372,13 +401,41 @@ export default function AdminPage() {
               <h1 className="text-2xl font-bold text-gray-800 mb-2">Admin - Kolumn Management</h1>
               <p className="text-gray-600">Hantera data för dina Newsdeck-kolumner</p>
             </div>
-            <Link
-              href="/"
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              ← Tillbaka till Newsdeck
-            </Link>
+            <div className="flex items-center gap-3">
+              {/* Auth status indicator */}
+              {isAuthenticated !== null && (
+                <div className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                  isAuthenticated
+                    ? 'bg-green-100 text-green-800 border border-green-200'
+                    : 'bg-red-100 text-red-800 border border-red-200'
+                }`}>
+                  {isAuthenticated ? '✓ Inloggad' : '⚠️ Ej inloggad'}
+                </div>
+              )}
+              <Link
+                href="/"
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                ← Tillbaka till Newsdeck
+              </Link>
+            </div>
           </div>
+          {isAuthenticated === false && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <span className="text-yellow-600 text-xl">⚠️</span>
+                <div>
+                  <p className="text-yellow-800 font-medium mb-1">Du är inte inloggad</p>
+                  <p className="text-yellow-700 text-sm">
+                    Vissa funktioner som att radera data kräver att du är inloggad.
+                    <a href="/api/auth/signin" className="underline ml-1 font-medium hover:text-yellow-900">
+                      Logga in här
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Dashboard Selector */}
