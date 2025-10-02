@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 
-export default function AdminPage() {
+function AdminPageContent() {
   const searchParams = useSearchParams()
   const dashboardIdFromUrl = searchParams.get('dashboardId')
 
@@ -428,9 +428,9 @@ export default function AdminPage() {
                   <p className="text-yellow-800 font-medium mb-1">Du är inte inloggad</p>
                   <p className="text-yellow-700 text-sm">
                     Vissa funktioner som att radera data kräver att du är inloggad.
-                    <a href="/api/auth/signin" className="underline ml-1 font-medium hover:text-yellow-900">
+                    <Link href="/api/auth/signin" className="underline ml-1 font-medium hover:text-yellow-900">
                       Logga in här
-                    </a>
+                    </Link>
                   </p>
                 </div>
               </div>
@@ -720,5 +720,28 @@ export default function AdminPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mb-4 mx-auto">
+            <Image
+              src="/newsdeck-icon.svg"
+              alt="Newsdeck"
+              width={64}
+              height={64}
+              className="w-full h-full object-contain animate-pulse"
+            />
+          </div>
+          <p className="text-gray-500">Laddar admin...</p>
+        </div>
+      </div>
+    }>
+      <AdminPageContent />
+    </Suspense>
   )
 }
