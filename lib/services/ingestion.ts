@@ -27,7 +27,7 @@ interface NormalisedPayload {
 }
 
 interface RawNewsItem extends Record<string, unknown> {
-  id: unknown
+  id?: unknown // Optional source ID
   title: unknown
   flowId?: unknown
   source?: unknown
@@ -178,8 +178,9 @@ export const ingestNewsItems = async (
       throw new IngestionError('Each item must be an object with required fields')
     }
 
-    if (!isNonEmptyString(item.id) || !isNonEmptyString(item.title)) {
-      throw new IngestionError('Each item must have id and title')
+    // Only title is required now - id is optional (source_id)
+    if (!isNonEmptyString(item.title)) {
+      throw new IngestionError('Each item must have a title')
     }
 
     const timestamp = typeof item.timestamp === 'string' && item.timestamp
@@ -187,7 +188,7 @@ export const ingestNewsItems = async (
       : new Date().toISOString()
 
     return {
-      id: item.id,
+      id: toOptionalTrimmed(item.id), // Optional source ID
       dbId: uuidv4(),
       workflowId: resolvedWorkflowId,
       flowId: toOptionalTrimmed(item.flowId) ?? workflowId,

@@ -1,6 +1,6 @@
 export interface NewsItem {
   // Identifikation
-  id: string;                    // Ursprungligt ID från källan (kan dupliceras)
+  id?: string;                   // Ursprungligt ID från källan (optional, kan dupliceras)
   dbId: string;                  // Unikt UUID för denna databas-post
   workflowId: string;            // ID för workflow som skapat datan (kolumn-ID för bakåtkompatibilitet)
   flowId?: string;               // UUID från workflow-applikationen (nytt system)
