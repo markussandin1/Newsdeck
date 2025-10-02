@@ -682,7 +682,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => deleteItem(item.dbId || item.id, item.id)}
+                      onClick={() => deleteItem(item.dbId, item.id)}
                       className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
                     >
                       Ta bort

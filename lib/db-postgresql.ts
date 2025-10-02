@@ -102,25 +102,14 @@ export const persistentDb = {
     }
 
     try {
-      await pool.query(
+      const result = await pool.query(
         `INSERT INTO news_items (
-          id, workflow_id, source, timestamp, title, description,
+          source_id, workflow_id, source, timestamp, title, description,
           news_value, category, severity, location, extra, raw, created_in_db
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        ON CONFLICT (id) DO UPDATE SET
-          workflow_id = EXCLUDED.workflow_id,
-          source = EXCLUDED.source,
-          timestamp = EXCLUDED.timestamp,
-          title = EXCLUDED.title,
-          description = EXCLUDED.description,
-          news_value = EXCLUDED.news_value,
-          category = EXCLUDED.category,
-          severity = EXCLUDED.severity,
-          location = EXCLUDED.location,
-          extra = EXCLUDED.extra,
-          raw = EXCLUDED.raw`,
+        RETURNING db_id`,
         [
-          item.id,
+          item.id || null,  // Original source ID (can be null)
           item.workflowId,
           item.source,
           item.timestamp,
@@ -135,7 +124,12 @@ export const persistentDb = {
           itemWithTimestamp.createdInDb
         ]
       )
-      return itemWithTimestamp
+
+      // Return item with generated db_id
+      return {
+        ...itemWithTimestamp,
+        dbId: result.rows[0].db_id
+      }
     } catch (error) {
       logger.error('db.addNewsItem.error', { error, itemId: item.id })
       throw error
@@ -154,26 +148,17 @@ export const persistentDb = {
         createdInDb: item.createdInDb || new Date().toISOString()
       }))
 
+      const insertedItems = []
+
       for (const item of itemsWithTimestamp) {
-        await client.query(
+        const result = await client.query(
           `INSERT INTO news_items (
-            id, workflow_id, source, timestamp, title, description,
+            source_id, workflow_id, source, timestamp, title, description,
             news_value, category, severity, location, extra, raw, created_in_db
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-          ON CONFLICT (id) DO UPDATE SET
-            workflow_id = EXCLUDED.workflow_id,
-            source = EXCLUDED.source,
-            timestamp = EXCLUDED.timestamp,
-            title = EXCLUDED.title,
-            description = EXCLUDED.description,
-            news_value = EXCLUDED.news_value,
-            category = EXCLUDED.category,
-            severity = EXCLUDED.severity,
-            location = EXCLUDED.location,
-            extra = EXCLUDED.extra,
-            raw = EXCLUDED.raw`,
+          RETURNING db_id`,
           [
-            item.id,
+            item.id || null,  // Original source ID (can be null)
             item.workflowId,
             item.source,
             item.timestamp,
@@ -188,10 +173,15 @@ export const persistentDb = {
             item.createdInDb
           ]
         )
+
+        insertedItems.push({
+          ...item,
+          dbId: result.rows[0].db_id
+        })
       }
 
       await client.query('COMMIT')
-      return itemsWithTimestamp
+      return insertedItems
     } catch (error) {
       await client.query('ROLLBACK')
       logger.error('db.addNewsItems.error', { error, count: items.length })
@@ -262,9 +252,9 @@ export const persistentDb = {
     try {
       await client.query('BEGIN')
 
-      // Delete from news_items table
+      // Delete from news_items table (CASCADE will handle column_data)
       const deleteResult = await client.query(
-        'DELETE FROM news_items WHERE id = $1',
+        'DELETE FROM news_items WHERE db_id = $1',
         [dbId]
       )
 
@@ -273,12 +263,6 @@ export const persistentDb = {
         await client.query('ROLLBACK')
         return false
       }
-
-      // Delete from column_data table
-      await client.query(
-        'DELETE FROM column_data WHERE news_item_id = $1',
-        [dbId]
-      )
 
       await client.query('COMMIT')
       logger.info('db.deleteNewsItem.success', { dbId })
@@ -298,10 +282,13 @@ export const persistentDb = {
     try {
       const result = await pool.query(
         `SELECT
-          id, workflow_id as "workflowId", source, timestamp, title, description,
-          news_value as "newsValue", category, severity, location, extra, raw,
-          created_in_db as "createdInDb",
-          id as "dbId"
+          db_id as "dbId",
+          source_id as "id",
+          workflow_id as "workflowId",
+          source, timestamp, title, description,
+          news_value as "newsValue",
+          category, severity, location, extra, raw,
+          created_in_db as "createdInDb"
         FROM news_items
         ORDER BY created_in_db DESC, timestamp DESC
         LIMIT $1 OFFSET $2`,
@@ -547,44 +534,26 @@ export const persistentDb = {
     try {
       await client.query('BEGIN')
 
-      // First, check if column_data table has the new schema (db_id primary key)
-      const schemaCheck = await client.query(`
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'column_data' AND column_name = 'db_id'
-      `)
-
-      const hasNewSchema = schemaCheck.rows.length > 0
-
-      if (!hasNewSchema) {
-        // Migrate schema if needed
-        await client.query('DROP TABLE IF EXISTS column_data')
-        await client.query(`
-          CREATE TABLE column_data (
-            db_id UUID PRIMARY KEY,
-            column_id UUID NOT NULL,
-            news_item_id TEXT NOT NULL,
-            data JSONB NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE NOT NULL
-          )
-        `)
-        await client.query('CREATE INDEX idx_column_data_column_id ON column_data(column_id)')
-        await client.query('CREATE INDEX idx_column_data_created_at ON column_data(created_at DESC)')
-        logger.info('db.setColumnData.schemaMigrated', { columnId })
-      }
-
       // Clear existing column data
       await client.query(
         'DELETE FROM column_data WHERE column_id = $1',
         [columnId]
       )
 
-      // Insert new items using dbId as primary key (allows duplicate news_item_id)
+      // Insert new items with foreign key to news_items
       for (const item of items) {
+        if (!item.dbId) {
+          logger.warn('db.setColumnData.missingDbId', { itemId: item.id })
+          continue
+        }
+
         await client.query(
-          `INSERT INTO column_data (db_id, column_id, news_item_id, data, created_at)
-          VALUES ($1, $2, $3, $4, $5)`,
-          [item.dbId, columnId, item.id, JSON.stringify(item), new Date().toISOString()]
+          `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
+            data = EXCLUDED.data,
+            created_at = EXCLUDED.created_at`,
+          [columnId, item.dbId, JSON.stringify(item), new Date().toISOString()]
         )
       }
 

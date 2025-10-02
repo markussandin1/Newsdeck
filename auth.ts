@@ -17,6 +17,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
     })
   ],
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days (default)
+    updateAge: 24 * 60 * 60,    // Update session every 24 hours
+  },
   callbacks: {
     async signIn({ user }) {
       // Only allow @bonniernews.se email addresses
