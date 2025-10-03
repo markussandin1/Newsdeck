@@ -4,6 +4,7 @@ import { ingestNewsItems, IngestionError } from '@/lib/services/ingestion'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { verifyApiKey, unauthorizedResponse } from '@/lib/api-auth'
+import { newsdeckEvents } from '@/lib/events'
 
 export async function POST(request: NextRequest) {
   // Check API key authentication
@@ -36,6 +37,12 @@ export async function POST(request: NextRequest) {
       matchingColumns: result.matchingColumns,
       columnTotals: result.columnTotals
     })
+
+    // Emit SSE events for real-time updates
+    for (const columnId of result.matchingColumns) {
+      newsdeckEvents.emitNewItems(columnId, result.insertedItems)
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Workflow payload processed',

@@ -209,14 +209,59 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }, [dashboard?.id, fetchColumnData, loadArchivedColumns, loadAllDashboards])
 
-  // Set up polling interval
+  // Set up SSE connections for real-time updates
   useEffect(() => {
-    if (dashboard?.id) {
-      const interval = setInterval(fetchColumnData, 5000)
-      return () => clearInterval(interval)
+    if (!dashboard?.columns) {
+      return undefined
     }
-    return undefined
-  }, [dashboard?.id, fetchColumnData])
+
+    const eventSources: EventSource[] = []
+
+    // Create SSE connection for each column
+    dashboard.columns.forEach((column) => {
+      if (column.isArchived) {
+        return
+      }
+
+      const eventSource = new EventSource(`/api/columns/${column.id}/stream`)
+
+      eventSource.addEventListener('message', (event) => {
+        try {
+          const data = JSON.parse(event.data)
+
+          if (data.type === 'connected') {
+            console.log(`SSE connected to column ${column.id}`)
+          } else if (data.type === 'update' && data.items) {
+            // Add new items to column data
+            setColumnData((prev) => {
+              const existingItems = prev[column.id] || []
+              const newItems = data.items.filter(
+                (newItem: NewsItemType) =>
+                  !existingItems.some(existing => existing.dbId === newItem.dbId)
+              )
+              return {
+                ...prev,
+                [column.id]: [...newItems, ...existingItems]
+              }
+            })
+          }
+        } catch (error) {
+          console.error('Error parsing SSE message:', error)
+        }
+      })
+
+      eventSource.onerror = () => {
+        console.log(`SSE connection error for column ${column.id}, will retry...`)
+      }
+
+      eventSources.push(eventSource)
+    })
+
+    // Cleanup: close all SSE connections
+    return () => {
+      eventSources.forEach(es => es.close())
+    }
+  }, [dashboard?.columns])
 
   // Handle click outside dropdown
   useEffect(() => {

@@ -49,6 +49,7 @@ export interface IngestionResult {
   columnsUpdated: number
   matchingColumns: string[]
   columnTotals: Record<string, number>
+  insertedItems: NewsItem[]
 }
 
 interface IngestionOptions {
@@ -243,6 +244,7 @@ export const ingestNewsItems = async (
     itemsAdded: validatedItems.length,
     columnsUpdated,
     matchingColumns: Array.from(matchingColumns),
-    columnTotals
+    columnTotals,
+    insertedItems  // Return items so we can emit SSE events
   }
 }
