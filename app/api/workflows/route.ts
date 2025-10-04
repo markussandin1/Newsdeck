@@ -7,8 +7,21 @@ import { verifyApiKey, unauthorizedResponse } from '@/lib/api-auth'
 import { newsdeckEvents } from '@/lib/events'
 
 export async function POST(request: NextRequest) {
+  const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+  const userAgent = request.headers.get('user-agent') || 'unknown'
+
   // Check API key authentication
   if (!verifyApiKey(request)) {
+    // Log unauthorized attempt
+    await db.logApiRequest({
+      endpoint: '/api/workflows',
+      method: 'POST',
+      statusCode: 401,
+      success: false,
+      errorMessage: 'Unauthorized - invalid or missing API key',
+      ipAddress,
+      userAgent
+    })
     return unauthorizedResponse()
   }
 
@@ -18,6 +31,18 @@ export async function POST(request: NextRequest) {
     body = await request.json()
   } catch (error) {
     logger.warn('api.workflows.invalidJson', { error })
+
+    // Log JSON parse error
+    await db.logApiRequest({
+      endpoint: '/api/workflows',
+      method: 'POST',
+      statusCode: 400,
+      success: false,
+      errorMessage: 'Request body must be valid JSON',
+      ipAddress,
+      userAgent
+    })
+
     return NextResponse.json(
       {
         success: false,
@@ -43,14 +68,41 @@ export async function POST(request: NextRequest) {
       newsdeckEvents.emitNewItems(columnId, result.insertedItems)
     }
 
-    return NextResponse.json({
+    const response = {
       success: true,
       message: 'Workflow payload processed',
       ...result
+    }
+
+    // Log successful request
+    await db.logApiRequest({
+      endpoint: '/api/workflows',
+      method: 'POST',
+      statusCode: 200,
+      success: true,
+      requestBody: body,
+      responseBody: response,
+      ipAddress,
+      userAgent
     })
+
+    return NextResponse.json(response)
   } catch (error) {
     if (error instanceof IngestionError) {
       logger.warn('api.workflows.validationError', { error: error.message })
+
+      // Log validation error
+      await db.logApiRequest({
+        endpoint: '/api/workflows',
+        method: 'POST',
+        statusCode: error.status,
+        success: false,
+        requestBody: body,
+        errorMessage: error.message,
+        ipAddress,
+        userAgent
+      })
+
       return NextResponse.json(
         { success: false, error: error.message },
         { status: error.status }
@@ -58,6 +110,19 @@ export async function POST(request: NextRequest) {
     }
 
     logger.error('api.workflows.unexpectedError', { error })
+
+    // Log unexpected error
+    await db.logApiRequest({
+      endpoint: '/api/workflows',
+      method: 'POST',
+      statusCode: 500,
+      success: false,
+      requestBody: body,
+      errorMessage: error instanceof Error ? error.message : 'Unexpected server error',
+      ipAddress,
+      userAgent
+    })
+
     return NextResponse.json(
       { success: false, error: 'Unexpected server error' },
       { status: 500 }

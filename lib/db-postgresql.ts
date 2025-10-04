@@ -974,6 +974,89 @@ export const persistentDb = {
     }
   },
 
+  // API request logging
+  logApiRequest: async (log: {
+    endpoint: string
+    method: string
+    statusCode: number
+    success: boolean
+    requestBody?: unknown
+    responseBody?: unknown
+    errorMessage?: string
+    ipAddress?: string
+    userAgent?: string
+  }) => {
+    const pool = getPool()
+
+    try {
+      await pool.query(
+        `INSERT INTO api_request_logs (
+          endpoint, method, status_code, success, request_body,
+          response_body, error_message, ip_address, user_agent, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+        [
+          log.endpoint,
+          log.method,
+          log.statusCode,
+          log.success,
+          JSON.stringify(log.requestBody || {}),
+          JSON.stringify(log.responseBody || {}),
+          log.errorMessage || null,
+          log.ipAddress || null,
+          log.userAgent || null
+        ]
+      )
+    } catch (error) {
+      // Don't throw - logging should never break the API
+      logger.error('db.logApiRequest.error', { error })
+    }
+  },
+
+  getApiRequestLogs: async (limit = 100, filters?: { success?: boolean; endpoint?: string }) => {
+    const pool = getPool()
+
+    try {
+      let query = `
+        SELECT
+          id, endpoint, method, status_code as "statusCode", success,
+          request_body as "requestBody", response_body as "responseBody",
+          error_message as "errorMessage", ip_address as "ipAddress",
+          user_agent as "userAgent", created_at as "createdAt"
+        FROM api_request_logs
+      `
+      const params: (boolean | string | number)[] = []
+      const conditions: string[] = []
+
+      if (filters?.success !== undefined) {
+        conditions.push(`success = $${params.length + 1}`)
+        params.push(filters.success)
+      }
+
+      if (filters?.endpoint) {
+        conditions.push(`endpoint = $${params.length + 1}`)
+        params.push(filters.endpoint)
+      }
+
+      if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ')
+      }
+
+      query += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`
+      params.push(limit)
+
+      const result = await pool.query(query, params)
+
+      return result.rows.map(row => ({
+        ...row,
+        requestBody: typeof row.requestBody === 'string' ? JSON.parse(row.requestBody) : row.requestBody,
+        responseBody: typeof row.responseBody === 'string' ? JSON.parse(row.responseBody) : row.responseBody
+      }))
+    } catch (error) {
+      logger.error('db.getApiRequestLogs.error', { error })
+      throw error
+    }
+  },
+
   // Health check
   isConnected: async () => {
     try {
