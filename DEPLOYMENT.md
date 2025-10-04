@@ -1,196 +1,363 @@
 # Newsdeck Deployment Guide
 
-This guide covers deploying Newsdeck to Vercel with persistent data storage using Vercel KV (Redis).
+This guide covers deploying Newsdeck to Google Cloud Run with Cloud SQL (PostgreSQL) for persistent data storage.
 
 ## Overview
 
-Newsdeck uses a hybrid storage approach:
-- **Local Development**: Falls back to in-memory storage when KV credentials are not available
-- **Production**: Uses Vercel KV (Redis) for persistent data storage
+Newsdeck deployment architecture:
+- **Application**: Next.js on Google Cloud Run (containerized)
+- **Database**: PostgreSQL on Google Cloud SQL
+- **Authentication**: NextAuth.js with Google OAuth
+- **CI/CD**: GitHub Actions for automated deployments
+- **Real-time**: Server-Sent Events (SSE) for live updates
 
 ## Prerequisites
 
-- Vercel account
-- Node.js 18+ 
-- Git repository connected to Vercel
+- Google Cloud account with billing enabled
+- Node.js 18+
+- Docker (for local testing)
+- gcloud CLI installed and configured
+- GitHub repository
 
-## Step 1: Deploy to Vercel
+## Step 1: Set up Google Cloud SQL (PostgreSQL)
 
-1. **Connect your repository to Vercel:**
-   - Go to [vercel.com](https://vercel.com) and sign in
-   - Click "New Project"
-   - Import your Git repository
-   - Choose "Next.js" as the framework preset
+1. **Create a Cloud SQL instance:**
+   ```bash
+   gcloud sql instances create newsdeck-db \
+     --database-version=POSTGRES_15 \
+     --tier=db-f1-micro \
+     --region=europe-west1
+   ```
 
-2. **Configure build settings:**
-   - Build Command: `npm run build`
-   - Output Directory: `.next` (default)
-   - Install Command: `npm install`
+2. **Create a database:**
+   ```bash
+   gcloud sql databases create newsdeck --instance=newsdeck-db
+   ```
 
-## Step 2: Set up Vercel KV Database
+3. **Create a database user:**
+   ```bash
+   gcloud sql users create newsdeck-user \
+     --instance=newsdeck-db \
+     --password=YOUR_SECURE_PASSWORD
+   ```
 
-**Note:** Vercel KV is now available through the Vercel Marketplace.
+4. **Get connection details:**
+   ```bash
+   gcloud sql instances describe newsdeck-db
+   ```
+   - Note the `connectionName` (format: `project:region:instance`)
 
-1. **Access the Vercel Marketplace:**
-   - Go to [Vercel Marketplace](https://vercel.com/marketplace/category/storage)
-   - Find "Vercel KV" in the storage category
-   - Click "Add Integration" or "Install"
+## Step 2: Run Database Migrations
 
-2. **Create a KV Database:**
-   - Follow the marketplace integration flow
-   - Choose your Vercel project
-   - Give your database a name (e.g., "newsdeck-storage")
-   - Select a region close to your users
-   - Complete the setup process
+1. **Connect to Cloud SQL:**
+   ```bash
+   gcloud sql connect newsdeck-db --user=newsdeck-user --database=newsdeck
+   ```
 
-3. **Get KV credentials:**
-   - After creating the database, go to your project dashboard
-   - Navigate to "Settings" > "Environment Variables"
-   - The KV environment variables should be automatically added:
-     - `KV_REST_API_URL`
-     - `KV_REST_API_TOKEN`
-   - If not automatically added, you can find them in the KV dashboard
+2. **Run migrations manually or via script:**
+   ```bash
+   # Set DATABASE_URL
+   export DATABASE_URL="postgresql://newsdeck-user:PASSWORD@/cloudsql/PROJECT:REGION:INSTANCE/newsdeck"
+
+   # Run migrations
+   npm run migrate
+   ```
 
 ## Step 3: Configure Environment Variables
 
-1. **Add environment variables to Vercel:**
-   - In your project dashboard, go to "Settings" > "Environment Variables"
-   - Add the following variables:
+Create a `.env.production` file or configure in Google Cloud Run:
 
+```bash
+# Database
+DATABASE_URL=postgresql://user:pass@/cloudsql/project:region:instance/dbname
+
+# NextAuth
+NEXTAUTH_URL=https://your-app-url.run.app
+NEXTAUTH_SECRET=your-nextauth-secret-min-32-chars
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+
+# API Security
+API_KEY=your-secure-api-key
+
+# Build
+DOCKER_BUILD=true
+```
+
+## Step 4: Build and Deploy to Cloud Run
+
+### Option 1: Using GitHub Actions (Recommended)
+
+The repository includes a CI/CD pipeline in `.github/workflows/deploy.yml`:
+
+1. **Set up GitHub Secrets:**
+   - `GCP_PROJECT_ID`: Your Google Cloud project ID
+   - `GCP_SA_KEY`: Service account key JSON
+   - `DATABASE_URL`: PostgreSQL connection string
+   - `NEXTAUTH_SECRET`: NextAuth secret
+   - `GOOGLE_CLIENT_ID`: Google OAuth client ID
+   - `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
+   - `API_KEY`: API key for workflows
+
+2. **Push to main branch:**
+   - GitHub Actions will automatically build and deploy
+
+### Option 2: Manual Deployment
+
+1. **Build the Docker image:**
+   ```bash
+   docker build --build-arg DOCKER_BUILD=true -t gcr.io/PROJECT_ID/newsdeck .
    ```
-   KV_REST_API_URL=your_kv_rest_api_url_here
-   KV_REST_API_TOKEN=your_kv_rest_api_token_here
+
+2. **Push to Google Container Registry:**
+   ```bash
+   docker push gcr.io/PROJECT_ID/newsdeck
    ```
 
-2. **For all environments:**
-   - Make sure to add these variables for Production, Preview, and Development environments
-   - This ensures consistent behavior across all deployments
+3. **Deploy to Cloud Run:**
+   ```bash
+   gcloud run deploy newsdeck \
+     --image gcr.io/PROJECT_ID/newsdeck \
+     --platform managed \
+     --region europe-west1 \
+     --add-cloudsql-instances PROJECT:REGION:INSTANCE \
+     --set-env-vars DATABASE_URL="postgresql://...",NEXTAUTH_URL="https://...",API_KEY="..." \
+     --allow-unauthenticated
+   ```
 
-## Step 4: Deploy and Test
+## Step 5: Configure Google OAuth
 
-1. **Deploy your project:**
-   - Push your code to the main branch
-   - Vercel will automatically deploy
-   - Or manually trigger a deployment from the Vercel dashboard
+1. **Go to Google Cloud Console > APIs & Services > Credentials**
 
-2. **Verify persistence manually:**
-   - Open the admin dashboard at `/admin`
-   - Create a column and push test events through your workflow
-   - Reload the dashboard to ensure items remain after refresh
+2. **Create OAuth 2.0 Client ID:**
+   - Application type: Web application
+   - Authorized redirect URIs:
+     - `https://your-app.run.app/api/auth/callback/google`
+     - `http://localhost:3000/api/auth/callback/google` (for dev)
+
+3. **Save Client ID and Secret** to environment variables
+
+## Step 6: Verify Deployment
+
+1. **Test the application:**
+   - Visit your Cloud Run URL
+   - Sign in with Google
+   - Create a dashboard and column
+   - Test API endpoint with your API key
+
+2. **Check API logs:**
+   - Go to `/admin/api-logs` to see request logging
+   - Verify successful requests are logged
+
+3. **Monitor Cloud Run:**
+   ```bash
+   gcloud run services describe newsdeck --region europe-west1
+   ```
 
 ## Local Development Setup
 
-For local development, you have two options:
+1. **Set up local PostgreSQL:**
+   ```bash
+   # Using Docker
+   docker run --name newsdeck-postgres \
+     -e POSTGRES_PASSWORD=localpass \
+     -e POSTGRES_DB=newsdeck \
+     -p 5432:5432 -d postgres:15
+   ```
 
-### Option 1: Use Vercel KV locally (Recommended for testing)
-1. Install Vercel CLI: `npm i -g vercel`
-2. Run `vercel env pull .env.local` to download environment variables
-3. Start development: `npm run dev`
+2. **Configure environment variables:**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with local database credentials
+   DATABASE_URL=postgresql://postgres:localpass@localhost:5432/newsdeck
+   ```
 
-### Option 2: Use fallback in-memory storage
-1. Don't set KV environment variables
-2. The app will automatically use in-memory storage
-3. Data will reset on server restart (good for development)
+3. **Run migrations:**
+   ```bash
+   npm run migrate
+   ```
 
-## Data Structure
+4. **Start development server:**
+   ```bash
+   npm run dev
+   ```
 
-The application stores the following data in Vercel KV:
+## Database Schema
 
-- **Dashboards**: `dashboard:{id}` and `dashboards` (list)
-- **Column Data**: `column_data:{columnId}`  
-- **News Items**: `news_items` (general storage)
+The application uses PostgreSQL with the following main tables:
+
+- **dashboards**: Dashboard configurations and metadata
+- **news_items**: News items with db_id as primary key
+- **column_data**: Column-specific news items (references news_items)
+- **api_request_logs**: API request logging for debugging
+- **user_preferences**: User settings and preferences
+- **user_dashboard_follows**: Dashboard following relationships
 
 ## API Endpoints
 
 The following endpoints are available for external workflows:
 
+### Workflow Ingestion
+- `POST /api/workflows` - Main endpoint for workflow data (requires API key)
+  - Headers: `x-api-key: your-api-key`
+  - Body: See API documentation in README.md
+
+### Column Management
 - `POST /api/columns` - Create a new column
-- `GET /api/columns` - List all columns  
+- `GET /api/columns` - List all columns
 - `POST /api/columns/{id}` - Add data to a specific column
 - `GET /api/columns/{id}` - Get data from a specific column
 - `DELETE /api/columns/{id}` - Clear data from a column
 
+### Dashboard Management
+- `GET /api/dashboards` - List all dashboards
+- `GET /api/dashboards/{slug}` - Get dashboard by slug
+- `PUT /api/dashboards/{slug}` - Update dashboard
+- `POST /api/dashboards/{slug}/follow` - Follow a dashboard
+
+### Admin Endpoints
+- `GET /api/admin/logs` - View API request logs
+- `POST /api/admin/migrate-logs` - Run API logs migration
+
 ## Monitoring and Maintenance
 
-1. **Monitor KV usage:**
-   - Check your Vercel dashboard for KV usage statistics
-   - Monitor request counts and storage usage
+1. **Monitor Cloud Run:**
+   ```bash
+   # View logs
+   gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=newsdeck" --limit 50
 
-2. **Data backup:**
-   - Vercel KV is managed and backed up automatically
-   - For additional backup, consider periodic exports via API
+   # Monitor metrics
+   gcloud monitoring dashboards list
+   ```
 
-3. **Scaling considerations:**
-   - Current implementation stores all data in Redis
-   - For production scale, consider:
-     - Implementing data archiving for old news items
-     - Adding pagination for large datasets
-     - Moving to a full database solution (as planned for GCP migration)
+2. **Monitor Cloud SQL:**
+   ```bash
+   # Check database connections
+   gcloud sql operations list --instance=newsdeck-db
 
-## Alternative Storage Solutions
+   # View database logs
+   gcloud logging read "resource.type=cloudsql_database" --limit 50
+   ```
 
-If you prefer not to use Vercel KV or want other options:
+3. **Data backup:**
+   - Cloud SQL automatically creates backups
+   - Configure backup retention:
+     ```bash
+     gcloud sql instances patch newsdeck-db \
+       --backup-start-time=03:00 \
+       --retained-backups-count=7
+     ```
 
-### Option 1: Upstash Redis (Free tier available)
-1. Sign up at [upstash.com](https://upstash.com)
-2. Create a Redis database
-3. Get the `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
-4. Replace `@vercel/kv` with `@upstash/redis` in the code
-5. Update the import in `lib/db-persistent.ts`
+4. **API Request Logging:**
+   - View logs at `/admin/api-logs`
+   - Filter by success/failure
+   - Debug rejected payloads
 
-### Option 2: PlanetScale MySQL (Free tier)
-1. Sign up at [planetscale.com](https://planetscale.com)
-2. Create a database
-3. Install `@planetscale/database`
-4. Update the database layer to use SQL instead of Redis
+5. **Scaling considerations:**
+   - Cloud Run auto-scales based on traffic
+   - Monitor database connections and optimize queries
+   - Consider connection pooling for high traffic
+   - Archive old news items periodically
 
-### Option 3: Supabase (Free tier)
-1. Sign up at [supabase.com](https://supabase.com)
-2. Create a project
-3. Install `@supabase/supabase-js`
-4. Update the database layer to use PostgreSQL
+## Alternative Deployment Options
 
-### Option 4: Railway PostgreSQL
-1. Sign up at [railway.app](https://railway.app)
-2. Deploy a PostgreSQL database
-3. Use with `pg` or `prisma` packages
+While the primary deployment is on Google Cloud, you can also deploy to:
 
-## Future Migration to GCP
+### Vercel (with external PostgreSQL)
+1. Deploy to Vercel as usual
+2. Connect to external PostgreSQL (Supabase, Railway, etc.)
+3. Set `DATABASE_URL` in Vercel environment variables
+4. Note: SSE may have limitations on Vercel's serverless platform
 
-This setup is designed for POC/MVP. For production scaling:
+### Railway
+1. Create a Railway project
+2. Add PostgreSQL service
+3. Deploy from GitHub repository
+4. Configure environment variables
 
-- Database: Cloud SQL (PostgreSQL) or Firestore
-- Authentication: Firebase Auth or Cloud Identity
-- Storage: Cloud Storage for media files
-- Monitoring: Cloud Monitoring and Logging
+### Render
+1. Create a new Web Service
+2. Add PostgreSQL database
+3. Connect GitHub repository
+4. Set environment variables
 
-The current database abstraction layer (`lib/db-persistent.ts`) makes this migration easier by providing a consistent interface.
+### Docker / Self-hosted
+1. Build Docker image: `docker build -t newsdeck .`
+2. Run with PostgreSQL connection
+3. Configure reverse proxy (nginx/Caddy) for HTTPS
+
+## Performance Optimization
+
+### Database Optimization
+- Add indexes on frequently queried columns
+- Use connection pooling (already configured)
+- Archive old news items (>7 days)
+- Implement read replicas for high traffic
+
+### Cloud Run Optimization
+- Set minimum instances for zero cold starts
+- Increase memory for faster response times
+- Use VPC connector for database access
+- Enable HTTP/2 for better performance
+
+### Caching Strategy
+- Implement Redis/Memcached for session storage
+- Cache dashboard configurations
+- Use CDN for static assets
 
 ## Troubleshooting
 
 ### Common Issues:
 
-1. **"Internal server error" when creating columns:**
-   - Check that KV environment variables are set correctly
-   - Verify KV database is active in Vercel dashboard
+1. **Database connection errors:**
+   ```bash
+   # Check Cloud SQL instance is running
+   gcloud sql instances describe newsdeck-db
 
-2. **Data not persisting:**
-   - Confirm you're not in fallback mode (check server logs)
-   - Test the KV connection using the test page
+   # Test connection
+   gcloud sql connect newsdeck-db --user=newsdeck-user
+   ```
+
+2. **API requests being rejected:**
+   - Check `/admin/api-logs` for detailed error messages
+   - Verify API key in request headers
+   - Check request body format matches schema
 
 3. **Build failures:**
-   - Ensure all dependencies are in `package.json`
-   - Check that `@vercel/kv` is installed
+   - Ensure `DOCKER_BUILD=true` when building for production
+   - Check all environment variables are set
+   - Verify PostgreSQL connection during build
 
-### Debug Mode:
-Add this to your environment variables for more verbose logging:
-```
-DEBUG=true
+4. **Authentication issues:**
+   - Verify Google OAuth credentials
+   - Check authorized redirect URIs in Google Console
+   - Ensure NEXTAUTH_SECRET is set and secure (min 32 chars)
+
+5. **Real-time updates not working:**
+   - SSE requires persistent connections
+   - Check if proxy/load balancer supports SSE
+   - Verify EventSource connection in browser DevTools
+
+### Debug Commands:
+
+```bash
+# View Cloud Run logs in real-time
+gcloud logging tail "resource.type=cloud_run_revision"
+
+# Check database connection pool
+gcloud sql operations list --instance=newsdeck-db
+
+# Test API endpoint
+curl -X POST https://your-app.run.app/api/workflows \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-key" \
+  -d '{"items":[...],"events":{"workflowId":"test"}}'
 ```
 
 ## Support
 
 For deployment issues:
-- Check Vercel deployment logs
-- Use the admin dashboard to confirm data writes and reads
-- Review the browser console for client-side errors
+- Check Google Cloud Console logs
+- View API request logs at `/admin/api-logs`
+- Monitor Cloud SQL performance metrics
+- Review GitHub Actions workflow runs for CI/CD issues

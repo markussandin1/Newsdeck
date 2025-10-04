@@ -9,20 +9,22 @@ A real-time news dashboard application with TweetDeck-style columns and persiste
 
 - **📊 Dashboard Management**: Create and organize multiple dashboards
 - **📑 Column-based Layout**: TweetDeck-style columns for organized content viewing
-- **⚡ Real-time Updates**: Auto-refresh every 5 seconds for live data
-- **💾 Persistent Storage**: Vercel KV (Redis) or Upstash Redis for reliable data persistence
+- **⚡ Real-time Updates**: Server-Sent Events (SSE) for instant live updates
+- **💾 Persistent Storage**: PostgreSQL on Google Cloud SQL for reliable data persistence
 - **🔧 Admin Interface**: Easy-to-use admin panel for data management
 - **🌐 API Integration**: RESTful API for external workflow integration
 - **📱 Responsive Design**: Works on desktop and mobile devices
 - **🎯 Workflow Ready**: Designed for n8n, Zapier, and custom API integrations
+- **🔍 API Logging**: Built-in request logging for debugging and monitoring
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
-- Vercel account (for deployment)
+- Google Cloud account (for deployment)
+- PostgreSQL database (Google Cloud SQL recommended)
 
 ### Local Development
 
@@ -42,15 +44,22 @@ A real-time news dashboard application with TweetDeck-style columns and persiste
    npm run dev
    ```
 
-4. **Open in browser:**
+4. **Set up environment variables:**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your DATABASE_URL
+   ```
+
+5. **Open in browser:**
    - Application: http://localhost:3000
    - Admin panel: http://localhost:3000/admin
+   - API Logs: http://localhost:3000/admin/api-logs
 
-### Deployment to Vercel
+### Deployment to Google Cloud
+
+The application is deployed on Google Cloud Run with Cloud SQL (PostgreSQL) for data persistence.
 
 See the complete deployment guide in [DEPLOYMENT.md](./DEPLOYMENT.md) for step-by-step instructions.
-
-**Note:** Vercel KV is now available through the [Vercel Marketplace](https://vercel.com/marketplace/category/storage). Alternative storage options like Upstash Redis, PlanetScale, and Supabase are also supported.
 
 ## 📋 API Documentation
 
@@ -101,27 +110,36 @@ GET /api/columns
 ## 🏗️ Architecture
 
 ```
-├── app/                    # Next.js 15 App Router
-│   ├── api/               # API routes
-│   │   ├── columns/       # Column management
-│   │   └── dashboards/    # Dashboard management
-│   ├── admin/             # Admin interface
-│   └── dashboard/         # Dashboard views
-├── components/            # React components
-├── lib/                   # Utilities and database
-│   ├── db-persistent.ts   # Vercel KV integration
-│   ├── db.ts              # Database interface
-│   └── types.ts           # TypeScript definitions
-└── .github/               # GitHub workflows and templates
+├── app/                      # Next.js 15 App Router
+│   ├── api/                 # API routes
+│   │   ├── columns/         # Column management
+│   │   ├── dashboards/      # Dashboard management
+│   │   ├── workflows/       # Workflow ingestion endpoint
+│   │   └── admin/           # Admin API endpoints
+│   ├── admin/               # Admin interface
+│   │   ├── page.tsx         # Main admin panel
+│   │   └── api-logs/        # API request logs viewer
+│   └── dashboard/           # Dashboard views
+├── components/              # React components
+├── lib/                     # Utilities and database
+│   ├── db-postgresql.ts     # PostgreSQL integration
+│   ├── db.ts                # Database interface
+│   ├── events.ts            # Server-Sent Events
+│   └── types.ts             # TypeScript definitions
+├── migrations/              # Database migrations
+└── .github/                 # GitHub workflows and templates
 ```
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Styling**: TailwindCSS, PostCSS
-- **Database**: Vercel KV/Upstash Redis with in-memory fallback
-- **Deployment**: Vercel with GitHub Actions
+- **Database**: PostgreSQL (Google Cloud SQL)
+- **Real-time**: Server-Sent Events (SSE)
+- **Deployment**: Google Cloud Run with GitHub Actions CI/CD
+- **Authentication**: NextAuth.js with Google OAuth
 - **API**: REST endpoints for external integrations
+- **Logging**: Built-in API request logging and monitoring
 
 ## 🔌 Workflow Integration
 
@@ -173,12 +191,33 @@ Any system that can send HTTP POST requests can integrate with Newsdeck.
 Create a `.env.local` file:
 
 ```bash
-# Vercel KV Database (optional for local development)
-KV_REST_API_URL=your_kv_rest_api_url
-KV_REST_API_TOKEN=your_kv_rest_api_token
+# Database
+DATABASE_URL=postgresql://user:password@host:5432/database
+
+# Authentication (NextAuth.js)
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# API Security
+API_KEY=your-api-key-for-workflows
+
+# Build Configuration (optional)
+DOCKER_BUILD=false  # Set to true when building Docker images
 ```
 
-Without these variables, the app uses in-memory storage for development.
+### Database Migrations
+
+Run migrations to set up the database schema:
+
+```bash
+# Run all migrations
+npm run migrate
+
+# Or run specific migration
+DATABASE_URL="..." npx tsx scripts/run-migration.js migrations/001-*.sql
+```
 
 ## 🤝 Contributing
 
@@ -197,20 +236,23 @@ We provide templates for:
 
 ## 🗺️ Roadmap
 
-### Current (POC/MVP)
-- ✅ Basic dashboard and column management
-- ✅ Vercel KV persistence
-- ✅ Admin interface
+### Current Features
+- ✅ Dashboard and column management
+- ✅ PostgreSQL persistence (Google Cloud SQL)
+- ✅ Admin interface with API logging
 - ✅ API endpoints for external integration
+- ✅ Real-time updates via Server-Sent Events (SSE)
+- ✅ Google OAuth authentication
+- ✅ Request logging and debugging tools
 
 ### Future Enhancements
-- 🔐 User authentication and authorization
 - 🏢 Multi-tenant support
-- 📊 Analytics and reporting
+- 📊 Advanced analytics and reporting
 - 🎨 Custom themes and layouts
-- 🔄 Real-time WebSocket updates
-- 📱 Mobile app
-- ☁️ GCP migration (Cloud SQL, Firebase Auth)
+- 📱 Mobile app (React Native)
+- 🔔 Push notifications
+- 📈 Usage metrics and dashboards
+- 🌍 Multi-region deployment
 
 ## 📄 License
 
@@ -233,4 +275,4 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ using Next.js 15 and deployed on Vercel**
+**Built with ❤️ using Next.js 15 and deployed on Google Cloud Run**
