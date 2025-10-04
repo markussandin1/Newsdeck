@@ -3,6 +3,8 @@ import { Pool } from 'pg'
 import { parse as parseConnectionString } from 'pg-connection-string'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST() {
   const DATABASE_URL = process.env.DATABASE_URL
 
