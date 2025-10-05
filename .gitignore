@@ -43,7 +43,7 @@ next-env.d.ts
 Thumbs.db
 
 # Logs
-logs
+/logs
 *.log
 
 # Runtime data
