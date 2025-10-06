@@ -68,6 +68,34 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
+  const [sourceFilters, setSourceFilters] = useState<Record<string, string | null>>({}) // columnId -> selected source domain
+
+  // Extract domain from URL or source
+  const extractDomain = (item: NewsItemType): string => {
+    const url = item.url || item.source
+    if (!url) return 'Okänd'
+
+    try {
+      const hostname = new URL(url).hostname
+      return hostname.replace(/^www\./, '')
+    } catch {
+      // If not a URL, check if source looks like a domain
+      if (url.includes('.')) {
+        return url.replace(/^www\./, '')
+      }
+      return url
+    }
+  }
+
+  // Get unique sources for a column
+  const getUniqueSources = (items: NewsItemType[]): string[] => {
+    const sources = new Set<string>()
+    items.forEach(item => {
+      const domain = extractDomain(item)
+      if (domain) sources.add(domain)
+    })
+    return Array.from(sources).sort()
+  }
 
   // Extract UUID from workflow URL
   const extractWorkflowId = (input: string): string => {
@@ -813,6 +841,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           .sort((a, b) => a.order - b.order)
           .map((column) => {
             const columnItems = memoizedColumnData[column.id] || []
+            const uniqueSources = getUniqueSources(columnItems)
+            const activeFilter = sourceFilters[column.id]
+
+            // Filter items by selected source
+            const filteredItems = activeFilter
+              ? columnItems.filter(item => extractDomain(item) === activeFilter)
+              : columnItems
 
             // Use a very stable column container that never changes
             return (
@@ -975,27 +1010,62 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                           </button>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {columnItems.length} händelser
+                          {filteredItems.length}{filteredItems.length !== columnItems.length && ` av ${columnItems.length}`} händelser
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
 
+                {/* Source Filter */}
+                {uniqueSources.length > 1 && (
+                  <div className="border-b border-gray-200 px-4 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        onClick={() => setSourceFilters(prev => ({ ...prev, [column.id]: null }))}
+                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                          !activeFilter
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        Alla ({columnItems.length})
+                      </button>
+                      {uniqueSources.map(source => {
+                        const count = columnItems.filter(item => extractDomain(item) === source).length
+                        return (
+                          <button
+                            key={source}
+                            onClick={() => setSourceFilters(prev => ({ ...prev, [column.id]: source }))}
+                            className={`text-xs px-2 py-1 rounded transition-colors ${
+                              activeFilter === source
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                            title={source}
+                          >
+                            {source.length > 15 ? source.substring(0, 15) + '...' : source} ({count})
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Static scrollable area */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {columnItems.length === 0 ? (
+                  {filteredItems.length === 0 ? (
                     <div className="text-center py-8 text-gray-500 text-sm">
                       <div className="mb-4 flex justify-center">
                         <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={32} height={32} className="w-8 h-8 object-contain" />
                       </div>
-                      <div className="mb-2">Väntar på händelser...</div>
+                      <div className="mb-2">{activeFilter ? 'Inga händelser från denna källa' : 'Väntar på händelser...'}</div>
                       <div className="text-xs text-gray-400">
-                        Konfigurationen finns i kolumnhuvudet ↑
+                        {activeFilter ? 'Välj "Alla" för att se alla händelser' : 'Konfigurationen finns i kolumnhuvudet ↑'}
                       </div>
                     </div>
                   ) : (
-                    columnItems.map((item, index) => (
+                    filteredItems.map((item, index) => (
                       <div key={`${column.id}-${item.id}-${index}`} className="mb-2">
                         <NewsItem
                           item={item}
