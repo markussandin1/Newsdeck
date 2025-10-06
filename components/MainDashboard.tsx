@@ -50,6 +50,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [newColumnDescription, setNewColumnDescription] = useState('')
   const [newColumnFlowId, setNewColumnFlowId] = useState('')
+  const [showWorkflowInput, setShowWorkflowInput] = useState(false)
+  const [urlExtracted, setUrlExtracted] = useState(false)
   const [editingColumn, setEditingColumn] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -91,6 +93,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     // Otherwise return as-is (already a UUID or custom ID)
     return trimmed
   }
+
+  // Initialize workflow input checkbox when modal opens
+  useEffect(() => {
+    if (showAddColumnModal) {
+      const activeColumns = dashboard?.columns?.filter(col => !col.isArchived) || []
+      setShowWorkflowInput(activeColumns.length === 0)
+    }
+  }, [showAddColumnModal, dashboard?.columns])
 
   // Simple approach: Just don't recreate columns unnecessarily
 
@@ -950,7 +960,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                                     → Öppna här
                                   </a>
                                 </li>
-                                <li>Välj den workflow du vill ansluta</li>
+                                <li>Välj den workflow du vill ansluta, se till att ditt workflow har noden &quot;PostToNewsdeck&quot; i slutet av flödet.</li>
                                 <li>Kopiera workflow-URLen från adressfältet</li>
                                 <li>Klistra in här nedanför</li>
                               </ol>
@@ -1126,13 +1136,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           <div className="bg-white rounded-lg max-w-md w-full">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Skapa ny kolumn</h3>
+                <h3 className="text-lg font-semibold text-gray-800">✨ Skapa ny kolumn</h3>
                 <button
                   onClick={() => {
                     setShowAddColumnModal(false)
                     setNewColumnTitle('')
                     setNewColumnDescription('')
                     setNewColumnFlowId('')
+                    setUrlExtracted(false)
                   }}
                   className="text-gray-500 hover:text-gray-700 text-xl"
                 >
@@ -1173,6 +1184,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   }
                 }}>
                   <div className="space-y-4">
+                    {/* Column Name */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Kolumnnamn *
@@ -1187,45 +1199,105 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                         autoFocus
                       />
                     </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Beskrivning (valfritt)
+
+                    {/* Workflow Connection Section */}
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      {(dashboard?.columns?.filter(col => !col.isArchived) || []).length === 0 && (
+                        <div className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full mb-2">
+                          🎯 Rekommenderat för första kolumnen
+                        </div>
+                      )}
+
+                      <div className="font-medium text-gray-800 mb-2">
+                        🤖 Vill du fylla denna kolumn automatiskt?
+                      </div>
+                      <div className="text-sm text-gray-600 mb-3">
+                        Anslut en AI-workflow för att automatiskt ta emot nyheter - inga fler steg krävs!
+                      </div>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={showWorkflowInput}
+                          onChange={(e) => setShowWorkflowInput(e.target.checked)}
+                          className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          Ja, anslut workflow
+                        </span>
                       </label>
-                      <textarea
-                        value={newColumnDescription}
-                        onChange={(e) => setNewColumnDescription(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Beskriv vad denna kolumn ska innehålla..."
-                        rows={3}
-                      />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Workflow ID (valfritt)
-                      </label>
-                      <input
-                        type="text"
-                        value={newColumnFlowId}
-                        onChange={(e) => setNewColumnFlowId(e.target.value)}
-                        onBlur={(e) => setNewColumnFlowId(extractWorkflowId(e.target.value))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Klistra in URL eller UUID från workflow"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Klistra in hela workflow-URLen - UUID:t extraheras automatiskt
-                      </p>
-                    </div>
+                    {/* Workflow Input (Conditional) */}
+                    {showWorkflowInput ? (
+                      <div className="space-y-3 p-4 bg-blue-50 rounded-lg transition-all duration-200 ease-in-out">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Workflow-URL
+                          </label>
+                          <input
+                            type="text"
+                            value={newColumnFlowId}
+                            onChange={(e) => setNewColumnFlowId(e.target.value)}
+                            onBlur={(e) => {
+                              const extracted = extractWorkflowId(e.target.value)
+                              if (extracted && extracted !== e.target.value) {
+                                setNewColumnFlowId(extracted)
+                                setUrlExtracted(true)
+                                setTimeout(() => setUrlExtracted(false), 3000)
+                              } else {
+                                setNewColumnFlowId(extracted)
+                              }
+                            }}
+                            className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Klistra in URL från Workflows-appen"
+                          />
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-gray-600">
+                              💡 Vi extraherar automatiskt ID:t från URL:en
+                            </p>
+                            {urlExtracted && (
+                              <div className="text-xs text-green-600 font-medium">
+                                ✓ Workflow-ID extraherat
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Step-by-step Guide */}
+                        <div className="p-3 bg-blue-100 rounded-md text-sm text-blue-800">
+                          <div className="font-medium mb-2">📖 Så här gör du:</div>
+                          <ol className="list-decimal list-inside space-y-1">
+                            <li>
+                              <a
+                                href="https://newsdeck-389280113319.europe-west1.run.app/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline font-medium"
+                              >
+                                🔗 Öppna Workflows-appen →
+                              </a>
+                            </li>
+                            <li>Välj din workflow med &quot;PostToNewsdeck&quot;-nod</li>
+                            <li>Kopiera URL:en från adressfältet</li>
+                            <li>Klistra in här ovan</li>
+                          </ol>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                        💡 Inget problem! Du kan ansluta en workflow senare via inställningar (⚙️)
+                      </div>
+                    )}
                   </div>
-                  
+
                   <div className="flex gap-3 pt-4 mt-6 border-t">
                     <button
                       type="submit"
-                      className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                      className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium"
                       disabled={!newColumnTitle.trim()}
                     >
-                      Skapa kolumn
+                      ✨ Skapa kolumn
                     </button>
                     <button
                       type="button"
@@ -1234,6 +1306,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                         setNewColumnTitle('')
                         setNewColumnDescription('')
                         setNewColumnFlowId('')
+                        setUrlExtracted(false)
                         setShowArchivedColumns(false)
                       }}
                       className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
@@ -1286,13 +1359,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   </div>
                 </div>
               )}
-              
-              <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-                <div className="text-sm text-blue-800">
-                  <div className="font-medium mb-1">💡 Tips:</div>
-                  <div>Efter att kolumnen skapas får den ett unikt ID som du kan använda för att skicka data från Workflows-applikationen.</div>
+
+              {!showArchivedColumns && (
+                <div className="mt-6 p-3 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-blue-800">
+                    <div className="font-medium mb-1">💡 Vad händer sen?</div>
+                    <div>
+                      {showWorkflowInput
+                        ? 'När kolumnen är skapad börjar den ta emot nyheter från din workflow automatiskt. Du kan också se Kolumn-ID i inställningar (⚙️) för manuell publicering.'
+                        : 'Kolumnen får ett unikt Kolumn-ID som du hittar i inställningar (⚙️). Använd det för att skicka data från workflows eller andra källor.'}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
