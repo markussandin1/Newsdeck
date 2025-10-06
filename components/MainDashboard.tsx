@@ -68,6 +68,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
+  const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
+  const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
 
   // Extract UUID from workflow URL
   const extractWorkflowId = (input: string): string => {
@@ -919,20 +921,97 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            🎯 Workflow-koppling
-                          </label>
-                          <input
-                            type="text"
-                            value={editFlowId}
-                            onChange={(e) => setEditFlowId(e.target.value)}
-                            onBlur={(e) => setEditFlowId(extractWorkflowId(e.target.value))}
-                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Klistra in URL eller UUID"
-                          />
-                          <p className="text-[10px] text-gray-500 mt-1">
-                            Klistra in hela workflow-URLen - UUID:t extraheras automatiskt.
-                          </p>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-medium text-gray-600">
+                              🔗 Anslut till Workflow
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setShowWorkflowHelp(!showWorkflowHelp)}
+                              className="text-xs text-blue-600 hover:text-blue-800"
+                            >
+                              ℹ️ Hur gör jag?
+                            </button>
+                          </div>
+
+                          {/* Expandable help */}
+                          {showWorkflowHelp && (
+                            <div className="mb-2 p-2 bg-blue-50 rounded-md text-[10px] text-blue-800 space-y-1">
+                              <div className="font-medium">📖 Så här ansluter du en workflow:</div>
+                              <ol className="list-decimal list-inside space-y-0.5 ml-1">
+                                <li>
+                                  Öppna din Workflows-applikation{' '}
+                                  <a
+                                    href="https://newsdeck-389280113319.europe-west1.run.app/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline font-medium"
+                                  >
+                                    → Öppna här
+                                  </a>
+                                </li>
+                                <li>Välj den workflow du vill ansluta</li>
+                                <li>Kopiera workflow-URLen från adressfältet</li>
+                                <li>Klistra in här nedanför</li>
+                              </ol>
+                              <div className="text-blue-600 mt-1">Vi extraherar automatiskt ID:t från URLen.</div>
+                            </div>
+                          )}
+
+                          {/* Connection status indicator */}
+                          {editFlowId ? (
+                            <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-md mb-2">
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-emerald-600 font-medium">✅ Ansluten</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditFlowId('')}
+                                  className="ml-auto text-xs text-gray-600 hover:text-red-600"
+                                >
+                                  🗑️ Koppla från
+                                </button>
+                              </div>
+                              <div className="text-[10px] text-emerald-700 mt-1">
+                                Workflow-ID: <code className="bg-white px-1 rounded">{editFlowId}</code>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <input
+                                type="text"
+                                value={editFlowId}
+                                onChange={(e) => setEditFlowId(e.target.value)}
+                                onBlur={(e) => {
+                                  const extracted = extractWorkflowId(e.target.value)
+                                  setEditFlowId(extracted)
+                                  if (extracted && extracted !== e.target.value) {
+                                    setShowExtractionSuccess(true)
+                                    setTimeout(() => setShowExtractionSuccess(false), 3000)
+                                  }
+                                }}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Klistra in workflow-URL från Workflows-appen"
+                              />
+                              {showExtractionSuccess && (
+                                <div className="text-[10px] text-green-600">
+                                  ✓ Workflow-ID extraherat från URL
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <p className="text-[10px] text-gray-500 flex-1">
+                                  Fyll denna kolumn automatiskt med nyheter från en AI-workflow
+                                </p>
+                                <a
+                                  href="https://newsdeck-389280113319.europe-west1.run.app/"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] text-blue-600 hover:underline whitespace-nowrap"
+                                >
+                                  🔗 Öppna Workflows-appen →
+                                </a>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex gap-2 pt-2 border-t border-gray-300">
@@ -985,13 +1064,30 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 {/* Static scrollable area */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {columnItems.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 text-sm">
+                    <div className="text-center py-8 px-4 text-gray-500 text-sm">
                       <div className="mb-4 flex justify-center">
-                        <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={32} height={32} className="w-8 h-8 object-contain" />
+                        <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={48} height={48} className="w-12 h-12 object-contain opacity-40" />
                       </div>
-                      <div className="mb-2">Väntar på händelser...</div>
-                      <div className="text-xs text-gray-400">
-                        Konfigurationen finns i kolumnhuvudet ↑
+                      <div className="font-medium text-gray-700 mb-3">Denna kolumn är tom</div>
+
+                      <div className="space-y-3 text-xs">
+                        <div className="p-3 bg-blue-50 rounded-lg text-left">
+                          <div className="font-medium text-blue-800 mb-1">💡 För automatiska nyheter:</div>
+                          <div className="text-blue-700 mb-2">Klicka på ⚙️ och anslut en workflow</div>
+                          <a
+                            href="https://newsdeck-389280113319.europe-west1.run.app/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block text-blue-600 hover:underline font-medium"
+                          >
+                            🔗 Öppna Workflows-appen →
+                          </a>
+                        </div>
+
+                        <div className="p-3 bg-gray-50 rounded-lg text-left">
+                          <div className="font-medium text-gray-700 mb-1">📌 För manuell publicering:</div>
+                          <div className="text-gray-600">Använd Kolumn-ID från inställningar (⚙️)</div>
+                        </div>
                       </div>
                     </div>
                   ) : (
