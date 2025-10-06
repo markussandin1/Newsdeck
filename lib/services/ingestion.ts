@@ -70,6 +70,35 @@ const toOptionalTrimmed = (value: unknown): string | undefined => {
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0
 
+const normalizeCoordinates = (coords: unknown): number[] | undefined => {
+  if (!coords) return undefined
+
+  // Already an array of numbers
+  if (Array.isArray(coords)) {
+    // Check if it's a string in an array like ["64.1333, 17.7167"]
+    if (coords.length === 1 && typeof coords[0] === 'string') {
+      const parts = coords[0].split(',').map(s => parseFloat(s.trim()))
+      if (parts.length === 2 && parts.every(n => !isNaN(n))) {
+        return parts
+      }
+    }
+    // Check if it's already numbers like [64.1333, 17.7167]
+    if (coords.every(c => typeof c === 'number')) {
+      return coords as number[]
+    }
+  }
+
+  // String format "64.1333, 17.7167"
+  if (typeof coords === 'string') {
+    const parts = coords.split(',').map(s => parseFloat(s.trim()))
+    if (parts.length === 2 && parts.every(n => !isNaN(n))) {
+      return parts
+    }
+  }
+
+  return undefined
+}
+
 const resolveUrl = (item: RawNewsItem): string | undefined => {
   if (isNonEmptyString(item.URL)) {
     return item.URL
@@ -203,7 +232,10 @@ export const ingestNewsItems = async (
       severity: (typeof item.severity === 'string' || item.severity === null)
         ? (item.severity as string | null)
         : undefined,
-      location: item.location,
+      location: item.location ? {
+        ...item.location,
+        coordinates: normalizeCoordinates(item.location.coordinates)
+      } : undefined,
       extra: {
         ...(isRecord(item.extra) ? item.extra : {}),
         ...extra
