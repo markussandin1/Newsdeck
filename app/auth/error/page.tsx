@@ -32,7 +32,7 @@ export default async function ErrorPage({
           </h1>
           <p className="text-gray-600">
             {error === "AccessDenied"
-              ? "Du måste använda ett @bonniernews.se eller @expressen.se-konto för att logga in."
+              ? "Du måste använda ett @bonniernews.se, @expressen.se, @di.se eller @dn.se-konto för att logga in."
               : "Ett fel uppstod vid inloggning. Försök igen."}
           </p>
         </div>

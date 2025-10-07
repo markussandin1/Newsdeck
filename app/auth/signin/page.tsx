@@ -42,7 +42,7 @@ export default function SignInPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-500">
-          Endast @bonniernews.se och @expressen.se-konton kan logga in
+          Endast @bonniernews.se, @expressen.se, @di.se och @dn.se-konton kan logga in
         </p>
       </div>
     </div>

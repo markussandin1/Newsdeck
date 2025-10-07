@@ -24,8 +24,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   callbacks: {
     async signIn({ user }) {
-      // Only allow @bonniernews.se and @expressen.se email addresses
-      if (user.email && (user.email.endsWith("@bonniernews.se") || user.email.endsWith("@expressen.se"))) {
+      // Only allow @bonniernews.se, @expressen.se, @di.se, and @dn.se email addresses
+      const allowedDomains = ["@bonniernews.se", "@expressen.se", "@di.se", "@dn.se"]
+      if (user.email && allowedDomains.some(domain => user.email!.endsWith(domain))) {
         return true
       }
       return false
