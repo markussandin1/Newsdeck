@@ -11,8 +11,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         params: {
           prompt: "select_account",
           access_type: "offline",
-          response_type: "code",
-          hd: "bonniernews.se" // Restrict to bonniernews.se domain
+          response_type: "code"
+          // hd parameter removed to allow multiple domains
         }
       }
     })
@@ -24,8 +24,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   callbacks: {
     async signIn({ user }) {
-      // Only allow @bonniernews.se email addresses
-      if (user.email && user.email.endsWith("@bonniernews.se")) {
+      // Only allow @bonniernews.se and @expressen.se email addresses
+      if (user.email && (user.email.endsWith("@bonniernews.se") || user.email.endsWith("@expressen.se"))) {
         return true
       }
       return false
