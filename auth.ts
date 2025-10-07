@@ -23,13 +23,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     updateAge: 24 * 60 * 60,    // Update session every 24 hours
   },
   callbacks: {
-    async signIn({ user }) {
-      // Only allow @bonniernews.se, @expressen.se, @di.se, and @dn.se email addresses
-      const allowedDomains = ["@bonniernews.se", "@expressen.se", "@di.se", "@dn.se"]
-      if (user.email && allowedDomains.some(domain => user.email!.endsWith(domain))) {
-        return true
+    async signIn({ user, account }) {
+      // Verify email is confirmed by Google
+      if (!user.email || !account?.email_verified) {
+        return false
       }
-      return false
+
+      // Extract domain properly (everything after @)
+      const emailParts = user.email.split('@')
+      if (emailParts.length !== 2) {
+        return false
+      }
+
+      const domain = emailParts[1].toLowerCase()
+      const allowedDomains = ["bonniernews.se", "expressen.se", "di.se", "dn.se"]
+
+      return allowedDomains.includes(domain)
     },
     async session({ session }) {
       return session

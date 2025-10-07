@@ -10,13 +10,14 @@ API DETAILS:
 - Method: POST
 - Headers:
   * Content-Type: application/json
-  * x-api-key: ON/pBHKq/rAvFLdFP8riSarzITiR6aAY5vGyT7VeVw8=
+  * x-api-key: <YOUR_API_KEY_HERE>
 
 IMPORTANT:
 - The input JSON you receive should be sent as the request BODY
 - Do NOT put the JSON in the headers
 - Do NOT modify the JSON structure
 - The headers are ONLY for authentication
+- Replace <YOUR_API_KEY_HERE> with your actual API key from environment variables
 
 EXAMPLE:
 If you receive this input:
@@ -26,5 +27,5 @@ If you receive this input:
 }
 
 Then call postToNewsdeck with:
-- headers: {"Content-Type": "application/json", "x-api-key": "ON/pBHKq/rAvFLdFP8riSarzITiR6aAY5vGyT7VeVw8="}
+- headers: {"Content-Type": "application/json", "x-api-key": "<YOUR_API_KEY_HERE>"}
 - body: {"items": [{"id": "1", "title": "Test"}], "events": {"workflowId": "abc-123"}}
