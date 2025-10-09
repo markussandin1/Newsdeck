@@ -269,15 +269,45 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                 <MapPin className="h-5 w-5 text-muted-foreground" />
                 <h3 className="text-lg font-semibold text-foreground">Plats</h3>
               </div>
-              <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3 space-y-3">
                 {locationEntries.length > 0 && (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {locationEntries.map(({ label, value }) => (
-                      <div key={label} className="text-sm text-muted-foreground">
-                        <div className="text-xs uppercase tracking-wide text-muted-foreground/60 mb-0.5">{label}</div>
-                        <div>{value}</div>
-                      </div>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                    {item.location.country && (
+                      <span className="flex items-center gap-1">
+                        🇸🇪
+                        <span className="text-foreground">{item.location.country}</span>
+                      </span>
+                    )}
+                    {item.location.county && (
+                      <>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-foreground">{item.location.county}</span>
+                      </>
+                    )}
+                    {item.location.municipality && (
+                      <>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-foreground">{item.location.municipality}</span>
+                      </>
+                    )}
+                    {item.location.area && (
+                      <>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-foreground">{item.location.area}</span>
+                      </>
+                    )}
+                    {item.location.street && (
+                      <>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-foreground">{item.location.street}</span>
+                      </>
+                    )}
+                    {item.location.name && (
+                      <>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-foreground">{item.location.name}</span>
+                      </>
+                    )}
                   </div>
                 )}
 

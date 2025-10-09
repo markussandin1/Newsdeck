@@ -962,7 +962,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                               </div>
                               <ol className="list-decimal list-inside space-y-0.5 ml-1">
                                 <li>
-                                  Öppna din Workflows-applikation{' '}
+                                  Öppna Workflows{' '}
                                   <a
                                     href="https://newsdeck-389280113319.europe-west1.run.app/"
                                     target="_blank"
@@ -972,8 +972,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                                     → Öppna här
                                   </a>
                                 </li>
-                                <li>Välj den workflow du vill ansluta, se till att ditt workflow har noden &quot;PostToNewsdeck&quot; i slutet av flödet.</li>
-                                <li>Kopiera workflow-URLen från adressfältet</li>
+                                <li>Välj det workflow du vill ansluta, se till att ditt workflow har noden &quot;PostToNewsdeck&quot; i slutet av flödet.</li>
+                                <li>Kopiera workflow-URL:en från adressfältet</li>
                                 <li>Klistra in här nedanför</li>
                               </ol>
                               <div className="text-blue-600 mt-1">Vi extraherar automatiskt ID:t från URLen.</div>
