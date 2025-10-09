@@ -1,20 +1,201 @@
 @import "tailwindcss";
 
-/* Newsdeck Design System */
-:root {
-  /* Primary colors */
-  --primary: #1e40af;           /* Deep blue */
-  --primary-light: #3b82f6;     /* Lighter blue */
-  --secondary: #64748b;         /* Slate */
-  --background: #f8fafc;        /* Light blue-gray background */
-  --surface: #ffffff;           /* White for cards */
-  --border: #e2e8f0;            /* Subtle border */
-  
-  /* News value colors - updated */
-  --news-critical: #e11d48;     /* Intense pink-red */
-  --news-high: #f59e0b;         /* Warm yellow-orange */
-  --news-medium: #10b981;       /* Mint-green */
-  --news-low: #64748b;          /* Slate */
+@theme {
+  /* Extend Tailwind's color palette with our design tokens */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-light: hsl(var(--primary-light));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-priority-critical: hsl(var(--priority-critical));
+  --color-priority-critical-foreground: hsl(var(--priority-critical-foreground));
+  --color-priority-high: hsl(var(--priority-high));
+  --color-priority-high-foreground: hsl(var(--priority-high-foreground));
+  --color-priority-medium: hsl(var(--priority-medium));
+  --color-priority-medium-foreground: hsl(var(--priority-medium-foreground));
+  --color-priority-low: hsl(var(--priority-low));
+  --color-priority-low-foreground: hsl(var(--priority-low-foreground));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-error: hsl(var(--error));
+  --color-error-foreground: hsl(var(--error-foreground));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
+  /* Border radius */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Animation keyframes */
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-pulse-subtle: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+}
+
+/*
+  Newsdeck Design System
+  Based on shadcn/ui design principles with brand colors from logo
+*/
+
+@layer base {
+  :root {
+    /* Base colors */
+    --background: 200 50% 98%;          /* #F5FAFC - Very light cool blue-gray */
+    --foreground: 204 63% 17%;          /* #0D2E47 - Deep navy (text) */
+
+    /* Card & Surface colors */
+    --card: 0 0% 100%;                  /* #ffffff - White */
+    --card-foreground: 204 63% 17%;     /* #0D2E47 - Deep navy */
+
+    /* Popover colors */
+    --popover: 0 0% 100%;
+    --popover-foreground: 204 63% 17%;
+
+    /* Brand colors (from logo) */
+    --primary: 204 63% 17%;             /* #0D2E47 - Deep navy blue */
+    --primary-foreground: 0 0% 100%;    /* White text on primary */
+
+    --primary-light: 193 100% 40%;      /* #009CCB - Bright cyan from radar */
+
+    /* Secondary colors */
+    --secondary: 210 17% 45%;           /* #5F7285 - Cool slate gray */
+    --secondary-foreground: 0 0% 100%;  /* White text on secondary */
+
+    /* Muted colors for subtle UI elements */
+    --muted: 205 33% 91%;               /* #E1EBF0 - Subtle cool */
+    --muted-foreground: 210 17% 45%;    /* #5F7285 - Cool slate */
+
+    /* Accent colors for hover states */
+    --accent: 193 100% 95%;             /* Light cyan tint */
+    --accent-foreground: 204 63% 17%;   /* Deep navy */
+
+    /* Destructive actions */
+    --destructive: 0 84% 60%;           /* Red */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders and inputs */
+    --border: 205 33% 91%;              /* #E1EBF0 - Subtle border */
+    --input: 205 33% 91%;
+    --ring: 193 100% 40%;               /* Cyan ring for focus */
+
+    /* Border radius */
+    --radius: 0.5rem;
+
+    /* News priority colors (newsValue 5 to 1) */
+    --priority-critical: 348 77% 50%;           /* #e11d48 - Red */
+    --priority-critical-foreground: 0 0% 100%;
+
+    --priority-high: 38 92% 50%;                /* #f59e0b - Orange */
+    --priority-high-foreground: 0 0% 100%;
+
+    --priority-medium: 160 84% 39%;             /* #10b981 - Green */
+    --priority-medium-foreground: 0 0% 100%;
+
+    --priority-low: 210 17% 45%;                /* #5F7285 - Slate */
+    --priority-low-foreground: 0 0% 100%;
+
+    /* Semantic status colors */
+    --success: 160 84% 39%;                     /* Green */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;                      /* Amber */
+    --warning-foreground: 0 0% 100%;
+
+    --error: 348 77% 50%;                       /* Red */
+    --error-foreground: 0 0% 100%;
+
+    --info: 193 100% 40%;                       /* Cyan */
+    --info-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 204 63% 8%;
+    --foreground: 200 50% 98%;
+
+    --card: 204 63% 10%;
+    --card-foreground: 200 50% 98%;
+
+    --popover: 204 63% 10%;
+    --popover-foreground: 200 50% 98%;
+
+    --primary: 193 100% 40%;            /* Cyan primary in dark mode */
+    --primary-foreground: 204 63% 17%;
+
+    --secondary: 210 17% 25%;
+    --secondary-foreground: 200 50% 98%;
+
+    --muted: 204 63% 15%;
+    --muted-foreground: 210 17% 65%;
+
+    --accent: 193 100% 20%;
+    --accent-foreground: 200 50% 98%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 200 50% 98%;
+
+    --border: 204 63% 15%;
+    --input: 204 63% 15%;
+    --ring: 193 100% 40%;
+
+    /* Priority colors adjusted for dark mode */
+    --priority-critical: 348 77% 50%;
+    --priority-high: 38 92% 50%;
+    --priority-medium: 160 84% 39%;
+    --priority-low: 210 17% 45%;
+
+    --success: 160 84% 39%;
+    --warning: 38 92% 50%;
+    --error: 348 77% 50%;
+    --info: 193 100% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
 /* Glass-morphism utilities */
