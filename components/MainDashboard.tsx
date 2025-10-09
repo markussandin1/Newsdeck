@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
+import { Button } from './ui/button'
+import { Settings, X, Copy, Info } from 'lucide-react'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -859,19 +861,21 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   </div>
                   {editingColumn === column.id ? (
                     // Edit Mode
-                    <div className="ml-6 space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      <div className="flex items-center justify-between border-b border-gray-300 pb-2">
-                        <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                          ⚙️ Inställningar
+                    <div className="ml-6 space-y-3 bg-muted/50 p-3 rounded-lg border border-border">
+                      <div className="flex items-center justify-between border-b border-border pb-2">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          Inställningar
                         </h4>
-                        <button
+                        <Button
                           type="button"
                           onClick={() => setEditingColumn(null)}
-                          className="text-gray-400 hover:text-gray-600 text-lg"
+                          variant="ghost"
+                          size="icon"
                           title="Stäng"
                         >
-                          ×
-                        </button>
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
 
                       <form onSubmit={(e) => {
@@ -1055,13 +1059,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                           <h3 className="font-semibold text-gray-800">
                             {column.title}
                           </h3>
-                          <button
+                          <Button
                             onClick={() => startEditing(column)}
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                            variant="ghost"
+                            size="icon"
                             title="Inställningar"
                           >
-                            ⚙️
-                          </button>
+                            <Settings className="h-4 w-4" />
+                          </Button>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                           {columnItems.length} händelser
@@ -1082,21 +1087,37 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
                       <div className="space-y-3 text-xs">
                         <div className="p-3 bg-blue-50 rounded-lg text-left">
-                          <div className="font-medium text-blue-800 mb-1">💡 För automatiska nyheter:</div>
-                          <div className="text-blue-700 mb-2">Klicka på ⚙️ och anslut en workflow</div>
-                          <a
-                            href="https://newsdeck-389280113319.europe-west1.run.app/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block text-blue-600 hover:underline font-medium"
+                          <div className="font-medium text-blue-800 mb-1 flex items-center gap-1">
+                            <Info className="h-3 w-3" />
+                            För automatiska nyheter:
+                          </div>
+                          <div className="text-blue-700 mb-2 flex items-center gap-1">
+                            Klicka på <Settings className="h-3 w-3 inline" /> och anslut en workflow
+                          </div>
+                          <Button
+                            asChild
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-blue-600 hover:underline font-medium"
                           >
-                            🔗 Öppna Workflows-appen →
-                          </a>
+                            <a
+                              href="https://newsdeck-389280113319.europe-west1.run.app/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Öppna Workflows-appen →
+                            </a>
+                          </Button>
                         </div>
 
                         <div className="p-3 bg-gray-50 rounded-lg text-left">
-                          <div className="font-medium text-gray-700 mb-1">📌 För manuell publicering:</div>
-                          <div className="text-gray-600">Använd Kolumn-ID från inställningar (⚙️)</div>
+                          <div className="font-medium text-gray-700 mb-1 flex items-center gap-1">
+                            <Copy className="h-3 w-3" />
+                            För manuell publicering:
+                          </div>
+                          <div className="text-gray-600 flex items-center gap-1">
+                            Använd Kolumn-ID från inställningar <Settings className="h-3 w-3 inline" />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1266,7 +1287,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
                         {/* Step-by-step Guide */}
                         <div className="p-3 bg-blue-100 rounded-md text-sm text-blue-800">
-                          <div className="font-medium mb-2">📖 Så här gör du:</div>
+                          <div className="font-medium mb-2 flex items-center gap-1">
+                            <Info className="h-4 w-4" />
+                            Så här gör du:
+                          </div>
                           <ol className="list-decimal list-inside space-y-1">
                             <li>
                               <a
@@ -1285,8 +1309,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                         </div>
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
-                        💡 Inget problem! Du kan ansluta en workflow senare via inställningar (⚙️)
+                      <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg flex items-center gap-2">
+                        <Info className="h-4 w-4 flex-shrink-0" />
+                        <span>Inget problem! Du kan ansluta en workflow senare via inställningar <Settings className="h-3 w-3 inline" /></span>
                       </div>
                     )}
                   </div>
@@ -1363,11 +1388,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
               {!showArchivedColumns && (
                 <div className="mt-6 p-3 bg-blue-50 rounded-lg">
                   <div className="text-sm text-blue-800">
-                    <div className="font-medium mb-1">💡 Vad händer sen?</div>
-                    <div>
+                    <div className="font-medium mb-1 flex items-center gap-1">
+                      <Info className="h-4 w-4" />
+                      Vad händer sen?
+                    </div>
+                    <div className="flex items-center gap-1">
                       {showWorkflowInput
-                        ? 'När kolumnen är skapad börjar den ta emot nyheter från din workflow automatiskt. Du kan också se Kolumn-ID i inställningar (⚙️) för manuell publicering.'
-                        : 'Kolumnen får ett unikt Kolumn-ID som du hittar i inställningar (⚙️). Använd det för att skicka data från workflows eller andra källor.'}
+                        ? <>När kolumnen är skapad börjar den ta emot nyheter från din workflow automatiskt. Du kan också se Kolumn-ID i inställningar <Settings className="h-3 w-3 inline" /> för manuell publicering.</>
+                        : <>Kolumnen får ett unikt Kolumn-ID som du hittar i inställningar <Settings className="h-3 w-3 inline" />. Använd det för att skicka data från workflows eller andra källor.</>}
                     </div>
                   </div>
                 </div>
