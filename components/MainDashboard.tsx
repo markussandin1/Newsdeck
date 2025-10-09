@@ -8,7 +8,7 @@ import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn }
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
-import { Settings, X, Copy, Info } from 'lucide-react'
+import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle } from 'lucide-react'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -883,75 +883,83 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                         updateColumn(column.id, editTitle, editDescription, editFlowId)
                       }} className="space-y-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">
                             Kolumnnamn *
                           </label>
                           <input
                             type="text"
                             value={editTitle}
                             onChange={(e) => setEditTitle(e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-2 py-1.5 text-sm border border-input rounded focus:ring-2 focus:ring-ring focus:border-ring bg-background"
                             placeholder="t.ex. Breaking News"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">
                             Beskrivning
                           </label>
                           <textarea
                             value={editDescription}
                             onChange={(e) => setEditDescription(e.target.value)}
-                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-2 py-1.5 text-xs border border-input rounded resize-none focus:ring-2 focus:ring-ring focus:border-ring bg-background"
                             placeholder="Valfri beskrivning..."
                             rows={2}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            📌 Kolumn-ID
+                          <label className="block text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                            <Copy className="h-3 w-3" />
+                            Kolumn-ID
                           </label>
                           <div className="flex gap-1">
                             <input
                               type="text"
                               value={column.id}
                               readOnly
-                              className="flex-1 px-2 py-1.5 text-xs bg-gray-100 border border-gray-300 rounded font-mono text-gray-600"
+                              className="flex-1 px-2 py-1.5 text-xs bg-muted border border-input rounded font-mono text-muted-foreground"
                             />
-                            <button
+                            <Button
                               type="button"
                               onClick={() => copyToClipboard(column.id, column.id, column.title)}
-                              className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                              size="sm"
                               title="Kopiera kolumn-ID"
                             >
-                              {copiedId === column.id ? '✓' : '📋'}
-                            </button>
+                              {copiedId === column.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            </Button>
                           </div>
-                          <p className="text-[10px] text-gray-500 mt-1">
+                          <p className="text-[10px] text-muted-foreground mt-1">
                             Skicka data direkt hit med Kolumn-ID.
                           </p>
                         </div>
 
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <label className="block text-xs font-medium text-gray-600">
-                              🔗 Anslut till Workflow
+                            <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1">
+                              <Link2 className="h-3 w-3" />
+                              Anslut till Workflow
                             </label>
-                            <button
+                            <Button
                               type="button"
                               onClick={() => setShowWorkflowHelp(!showWorkflowHelp)}
-                              className="text-xs text-blue-600 hover:text-blue-800"
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-xs"
                             >
-                              ℹ️ Hur gör jag?
-                            </button>
+                              <Info className="h-3 w-3 mr-1" />
+                              Hur gör jag?
+                            </Button>
                           </div>
 
                           {/* Expandable help */}
                           {showWorkflowHelp && (
                             <div className="mb-2 p-2 bg-blue-50 rounded-md text-[10px] text-blue-800 space-y-1">
-                              <div className="font-medium">📖 Så här ansluter du en workflow:</div>
+                              <div className="font-medium flex items-center gap-1">
+                                <Info className="h-3 w-3" />
+                                Så här ansluter du en workflow:
+                              </div>
                               <ol className="list-decimal list-inside space-y-0.5 ml-1">
                                 <li>
                                   Öppna din Workflows-applikation{' '}
@@ -976,14 +984,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                           {editFlowId ? (
                             <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-md mb-2">
                               <div className="flex items-center gap-2 text-xs">
-                                <span className="text-emerald-600 font-medium">✅ Ansluten</span>
-                                <button
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                <span className="text-emerald-600 font-medium">Ansluten</span>
+                                <Button
                                   type="button"
                                   onClick={() => setEditFlowId('')}
-                                  className="ml-auto text-xs text-gray-600 hover:text-red-600"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-auto h-auto p-1 text-xs hover:text-destructive"
                                 >
-                                  🗑️ Koppla från
-                                </button>
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Koppla från
+                                </Button>
                               </div>
                               <div className="text-[10px] text-emerald-700 mt-1">
                                 Workflow-ID: <code className="bg-white px-1 rounded">{editFlowId}</code>
@@ -1003,39 +1015,48 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                                     setTimeout(() => setShowExtractionSuccess(false), 3000)
                                   }
                                 }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-2 py-1.5 text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background"
                                 placeholder="Klistra in workflow-URL från Workflows-appen"
                               />
                               {showExtractionSuccess && (
-                                <div className="text-[10px] text-green-600">
-                                  ✓ Workflow-ID extraherat från URL
+                                <div className="text-[10px] text-success flex items-center gap-1">
+                                  <Check className="h-3 w-3" />
+                                  Workflow-ID extraherat från URL
                                 </div>
                               )}
                               <div className="flex items-center gap-2">
-                                <p className="text-[10px] text-gray-500 flex-1">
+                                <p className="text-[10px] text-muted-foreground flex-1">
                                   Fyll denna kolumn automatiskt med nyheter från en AI-workflow
                                 </p>
-                                <a
-                                  href="https://newsdeck-389280113319.europe-west1.run.app/"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[10px] text-blue-600 hover:underline whitespace-nowrap"
+                                <Button
+                                  asChild
+                                  variant="link"
+                                  size="sm"
+                                  className="h-auto p-0 text-[10px] whitespace-nowrap"
                                 >
-                                  🔗 Öppna Workflows-appen →
-                                </a>
+                                  <a
+                                    href="https://newsdeck-389280113319.europe-west1.run.app/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    Öppna Workflows-appen →
+                                  </a>
+                                </Button>
                               </div>
                             </div>
                           )}
                         </div>
 
-                        <div className="flex gap-2 pt-2 border-t border-gray-300">
-                          <button
+                        <div className="flex gap-2 pt-2 border-t border-border">
+                          <Button
                             type="submit"
-                            className="flex-1 px-3 py-2 bg-green-500 text-white text-xs rounded hover:bg-green-600 font-medium"
+                            className="flex-1"
+                            size="sm"
                           >
-                            💾 Spara ändringar
-                          </button>
-                          <button
+                            <Save className="h-3 w-3 mr-1" />
+                            Spara ändringar
+                          </Button>
+                          <Button
                             type="button"
                             onClick={() => {
                               if (confirm(`Är du säker på att du vill arkivera "${column.title}"?`)) {
@@ -1043,11 +1064,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                                 setEditingColumn(null)
                               }
                             }}
-                            className="px-3 py-2 bg-red-500 text-white text-xs rounded hover:bg-red-600 font-medium"
+                            variant="destructive"
+                            size="sm"
                             title="Arkivera kolumn"
                           >
-                            🗄️ Arkivera
-                          </button>
+                            <Archive className="h-3 w-3 mr-1" />
+                            Arkivera
+                          </Button>
                         </div>
                       </form>
                     </div>
