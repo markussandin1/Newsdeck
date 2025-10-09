@@ -176,6 +176,15 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
             </time>
           </div>
           
+          {/* Category badge (if present) */}
+          {item.category && (
+            <div className="mb-1">
+              <span className="inline-block px-2 py-0.5 text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200 rounded-full uppercase tracking-wide">
+                {item.category}
+              </span>
+            </div>
+          )}
+
           {/* Title */}
           <h3 className="font-semibold text-slate-900 mb-2 line-clamp-2 group-hover:text-blue-700 smooth-transition text-sm leading-tight">
             {item.title}

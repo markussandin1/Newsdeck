@@ -265,14 +265,6 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
             <span>•</span>
             <span>{formatTime(item.createdInDb || item.timestamp)}</span>
           </div>
-          {severityPresentation && (
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${severityPresentation.bannerClass}`}>
-              {severityPresentation.label}
-              {item.category && (
-                <span className="text-white/80 font-normal">{item.category}</span>
-              )}
-            </div>
-          )}
         </div>
             <button
               onClick={onClose}
@@ -292,7 +284,6 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
             }`}>
               Nyhetsvärde: {item.newsValue}
             </span>
-            {getSeverityBadge(item.severity)}
             {item.category && (
               <span className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200">
                 {item.category}
