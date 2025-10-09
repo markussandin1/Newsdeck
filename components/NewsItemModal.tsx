@@ -157,7 +157,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
     if (!countryCode || countryCode.length !== 2) return '🌍'
 
     const code = countryCode.toUpperCase()
-    const codePoints = [...code].map(char => 0x1F1E6 + char.charCodeAt(0) - 65)
+    const codePoints = Array.from(code).map(char => 0x1F1E6 + char.charCodeAt(0) - 65)
     return String.fromCodePoint(...codePoints)
   }
 
