@@ -152,6 +152,15 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
 
   const mapsUrl = coordinates ? getGoogleMapsUrl(coordinates[0], coordinates[1]) : null
 
+  // Convert ISO 3166-1 alpha-2 country code to flag emoji
+  const getCountryFlag = (countryCode?: string) => {
+    if (!countryCode || countryCode.length !== 2) return '🌍'
+
+    const code = countryCode.toUpperCase()
+    const codePoints = [...code].map(char => 0x1F1E6 + char.charCodeAt(0) - 65)
+    return String.fromCodePoint(...codePoints)
+  }
+
   const renderExtraValue = (value: unknown): string => {
     if (value === null || value === undefined) {
       return ''
@@ -273,9 +282,8 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                 {locationEntries.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 text-sm">
                     {item.location.country && (
-                      <span className="flex items-center gap-1">
-                        🇸🇪
-                        <span className="text-foreground">{item.location.country}</span>
+                      <span className="text-lg">
+                        {getCountryFlag(item.location.country)}
                       </span>
                     )}
                     {item.location.county && (
@@ -311,22 +319,16 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                   </div>
                 )}
 
-                {coordinates && (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="text-sm text-muted-foreground">
-                      <div className="text-xs uppercase tracking-wide text-muted-foreground/60">Koordinater</div>
-                      <div>{coordinates[0]}, {coordinates[1]}</div>
-                    </div>
-                    {mapsUrl && (
-                      <Button
-                        onClick={() => window.open(mapsUrl, '_blank')}
-                        size="sm"
-                        className="gap-2"
-                      >
-                        <Map className="h-4 w-4" />
-                        Öppna i kartor
-                      </Button>
-                    )}
+                {coordinates && mapsUrl && (
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => window.open(mapsUrl, '_blank')}
+                      variant="outline"
+                      className="h-5 px-2 gap-1 text-[11px] rounded"
+                    >
+                      <Map className="h-3 w-3" />
+                      Kartor
+                    </Button>
                   </div>
                 )}
 
