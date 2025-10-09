@@ -179,7 +179,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           {/* Category badge (if present) */}
           {item.category && (
             <div className="mb-1">
-              <span className="inline-block px-2 py-0.5 text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200 rounded-full uppercase tracking-wide">
+              <span className="inline-block px-2 py-0.5 text-[8px] font-medium bg-blue-100 text-blue-800 border border-blue-200 rounded-full uppercase tracking-wide">
                 {item.category}
               </span>
             </div>
