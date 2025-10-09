@@ -58,62 +58,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   }
 
 
-  const getSeverityPresentation = (severity?: string | null) => {
-    if (!severity) return null
-
-    const normalized = severity.trim().toLowerCase()
-    const map: Record<string, { label: string; badgeClass: string; bannerClass: string }> = {
-      critical: {
-        label: 'Kritisk',
-        badgeClass: 'bg-rose-100 text-rose-700 border border-rose-200',
-        bannerClass: 'bg-rose-600 text-white'
-      },
-      kritisk: {
-        label: 'Kritisk',
-        badgeClass: 'bg-rose-100 text-rose-700 border border-rose-200',
-        bannerClass: 'bg-rose-600 text-white'
-      },
-      high: {
-        label: 'Hög',
-        badgeClass: 'bg-amber-100 text-amber-700 border border-amber-200',
-        bannerClass: 'bg-amber-500 text-white'
-      },
-      hög: {
-        label: 'Hög',
-        badgeClass: 'bg-amber-100 text-amber-700 border border-amber-200',
-        bannerClass: 'bg-amber-500 text-white'
-      },
-      medium: {
-        label: 'Medel',
-        badgeClass: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
-        bannerClass: 'bg-yellow-500 text-white'
-      },
-      medel: {
-        label: 'Medel',
-        badgeClass: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
-        bannerClass: 'bg-yellow-500 text-white'
-      },
-      low: {
-        label: 'Låg',
-        badgeClass: 'bg-slate-100 text-slate-600 border border-slate-200',
-        bannerClass: 'bg-slate-500 text-white'
-      },
-      låg: {
-        label: 'Låg',
-        badgeClass: 'bg-slate-100 text-slate-600 border border-slate-200',
-        bannerClass: 'bg-slate-500 text-white'
-      }
-    }
-
-    const presentation = map[normalized]
-
-    return presentation || {
-      label: severity,
-      badgeClass: 'bg-slate-100 text-slate-600 border border-slate-200',
-      bannerClass: 'bg-slate-500 text-white'
-    }
-  }
-
   const getLocationSummary = () => {
     if (!item.location) return null
 
@@ -166,7 +110,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   }
 
   const { displaySource, sourceUrl } = getSourceInfo()
-  const severityPresentation = getSeverityPresentation(item.severity)
   const locationSummary = getLocationSummary()
 
 
@@ -252,11 +195,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${getNewsValueBadgeStyle(item.newsValue)}`}>
                 {item.newsValue}
               </span>
-              {severityPresentation && (
-                <span className={`px-2 py-1 text-[11px] font-medium rounded-full ${severityPresentation.badgeClass}`}>
-                  {severityPresentation.label}
-                </span>
-              )}
             </div>
             {locationSummary && (
               <span className="text-xs text-slate-500 flex items-center gap-1 text-right">
@@ -295,14 +233,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
             <span>•</span>
             <span>{formatTime(item.createdInDb || item.timestamp)}</span>
           </div>
-          {severityPresentation && (
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${severityPresentation.bannerClass}`}>
-              {severityPresentation.label}
-              {item.category && (
-                <span className="text-white/80 font-normal">{item.category}</span>
-              )}
-            </div>
-          )}
         </div>
         <div className="flex flex-col items-end gap-1 ml-3">
           <span className={`px-2 py-1 rounded text-xs font-bold ${
