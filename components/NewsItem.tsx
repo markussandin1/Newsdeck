@@ -1,5 +1,7 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { useState, useEffect, memo } from 'react'
+import { MapPin, ExternalLink } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 interface NewsItemProps {
   item: NewsItemType
@@ -20,26 +22,26 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   const getNewsValueAccentColor = (newsValue: number) => {
     switch (newsValue) {
       case 5:
-        return 'bg-rose-500'
+        return 'bg-priority-critical'
       case 4:
-        return 'bg-amber-500'
+        return 'bg-priority-high'
       case 3:
-        return 'bg-yellow-500'
+        return 'bg-priority-medium'
       default:
-        return 'bg-slate-400'
+        return 'bg-priority-low'
     }
   }
 
-  const getNewsValueBadgeStyle = (newsValue: number) => {
+  const getNewsValueBadgeVariant = (newsValue: number): 'error' | 'warning' | 'info' | 'secondary' => {
     switch (newsValue) {
       case 5:
-        return 'bg-rose-100 text-rose-700'
+        return 'error'
       case 4:
-        return 'bg-amber-100 text-amber-700'
+        return 'warning'
       case 3:
-        return 'bg-yellow-100 text-yellow-700'
+        return 'info'
       default:
-        return 'bg-slate-100 text-slate-700'
+        return 'secondary'
     }
   }
 
@@ -47,13 +49,13 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   const getNewsValueStyle = (newsValue: number) => {
     switch (newsValue) {
       case 5:
-        return 'border-rose-500 border-2 bg-rose-50'
+        return 'border-priority-critical border-2 bg-error/5'
       case 4:
-        return 'border-amber-500 border-2 bg-amber-50'
+        return 'border-priority-high border-2 bg-warning/5'
       case 3:
-        return 'border-yellow-500 border-2 bg-yellow-50'
+        return 'border-priority-medium border-2 bg-success/5'
       default:
-        return 'border-slate-300 border bg-white'
+        return 'border-priority-low border bg-card'
     }
   }
 
@@ -129,8 +131,8 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
 
   if (compact) {
     return (
-      <div 
-        className={`relative bg-white rounded-lg border border-slate-200 p-4 cursor-pointer group smooth-transition hover:shadow-soft-lg hover:border-slate-300 ${
+      <div
+        className={`relative bg-card rounded-lg border border-border p-4 cursor-pointer group smooth-transition hover:shadow-soft-lg hover:border-border/80 ${
           isNew ? 'new-message' : ''
         }`}
         onClick={onClick}
@@ -155,15 +157,13 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
                   href={sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-medium text-indigo-600 uppercase tracking-wide hover:underline flex items-center gap-1"
+                  className="text-xs font-medium text-primary uppercase tracking-wide hover:underline flex items-center gap-1"
                 >
                   {displaySource}
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6L10 16" />
-                  </svg>
+                  <ExternalLink className="h-3 w-3" />
                 </a>
               ) : (
-                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {displaySource}
                 </span>
               )}
@@ -171,7 +171,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
                 <span className="new-badge">NY</span>
               )}
             </div>
-            <time className="text-xs text-slate-400">
+            <time className="text-xs text-muted-foreground">
               {new Date(item.createdInDb || item.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
             </time>
           </div>
@@ -179,20 +179,20 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           {/* Category badge (if present) */}
           {item.category && (
             <div className="mb-1">
-              <span className="inline-block px-2 py-0.5 text-[8px] font-medium bg-blue-100 text-blue-800 border border-blue-200 rounded-full uppercase tracking-wide">
+              <Badge variant="info" className="text-[8px] uppercase">
                 {item.category}
-              </span>
+              </Badge>
             </div>
           )}
 
           {/* Title */}
-          <h3 className="font-semibold text-slate-900 mb-2 line-clamp-2 group-hover:text-blue-700 smooth-transition text-sm leading-tight">
+          <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary smooth-transition text-sm leading-tight">
             {item.title}
           </h3>
-          
+
           {/* Description */}
           {item.description && (
-            <p className="text-sm text-slate-600 line-clamp-2 mb-3 leading-relaxed">
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
               {item.description}
             </p>
           )}
@@ -201,13 +201,14 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           {/* Footer */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getNewsValueBadgeStyle(item.newsValue)}`}>
+              <Badge variant={getNewsValueBadgeVariant(item.newsValue)}>
                 {item.newsValue}
-              </span>
+              </Badge>
             </div>
             {locationSummary && (
-              <span className="text-xs text-slate-500 flex items-center gap-1 text-right">
-                📍 {locationSummary}
+              <span className="text-xs text-muted-foreground flex items-center gap-1 text-right">
+                <MapPin className="w-3 h-3" />
+                {locationSummary}
               </span>
             )}
           </div>
@@ -220,21 +221,19 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
     <div className={`rounded-lg p-4 shadow-sm ${getNewsValueStyle(item.newsValue)}`}>
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
-          <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">
+          <h3 className="font-bold text-foreground text-lg leading-tight mb-1">
             {item.title}
           </h3>
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
             {sourceUrl ? (
               <a
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-indigo-600 hover:underline flex items-center gap-1"
+                className="font-medium text-primary hover:underline flex items-center gap-1"
               >
                 {displaySource}
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6L10 16" />
-                </svg>
+                <ExternalLink className="h-3.5 w-3.5" />
               </a>
             ) : (
               <span className="font-medium">{displaySource}</span>
@@ -244,18 +243,14 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 ml-3">
-          <span className={`px-2 py-1 rounded text-xs font-bold ${
-            item.newsValue >= 4 ? 'bg-red-600 text-white' :
-            item.newsValue === 3 ? 'bg-yellow-600 text-white' :
-            'bg-gray-600 text-white'
-          }`}>
+          <Badge variant={getNewsValueBadgeVariant(item.newsValue)}>
             {item.newsValue}
-          </span>
+          </Badge>
         </div>
       </div>
       
       {item.description && (
-        <p className="text-gray-700 mb-3 text-sm leading-relaxed">
+        <p className="text-muted-foreground mb-3 text-sm leading-relaxed">
           {item.description}
         </p>
       )}
@@ -263,47 +258,47 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
       <div className="space-y-4">
         {item.location && (
           <div>
-            <div className="text-sm font-semibold text-gray-700 mb-1">Platsdetaljer</div>
-            <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
+            <div className="text-sm font-semibold text-foreground mb-1">Platsdetaljer</div>
+            <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground">
               {item.location.country && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-400">Land</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60">Land</span>
                   <span>{item.location.country}</span>
                 </div>
               )}
               {item.location.county && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-400">Län</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60">Län</span>
                   <span>{item.location.county}</span>
                 </div>
               )}
               {item.location.municipality && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-400">Kommun</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60">Kommun</span>
                   <span>{item.location.municipality}</span>
                 </div>
               )}
               {item.location.area && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-400">Område</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60">Område</span>
                   <span>{item.location.area}</span>
                 </div>
               )}
               {item.location.street && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-400">Adress</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60">Adress</span>
                   <span>{item.location.street}</span>
                 </div>
               )}
               {item.location.name && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-400">Platsnamn</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60">Platsnamn</span>
                   <span>{item.location.name}</span>
                 </div>
               )}
               {Array.isArray(item.location.coordinates) && item.location.coordinates.length === 2 && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-400">Koordinater</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60">Koordinater</span>
                   <span>{item.location.coordinates.join(', ')}</span>
                 </div>
               )}
@@ -313,11 +308,11 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
 
         {item.extra && Object.keys(item.extra).length > 0 && (
           <div>
-            <div className="text-sm font-semibold text-gray-700 mb-1">Extra data</div>
-            <div className="space-y-1 text-sm text-gray-600">
+            <div className="text-sm font-semibold text-foreground mb-1">Extra data</div>
+            <div className="space-y-1 text-sm text-muted-foreground">
               {Object.entries(item.extra).map(([key, value]) => (
                 <div key={key} className="flex items-start gap-2">
-                  <span className="text-xs uppercase tracking-wide text-gray-400 whitespace-nowrap">{key}</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60 whitespace-nowrap">{key}</span>
                   <span className="break-words">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
                 </div>
               ))}
@@ -325,7 +320,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           </div>
         )}
 
-        <div className="text-xs text-gray-500 pt-2 border-t border-gray-200 flex flex-col gap-1">
+        <div className="text-xs text-muted-foreground pt-2 border-t border-border flex flex-col gap-1">
           <span><span className="font-medium">Workflow ID:</span> {item.workflowId}</span>
           {item.flowId && (
             <span><span className="font-medium">Flow ID:</span> {item.flowId}</span>

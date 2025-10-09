@@ -3,11 +3,14 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { useEffect, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
+import { MapPin, ExternalLink, X, Paperclip, Settings, Map } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 // Dynamically import LeafletMap to avoid SSR issues
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
-  loading: () => <div className="w-full h-48 bg-gray-100 rounded-lg border border-gray-200 animate-pulse" />
+  loading: () => <div className="w-full h-48 bg-muted rounded-lg border border-border animate-pulse" />
 })
 
 interface NewsItemModalProps {
@@ -48,82 +51,29 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
   const getNewsValueStyle = (newsValue: number) => {
     switch (newsValue) {
       case 5:
-        return 'border-red-500 bg-red-50'
+        return 'border-priority-critical bg-error/5'
       case 4:
-        return 'border-orange-500 bg-orange-50'
+        return 'border-priority-high bg-warning/5'
       case 3:
-        return 'border-yellow-500 bg-yellow-50'
+        return 'border-priority-medium bg-success/5'
       default:
-        return 'border-gray-300 bg-white'
+        return 'border-priority-low bg-card'
     }
   }
 
-  const getSeverityPresentation = (severity?: string | null) => {
-    if (!severity) return null
-
-    const normalized = severity.trim().toLowerCase()
-    const map: Record<string, { label: string; badgeClass: string; bannerClass: string }> = {
-      critical: {
-        label: 'Kritisk',
-        badgeClass: 'bg-red-100 text-red-800 border-red-200',
-        bannerClass: 'bg-red-600 text-white'
-      },
-      kritisk: {
-        label: 'Kritisk',
-        badgeClass: 'bg-red-100 text-red-800 border-red-200',
-        bannerClass: 'bg-red-600 text-white'
-      },
-      high: {
-        label: 'Hög',
-        badgeClass: 'bg-orange-100 text-orange-800 border-orange-200',
-        bannerClass: 'bg-orange-500 text-white'
-      },
-      hög: {
-        label: 'Hög',
-        badgeClass: 'bg-orange-100 text-orange-800 border-orange-200',
-        bannerClass: 'bg-orange-500 text-white'
-      },
-      medium: {
-        label: 'Medel',
-        badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        bannerClass: 'bg-yellow-500 text-white'
-      },
-      medel: {
-        label: 'Medel',
-        badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        bannerClass: 'bg-yellow-500 text-white'
-      },
-      low: {
-        label: 'Låg',
-        badgeClass: 'bg-gray-100 text-gray-800 border-gray-200',
-        bannerClass: 'bg-gray-600 text-white'
-      },
-      låg: {
-        label: 'Låg',
-        badgeClass: 'bg-gray-100 text-gray-800 border-gray-200',
-        bannerClass: 'bg-gray-600 text-white'
-      }
-    }
-
-    const presentation = map[normalized]
-
-    return presentation || {
-      label: severity,
-      badgeClass: 'bg-gray-100 text-gray-800 border-gray-200',
-      bannerClass: 'bg-gray-600 text-white'
+  const getNewsValueBadgeVariant = (newsValue: number): 'error' | 'warning' | 'info' | 'secondary' => {
+    switch (newsValue) {
+      case 5:
+        return 'error'
+      case 4:
+        return 'warning'
+      case 3:
+        return 'info'
+      default:
+        return 'secondary'
     }
   }
 
-  const getSeverityBadge = (severity?: string | null) => {
-    const presentation = getSeverityPresentation(severity)
-    if (!presentation) return null
-
-    return (
-      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium border ${presentation.badgeClass}`}>
-        {presentation.label}
-      </span>
-    )
-  }
 
   const isUrl = (value?: string | null) => {
     if (!value) return false
@@ -187,8 +137,6 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
     }
   }
 
-  const severityPresentation = getSeverityPresentation(item.severity)
-
   const locationEntries = item.location ? [
     { label: 'Land', value: item.location.country },
     { label: 'Län', value: item.location.county },
@@ -216,11 +164,14 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
 
   const extraSection: ReactNode = item?.extra && Object.keys(item.extra).length > 0 ? (
     <div>
-      <h3 className="text-lg font-semibold text-gray-800 mb-2">📎 Extra data</h3>
-      <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+      <div className="flex items-center gap-2 mb-2">
+        <Paperclip className="h-5 w-5 text-muted-foreground" />
+        <h3 className="text-lg font-semibold text-foreground">Extra data</h3>
+      </div>
+      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
         {(Object.entries(item.extra) as Array<[string, unknown]>).map(([key, value]) => (
-          <div key={key} className="text-sm text-gray-600">
-            <span className="text-xs uppercase tracking-wide text-gray-400 mr-2">{key}</span>
+          <div key={key} className="text-sm text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground/60 mr-2">{key}</span>
             <span className="break-words">{renderExtraValue(value)}</span>
           </div>
         ))}
@@ -235,59 +186,55 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       onClick={onClose}
     >
-      <div 
+      <div
         className={`bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-l-8 ${getNewsValueStyle(item.newsValue)}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-border">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-800 leading-tight mb-3">
+              <h2 className="text-2xl font-bold text-foreground leading-tight mb-3">
                 {item.title}
               </h2>
-          <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
             {sourceUrl ? (
               <a
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-indigo-600 hover:underline flex items-center gap-1"
+                className="font-semibold text-primary hover:underline flex items-center gap-1"
               >
                 {resolvedSource}
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6L10 16" />
-                </svg>
+                <ExternalLink className="h-4 w-4" />
               </a>
             ) : (
-              <span className="font-semibold text-blue-600">{resolvedSource}</span>
+              <span className="font-semibold text-primary">{resolvedSource}</span>
             )}
             <span>•</span>
             <span>{formatTime(item.createdInDb || item.timestamp)}</span>
           </div>
         </div>
-            <button
+            <Button
               onClick={onClose}
-              className="ml-4 text-gray-400 hover:text-gray-600 text-2xl font-bold p-1"
+              variant="ghost"
+              size="icon"
+              className="ml-4"
               title="Stäng"
             >
-              ×
-            </button>
+              <X className="h-5 w-5" />
+            </Button>
           </div>
-          
+
           {/* Badges */}
           <div className="flex items-center gap-3">
-            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-              item.newsValue >= 4 ? 'bg-red-600 text-white' :
-              item.newsValue === 3 ? 'bg-yellow-600 text-white' :
-              'bg-gray-600 text-white'
-            }`}>
+            <Badge variant={getNewsValueBadgeVariant(item.newsValue)}>
               Nyhetsvärde: {item.newsValue}
-            </span>
+            </Badge>
             {item.category && (
-              <span className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200">
+              <Badge variant="info">
                 {item.category}
-              </span>
+              </Badge>
             )}
           </div>
         </div>
@@ -296,8 +243,8 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
         <div className="p-6 space-y-6">
           {item.description && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Beskrivning</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Beskrivning</h3>
+              <p className="text-muted-foreground leading-relaxed">
                 {item.description}
               </p>
             </div>
@@ -305,30 +252,29 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
 
           {sourceUrl && (
             <div>
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+              <Button
+                onClick={() => window.open(sourceUrl, '_blank')}
+                className="gap-2"
               >
                 Besök källa
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6L10 16" />
-                </svg>
-              </a>
+                <ExternalLink className="h-4 w-4" />
+              </Button>
             </div>
           )}
           
           {/* Location */}
           {item.location && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">📍 Plats</h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-lg font-semibold text-foreground">Plats</h3>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-4 space-y-4">
                 {locationEntries.length > 0 && (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {locationEntries.map(({ label, value }) => (
-                      <div key={label} className="text-sm text-gray-600">
-                        <div className="text-xs uppercase tracking-wide text-gray-400 mb-0.5">{label}</div>
+                      <div key={label} className="text-sm text-muted-foreground">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground/60 mb-0.5">{label}</div>
                         <div>{value}</div>
                       </div>
                     ))}
@@ -337,20 +283,19 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
 
                 {coordinates && (
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="text-sm text-gray-600">
-                      <div className="text-xs uppercase tracking-wide text-gray-400">Koordinater</div>
+                    <div className="text-sm text-muted-foreground">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground/60">Koordinater</div>
                       <div>{coordinates[0]}, {coordinates[1]}</div>
                     </div>
                     {mapsUrl && (
-                      <button
+                      <Button
                         onClick={() => window.open(mapsUrl, '_blank')}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700"
+                        size="sm"
+                        className="gap-2"
                       >
+                        <Map className="h-4 w-4" />
                         Öppna i kartor
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6L10 16" />
-                        </svg>
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
@@ -369,8 +314,9 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                           }
                         }}
                       />
-                      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm text-gray-700 opacity-0 group-hover:opacity-100 smooth-transition shadow-sm">
-                        🗺️ Öppna i Google Maps
+                      <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm text-foreground opacity-0 group-hover:opacity-100 smooth-transition shadow-sm flex items-center gap-2">
+                        <Map className="h-4 w-4" />
+                        Öppna i Google Maps
                       </div>
                       <div className="absolute bottom-3 left-3 bg-black/70 text-white rounded px-2 py-1 text-xs">
                         Klicka för att öppna i Google Maps
@@ -388,60 +334,69 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
           {/* Raw data */}
           {item.raw != null ? (
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">🔧 Rådata</h3>
-              <div className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Settings className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-lg font-semibold text-foreground">Rådata</h3>
+              </div>
+              <div className="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto">
                 <pre className="text-sm whitespace-pre-wrap">
                   {JSON.stringify(item.raw, null, 2)}
                 </pre>
               </div>
             </div>
           ) : null}
-          
+
           {/* Technical details */}
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">⚙️ Teknisk information</h3>
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Settings className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-semibold text-foreground">Teknisk information</h3>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium text-gray-600">ID:</span>
+                <span className="font-medium text-muted-foreground">ID:</span>
                 <div className="mt-1 flex items-center justify-between gap-3">
-                  <div className="font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded flex-1 break-all">
+                  <div className="font-mono text-foreground bg-muted px-2 py-1 rounded flex-1 break-all">
                     {item.id}
                   </div>
-                  <button
+                  <Button
                     onClick={() => handleCopy(item.id, 'id')}
-                    className="text-xs text-blue-600 hover:text-blue-800"
+                    variant="ghost"
+                    size="sm"
                   >
                     {copiedField === 'id' ? 'Kopierad' : 'Kopiera'}
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div>
-                <span className="font-medium text-gray-600">Workflow ID:</span>
+                <span className="font-medium text-muted-foreground">Workflow ID:</span>
                 <div className="mt-1 flex items-center justify-between gap-3">
-                  <div className="font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded flex-1 break-all">
+                  <div className="font-mono text-foreground bg-muted px-2 py-1 rounded flex-1 break-all">
                     {item.workflowId}
                   </div>
-                  <button
+                  <Button
                     onClick={() => handleCopy(item.workflowId, 'workflowId')}
-                    className="text-xs text-blue-600 hover:text-blue-800"
+                    variant="ghost"
+                    size="sm"
                   >
                     {copiedField === 'workflowId' ? 'Kopierad' : 'Kopiera'}
-                  </button>
+                  </Button>
                 </div>
               </div>
               {item.flowId && (
                 <div>
-                  <span className="font-medium text-gray-600">Flow ID:</span>
+                  <span className="font-medium text-muted-foreground">Flow ID:</span>
                   <div className="mt-1 flex items-center justify-between gap-3">
-                    <div className="font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded flex-1 break-all">
+                    <div className="font-mono text-foreground bg-muted px-2 py-1 rounded flex-1 break-all">
                       {item.flowId}
                     </div>
-                    <button
+                    <Button
                       onClick={() => handleCopy(item.flowId as string, 'flowId')}
-                      className="text-xs text-blue-600 hover:text-blue-800"
+                      variant="ghost"
+                      size="sm"
                     >
                       {copiedField === 'flowId' ? 'Kopierad' : 'Kopiera'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

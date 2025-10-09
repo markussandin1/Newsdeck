@@ -23,6 +23,9 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
     if (!container || isInitializedRef.current) return
 
     const initMap = async () => {
+      // Mark as initializing immediately to prevent double initialization
+      isInitializedRef.current = true
+
       // Load Leaflet CSS
       if (!document.querySelector('link[href*="leaflet.css"]')) {
         const link = document.createElement('link')
@@ -45,6 +48,9 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
       })
 
+      // Check again before initializing (in case cleanup ran)
+      if (!container || mapInstanceRef.current) return
+
       // Initialize map
       const map = L.map(container).setView([lat, lng], zoom)
 
@@ -66,7 +72,6 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
       map.keyboard.disable()
 
       mapInstanceRef.current = map
-      isInitializedRef.current = true
 
       // Add click handler if provided
       if (onClick) {
@@ -88,7 +93,8 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
         isInitializedRef.current = false
       }
     }
-  }, [lat, lng, onClick, zoom])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
 
   // Update map view and marker when coordinates change (without re-initializing)
   useEffect(() => {

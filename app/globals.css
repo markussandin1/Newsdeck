@@ -127,7 +127,7 @@
     --priority-high: 38 92% 50%;                /* #f59e0b - Orange */
     --priority-high-foreground: 0 0% 100%;
 
-    --priority-medium: 160 84% 39%;             /* #10b981 - Green */
+    --priority-medium: 217 91% 60%;             /* #3b82f6 - Blue */
     --priority-medium-foreground: 0 0% 100%;
 
     --priority-low: 210 17% 45%;                /* #5F7285 - Slate */
@@ -179,7 +179,7 @@
     /* Priority colors adjusted for dark mode */
     --priority-critical: 348 77% 50%;
     --priority-high: 38 92% 50%;
-    --priority-medium: 160 84% 39%;
+    --priority-medium: 217 91% 60%;
     --priority-low: 210 17% 45%;
 
     --success: 160 84% 39%;
