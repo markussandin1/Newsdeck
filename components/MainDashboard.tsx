@@ -74,6 +74,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
   const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
   const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
+  const [sseConnectionStatus, setSseConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting')
+  const reconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  const reconnectAttemptsRef = useRef<Map<string, number>>(new Map())
 
   // Extract UUID from workflow URL
   const extractWorkflowId = (input: string): string => {
@@ -214,45 +217,78 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }, [])
 
-  // Polling for real-time updates every 5 seconds
+  // Initial load only - SSE handles real-time updates
   useEffect(() => {
     if (dashboard?.id) {
       fetchColumnData()
       loadArchivedColumns()
       loadAllDashboards()
     }
-  }, [dashboard?.id, fetchColumnData, loadArchivedColumns, loadAllDashboards])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboard?.id])
 
-  // Set up SSE connections for real-time updates
+  // Set up SSE connections for real-time updates with reconnect logic
   useEffect(() => {
     if (!dashboard?.columns) {
       return undefined
     }
 
-    const eventSources: EventSource[] = []
+    const eventSources: Map<string, EventSource> = new Map()
+    let isCleaningUp = false
 
-    // Create SSE connection for each column
-    dashboard.columns.forEach((column) => {
-      if (column.isArchived) {
+    const createSSEConnection = (column: DashboardColumn, attemptNumber = 0) => {
+      if (isCleaningUp || column.isArchived) {
         return
       }
 
+      // Clear any existing timeout for this column
+      const existingTimeout = reconnectTimeoutsRef.current.get(column.id)
+      if (existingTimeout) {
+        clearTimeout(existingTimeout)
+        reconnectTimeoutsRef.current.delete(column.id)
+      }
+
+      // Close existing connection if any
+      const existingSource = eventSources.get(column.id)
+      if (existingSource) {
+        existingSource.close()
+        eventSources.delete(column.id)
+      }
+
+      console.log(`SSE: Connecting to column ${column.id} (attempt ${attemptNumber + 1})`)
       const eventSource = new EventSource(`/api/columns/${column.id}/stream`)
+
+      eventSource.addEventListener('open', () => {
+        console.log(`SSE: Connection opened for column ${column.id}`)
+        reconnectAttemptsRef.current.set(column.id, 0)
+        setSseConnectionStatus('connected')
+      })
 
       eventSource.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(event.data)
 
           if (data.type === 'connected') {
-            console.log(`SSE connected to column ${column.id}`)
+            console.log(`SSE: Confirmed connection to column ${column.id}`)
+            setSseConnectionStatus('connected')
           } else if (data.type === 'update' && data.items) {
-            // Add new items to column data
+            // Add new items to column data with deduplication
             setColumnData((prev) => {
               const existingItems = prev[column.id] || []
+
+              // Deduplicate using item.id (source ID) as primary key
               const newItems = data.items.filter(
                 (newItem: NewsItemType) =>
-                  !existingItems.some(existing => existing.dbId === newItem.dbId)
+                  !existingItems.some(existing => existing.id === newItem.id)
               )
+
+              // Skip update if no new items
+              if (newItems.length === 0) {
+                return prev
+              }
+
+              console.log(`SSE: Adding ${newItems.length} new items to column ${column.id}`)
+
               return {
                 ...prev,
                 [column.id]: [...newItems, ...existingItems]
@@ -264,16 +300,52 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         }
       })
 
-      eventSource.onerror = () => {
-        console.log(`SSE connection error for column ${column.id}, will retry...`)
+      eventSource.onerror = (error) => {
+        console.error(`SSE: Connection error for column ${column.id}`, error)
+        eventSource.close()
+        eventSources.delete(column.id)
+
+        if (isCleaningUp) {
+          return
+        }
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+        const currentAttempt = reconnectAttemptsRef.current.get(column.id) || 0
+        const backoffTime = Math.min(1000 * Math.pow(2, currentAttempt), 30000)
+
+        reconnectAttemptsRef.current.set(column.id, currentAttempt + 1)
+        setSseConnectionStatus('disconnected')
+
+        console.log(`SSE: Reconnecting to column ${column.id} in ${backoffTime}ms...`)
+
+        const timeout = setTimeout(() => {
+          createSSEConnection(column, currentAttempt + 1)
+        }, backoffTime)
+
+        reconnectTimeoutsRef.current.set(column.id, timeout)
       }
 
-      eventSources.push(eventSource)
+      eventSources.set(column.id, eventSource)
+    }
+
+    // Create SSE connection for each non-archived column
+    dashboard.columns.forEach((column) => {
+      if (!column.isArchived) {
+        createSSEConnection(column)
+      }
     })
 
-    // Cleanup: close all SSE connections
+    // Cleanup: close all SSE connections and clear timeouts
     return () => {
-      eventSources.forEach(es => es.close())
+      isCleaningUp = true
+
+      eventSources.forEach((es) => es.close())
+      eventSources.clear()
+
+      reconnectTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout))
+      reconnectTimeoutsRef.current.clear()
+
+      reconnectAttemptsRef.current.clear()
     }
   }, [dashboard?.columns])
 
@@ -1035,11 +1107,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                                   className="h-auto p-0 text-[10px] whitespace-nowrap"
                                 >
                                   <a
-                                    href="https://newsdeck-389280113319.europe-west1.run.app/"
+                                    href="https://workflows-lab-iap.bnu.bn.nr/"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                   >
-                                    Öppna Workflows-appen →
+                                    Öppna Workflows →
                                   </a>
                                 </Button>
                               </div>
@@ -1435,9 +1507,28 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         </div>
       )}
 
-      {/* Auto-refresh indicator */}
+      {/* Real-time connection indicator */}
       <div className="fixed bottom-4 right-4 bg-white rounded-full shadow-lg px-3 py-2 text-xs text-gray-600 border">
-        🔄 Auto-uppdatering var 5:e sekund
+        <div className="flex items-center gap-2">
+          {sseConnectionStatus === 'connected' && (
+            <>
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              <span>Live</span>
+            </>
+          )}
+          {sseConnectionStatus === 'connecting' && (
+            <>
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+              <span>Ansluter...</span>
+            </>
+          )}
+          {sseConnectionStatus === 'disconnected' && (
+            <>
+              <div className="w-2 h-2 rounded-full bg-red-500"></div>
+              <span>Återansluter...</span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* News Item Modal */}
