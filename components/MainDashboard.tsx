@@ -339,13 +339,17 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     return () => {
       isCleaningUp = true
 
+      // Capture refs at cleanup time to follow React best practices
+      const timeouts = reconnectTimeoutsRef.current
+      const attempts = reconnectAttemptsRef.current
+
       eventSources.forEach((es) => es.close())
       eventSources.clear()
 
-      reconnectTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout))
-      reconnectTimeoutsRef.current.clear()
+      timeouts.forEach((timeout) => clearTimeout(timeout))
+      timeouts.clear()
 
-      reconnectAttemptsRef.current.clear()
+      attempts.clear()
     }
   }, [dashboard?.columns])
 

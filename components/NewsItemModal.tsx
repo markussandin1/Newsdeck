@@ -162,7 +162,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
       : [countryCodes]
 
     const flags = codes
-      .filter(code => code.length === 2)
+      .filter(code => code.length === 2 && /^[A-Z]{2}$/i.test(code))
       .map(code => {
         const upperCode = code.toUpperCase()
         const codePoints = Array.from(upperCode).map(char => 0x1F1E6 + char.charCodeAt(0) - 65)
