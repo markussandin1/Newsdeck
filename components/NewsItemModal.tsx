@@ -152,13 +152,24 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
 
   const mapsUrl = coordinates ? getGoogleMapsUrl(coordinates[0], coordinates[1]) : null
 
-  // Convert ISO 3166-1 alpha-2 country code to flag emoji
-  const getCountryFlag = (countryCode?: string) => {
-    if (!countryCode || countryCode.length !== 2) return '🌍'
+  // Convert ISO 3166-1 alpha-2 country code(s) to flag emoji(s)
+  const getCountryFlags = (countryCodes?: string) => {
+    if (!countryCodes) return '🌍'
 
-    const code = countryCode.toUpperCase()
-    const codePoints = Array.from(code).map(char => 0x1F1E6 + char.charCodeAt(0) - 65)
-    return String.fromCodePoint(...codePoints)
+    // Split by comma if multiple codes
+    const codes = countryCodes.includes(',')
+      ? countryCodes.split(',').map(c => c.trim())
+      : [countryCodes]
+
+    const flags = codes
+      .filter(code => code.length === 2)
+      .map(code => {
+        const upperCode = code.toUpperCase()
+        const codePoints = Array.from(upperCode).map(char => 0x1F1E6 + char.charCodeAt(0) - 65)
+        return String.fromCodePoint(...codePoints)
+      })
+
+    return flags.length > 0 ? flags.join(' ') : '🌍'
   }
 
   const renderExtraValue = (value: unknown): string => {
@@ -283,7 +294,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                   <div className="flex flex-wrap items-center gap-1.5 text-sm">
                     {item.location.country && (
                       <span className="text-lg">
-                        {getCountryFlag(item.location.country)}
+                        {getCountryFlags(item.location.country)}
                       </span>
                     )}
                     {item.location.county && (
