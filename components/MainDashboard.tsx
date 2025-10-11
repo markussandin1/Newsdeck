@@ -77,6 +77,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [sseConnectionStatus, setSseConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting')
   const reconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const reconnectAttemptsRef = useRef<Map<string, number>>(new Map())
+  const [mutedColumns, setMutedColumns] = useState<Set<string>>(new Set())
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Extract UUID from workflow URL
   const extractWorkflowId = (input: string): string => {
@@ -98,6 +100,31 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     // Otherwise return as-is (already a UUID or custom ID)
     return trimmed
   }
+
+  // Initialize audio element
+  useEffect(() => {
+    audioRef.current = new Audio('/52pj7t0b7w3-notification-sfx-10.mp3')
+  }, [])
+
+  // Load muted columns from localStorage
+  useEffect(() => {
+    const storageKey = `mutedColumns_${dashboard.id}`
+    const saved = localStorage.getItem(storageKey)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setMutedColumns(new Set(parsed))
+      } catch (e) {
+        console.error('Failed to parse muted columns:', e)
+      }
+    }
+  }, [dashboard.id])
+
+  // Save muted columns to localStorage
+  useEffect(() => {
+    const storageKey = `mutedColumns_${dashboard.id}`
+    localStorage.setItem(storageKey, JSON.stringify(Array.from(mutedColumns)))
+  }, [mutedColumns, dashboard.id])
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -289,6 +316,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
               console.log(`SSE: Adding ${newItems.length} new items to column ${column.id}`)
 
+              // Play notification sound if column is not muted
+              if (!mutedColumns.has(column.id) && audioRef.current) {
+                audioRef.current.play().catch(e => {
+                  console.log('Could not play notification sound:', e)
+                })
+              }
+
               return {
                 ...prev,
                 [column.id]: [...newItems, ...existingItems]
@@ -351,7 +385,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
       attempts.clear()
     }
-  }, [dashboard?.columns])
+  }, [dashboard?.columns, mutedColumns])
 
   // Handle click outside dropdown
   useEffect(() => {
@@ -545,6 +579,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     router.push(`/dashboard/${slug}`)
   }, [router])
 
+  const toggleMute = useCallback((columnId: string) => {
+    setMutedColumns(prev => {
+      const next = new Set(prev)
+      if (next.has(columnId)) {
+        next.delete(columnId)
+      } else {
+        next.add(columnId)
+      }
+      return next
+    })
+  }, [])
+
   const reorderColumns = async (draggedColumnId: string, targetColumnId: string) => {
     const columns = dashboard?.columns?.filter(col => !col.isArchived) || []
     const draggedIndex = columns.findIndex(col => col.id === draggedColumnId)
@@ -723,7 +769,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
   StableColumn.displayName = 'StableColumn'
 
-  // Separate component for column content that can update independently
+  // Separate component for column content that can update independently with pagination
   const ColumnContent = memo(({
     columnId,
     items,
@@ -733,6 +779,40 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     items: NewsItemType[]
     onSelectNewsItem: (item: NewsItemType) => void
   }) => {
+    const [displayCount, setDisplayCount] = useState(25)
+    const loadMoreRef = useRef<HTMLDivElement>(null)
+
+    // Reset display count when items change significantly
+    useEffect(() => {
+      if (items.length < displayCount) {
+        setDisplayCount(25)
+      }
+    }, [items.length, displayCount])
+
+    // Intersection Observer for infinite scroll
+    useEffect(() => {
+      if (!loadMoreRef.current) return
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const firstEntry = entries[0]
+          if (firstEntry?.isIntersecting && displayCount < items.length) {
+            // Load 25 more items
+            setDisplayCount(prev => Math.min(prev + 25, items.length))
+          }
+        },
+        {
+          root: null,
+          rootMargin: '200px', // Start loading when 200px from bottom
+          threshold: 0.1
+        }
+      )
+
+      observer.observe(loadMoreRef.current)
+
+      return () => observer.disconnect()
+    }, [displayCount, items.length])
+
     if (items.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500 text-sm">
@@ -747,9 +827,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       )
     }
 
+    const visibleItems = items.slice(0, displayCount)
+    const hasMore = displayCount < items.length
+
     return (
       <>
-        {items.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <div key={`${columnId}-${item.id}-${index}`} className="mb-2">
             <NewsItem
               item={item}
@@ -758,6 +841,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             />
           </div>
         ))}
+        {hasMore && (
+          <div
+            ref={loadMoreRef}
+            className="flex items-center justify-center py-4 text-xs text-gray-400"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        )}
       </>
     )
   }, (prevProps, nextProps) => {
@@ -1158,14 +1253,25 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                           <h3 className="font-semibold text-gray-800">
                             {column.title}
                           </h3>
-                          <Button
-                            onClick={() => startEditing(column)}
-                            variant="ghost"
-                            size="icon"
-                            title="Inställningar"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              onClick={() => toggleMute(column.id)}
+                              variant="ghost"
+                              size="icon"
+                              title={mutedColumns.has(column.id) ? "Ljud av - Klicka för att aktivera" : "Ljud på - Klicka för att stänga av"}
+                              className="text-lg"
+                            >
+                              {mutedColumns.has(column.id) ? '🔇' : '🔊'}
+                            </Button>
+                            <Button
+                              onClick={() => startEditing(column)}
+                              variant="ghost"
+                              size="icon"
+                              title="Inställningar"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                           {columnItems.length} händelser
