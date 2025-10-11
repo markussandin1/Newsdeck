@@ -815,13 +815,46 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
     if (items.length === 0) {
       return (
-        <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 px-4 text-gray-500 text-sm">
           <div className="mb-4 flex justify-center">
-            <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={32} height={32} className="w-8 h-8 object-contain" />
+            <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={48} height={48} className="w-12 h-12 object-contain opacity-40" />
           </div>
-          <div className="mb-2">Väntar på händelser...</div>
-          <div className="text-xs text-gray-400">
-            Konfigurationen finns i kolumnhuvudet ↑
+          <div className="font-medium text-gray-700 mb-3">Denna kolumn är tom</div>
+
+          <div className="space-y-3 text-xs">
+            <div className="p-3 bg-blue-50 rounded-lg text-left">
+              <div className="font-medium text-blue-800 mb-1 flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                För automatiska nyheter:
+              </div>
+              <div className="text-blue-700 mb-2 flex items-center gap-1">
+                Klicka på <Settings className="h-3 w-3 inline" /> och anslut en workflow
+              </div>
+              <Button
+                asChild
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-blue-600 hover:underline font-medium"
+              >
+                <a
+                  href="https://newsdeck-389280113319.europe-west1.run.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Öppna Workflows-appen →
+                </a>
+              </Button>
+            </div>
+
+            <div className="p-3 bg-gray-50 rounded-lg text-left">
+              <div className="font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <Copy className="h-3 w-3" />
+                För manuell publicering:
+              </div>
+              <div className="text-gray-600 flex items-center gap-1">
+                Använd Kolumn-ID från inställningar <Settings className="h-3 w-3 inline" />
+              </div>
+            </div>
           </div>
         </div>
       )
@@ -1282,61 +1315,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 </div>
 
                 {/* Static scrollable area */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {columnItems.length === 0 ? (
-                    <div className="text-center py-8 px-4 text-gray-500 text-sm">
-                      <div className="mb-4 flex justify-center">
-                        <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={48} height={48} className="w-12 h-12 object-contain opacity-40" />
-                      </div>
-                      <div className="font-medium text-gray-700 mb-3">Denna kolumn är tom</div>
-
-                      <div className="space-y-3 text-xs">
-                        <div className="p-3 bg-blue-50 rounded-lg text-left">
-                          <div className="font-medium text-blue-800 mb-1 flex items-center gap-1">
-                            <Info className="h-3 w-3" />
-                            För automatiska nyheter:
-                          </div>
-                          <div className="text-blue-700 mb-2 flex items-center gap-1">
-                            Klicka på <Settings className="h-3 w-3 inline" /> och anslut en workflow
-                          </div>
-                          <Button
-                            asChild
-                            variant="link"
-                            size="sm"
-                            className="h-auto p-0 text-blue-600 hover:underline font-medium"
-                          >
-                            <a
-                              href="https://newsdeck-389280113319.europe-west1.run.app/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Öppna Workflows-appen →
-                            </a>
-                          </Button>
-                        </div>
-
-                        <div className="p-3 bg-gray-50 rounded-lg text-left">
-                          <div className="font-medium text-gray-700 mb-1 flex items-center gap-1">
-                            <Copy className="h-3 w-3" />
-                            För manuell publicering:
-                          </div>
-                          <div className="text-gray-600 flex items-center gap-1">
-                            Använd Kolumn-ID från inställningar <Settings className="h-3 w-3 inline" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    columnItems.map((item, index) => (
-                      <div key={`${column.id}-${item.id}-${index}`} className="mb-2">
-                        <NewsItem
-                          item={item}
-                          compact={true}
-                          onClick={() => setSelectedNewsItem(item)}
-                        />
-                      </div>
-                    ))
-                  )}
+                <div className="flex-1 overflow-y-auto p-2">
+                  <ColumnContent
+                    columnId={column.id}
+                    items={columnItems}
+                    onSelectNewsItem={setSelectedNewsItem}
+                  />
                 </div>
               </div>
             )
