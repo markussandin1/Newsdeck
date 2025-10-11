@@ -8,7 +8,7 @@ import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn }
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
-import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle } from 'lucide-react'
+import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX } from 'lucide-react'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -1292,9 +1292,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                               variant="ghost"
                               size="icon"
                               title={mutedColumns.has(column.id) ? "Ljud av - Klicka för att aktivera" : "Ljud på - Klicka för att stänga av"}
-                              className="text-lg"
                             >
-                              {mutedColumns.has(column.id) ? '🔇' : '🔊'}
+                              {mutedColumns.has(column.id) ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                             </Button>
                             <Button
                               onClick={() => startEditing(column)}
