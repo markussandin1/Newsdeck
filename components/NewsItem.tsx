@@ -14,8 +14,8 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
 
   useEffect(() => {
     if (item.isNew) {
-      // Clear "new" indicator after 30 seconds
-      const timer = setTimeout(() => setIsNew(false), 30000)
+      // Clear "new" indicator after 60 seconds
+      const timer = setTimeout(() => setIsNew(false), 60000)
       return () => clearTimeout(timer)
     }
   }, [item.isNew])
