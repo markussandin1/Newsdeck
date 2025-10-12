@@ -196,7 +196,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
           processedData[columnId] = newItems.map(item => ({
             ...item,
-            isNew: previousItems.length > 0 && !previousItems.some(existing => existing.id === item.id)
+            isNew: previousItems.length > 0 && !previousItems.some(existing => existing.dbId === item.dbId)
           }))
         })
 
@@ -303,10 +303,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             setColumnData((prev) => {
               const existingItems = prev[column.id] || []
 
-              // Deduplicate using item.id (source ID) as primary key
+              // Deduplicate using item.dbId (unique database ID) as primary key
               const newItems = data.items.filter(
                 (newItem: NewsItemType) =>
-                  !existingItems.some(existing => existing.id === newItem.id)
+                  !existingItems.some(existing => existing.dbId === newItem.dbId)
               )
 
               // Skip update if no new items
@@ -892,7 +892,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     // Only re-render if items actually changed
     return prevProps.items.length === nextProps.items.length &&
            prevProps.items.every((item, index) =>
-             item.id === nextProps.items[index]?.id &&
+             item.dbId === nextProps.items[index]?.dbId &&
              item.isNew === nextProps.items[index]?.isNew
            )
   })
