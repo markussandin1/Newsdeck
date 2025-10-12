@@ -22,5 +22,5 @@ export default auth((req: NextRequest & { auth: any }) => {
 })
 
 export const config = {
-  matcher: ["/((?!api/auth|api/workflows|api/admin|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!api/auth|api/workflows|api/admin|api/pubsub|api/columns/.*/updates|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 }
