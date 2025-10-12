@@ -4,7 +4,6 @@ import { ingestNewsItems, IngestionError } from '@/lib/services/ingestion'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { verifyApiKey, unauthorizedResponse } from '@/lib/api-auth'
-import { newsdeckEvents } from '@/lib/events'
 
 export async function POST(request: NextRequest) {
   const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
@@ -63,10 +62,7 @@ export async function POST(request: NextRequest) {
       columnTotals: result.columnTotals
     })
 
-    // Emit SSE events for real-time updates
-    for (const columnId of result.matchingColumns) {
-      newsdeckEvents.emitNewItems(columnId, result.insertedItems)
-    }
+    // Real-time updates now handled via Pub/Sub + event queue in ingestion service
 
     const response = {
       success: true,

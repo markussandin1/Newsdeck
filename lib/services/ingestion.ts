@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid'
 
 import type { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
+import { newsdeckPubSub } from '@/lib/pubsub'
+import { eventQueue } from '@/lib/event-queue'
 
 export class IngestionError extends Error {
   status: number
@@ -270,13 +272,22 @@ export const ingestNewsItems = async (
     columnsUpdated += 1
   }
 
+  // Publish to Pub/Sub for real-time updates (async, don't wait)
+  const columnIdsArray = Array.from(matchingColumns)
+  newsdeckPubSub.publishNewsUpdate(columnIdsArray, insertedItems).catch(err => {
+    // Error already logged in pubsub service, just swallow here
+  })
+
+  // Also add to local event queue for immediate delivery (works in dev and as fallback)
+  eventQueue.addItems(columnIdsArray, insertedItems)
+
   return {
     columnId,
     workflowId,
     itemsAdded: validatedItems.length,
     columnsUpdated,
-    matchingColumns: Array.from(matchingColumns),
+    matchingColumns: columnIdsArray,
     columnTotals,
-    insertedItems  // Return items so we can emit SSE events
+    insertedItems  // Return items so we can emit events
   }
 }

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ingestNewsItems, IngestionError } from '@/lib/services/ingestion'
 import { logger } from '@/lib/logger'
-import { newsdeckEvents } from '@/lib/events'
 
 export async function POST(request: NextRequest) {
   let body: unknown
@@ -32,10 +31,7 @@ export async function POST(request: NextRequest) {
       columnTotals: result.columnTotals
     })
 
-    // Emit SSE events for real-time updates
-    for (const columnId of result.matchingColumns) {
-      newsdeckEvents.emitNewItems(columnId, result.insertedItems)
-    }
+    // Real-time updates now handled via Pub/Sub + event queue in ingestion service
 
     return NextResponse.json({
       success: true,

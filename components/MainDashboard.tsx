@@ -254,67 +254,80 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard?.id])
 
-  // Set up SSE connections for real-time updates with reconnect logic
+  // Set up long-polling for real-time updates
   useEffect(() => {
     if (!dashboard?.columns) {
       return undefined
     }
 
-    const eventSources: Map<string, EventSource> = new Map()
+    const abortControllers: Map<string, AbortController> = new Map()
+    const lastSeenTimestamps: Map<string, number> = new Map()
     let isCleaningUp = false
 
-    const createSSEConnection = (column: DashboardColumn, attemptNumber = 0) => {
+    const startLongPolling = async (column: DashboardColumn) => {
       if (isCleaningUp || column.isArchived) {
         return
       }
 
-      // Clear any existing timeout for this column
-      const existingTimeout = reconnectTimeoutsRef.current.get(column.id)
-      if (existingTimeout) {
-        clearTimeout(existingTimeout)
-        reconnectTimeoutsRef.current.delete(column.id)
+      // Clear any existing controller
+      const existingController = abortControllers.get(column.id)
+      if (existingController) {
+        existingController.abort()
+        abortControllers.delete(column.id)
       }
 
-      // Close existing connection if any
-      const existingSource = eventSources.get(column.id)
-      if (existingSource) {
-        existingSource.close()
-        eventSources.delete(column.id)
-      }
+      // Create new abort controller for this polling loop
+      const controller = new AbortController()
+      abortControllers.set(column.id, controller)
 
-      console.log(`SSE: Connecting to column ${column.id} (attempt ${attemptNumber + 1})`)
-      const eventSource = new EventSource(`/api/columns/${column.id}/stream`)
+      setSseConnectionStatus('connected')
 
-      eventSource.addEventListener('open', () => {
-        console.log(`SSE: Connection opened for column ${column.id}`)
-        reconnectAttemptsRef.current.set(column.id, 0)
-        setSseConnectionStatus('connected')
-      })
-
-      eventSource.addEventListener('message', (event) => {
+      // Long polling loop
+      while (!isCleaningUp && !column.isArchived && !controller.signal.aborted) {
         try {
-          const data = JSON.parse(event.data)
+          const lastSeen = lastSeenTimestamps.get(column.id)
+          const url = lastSeen
+            ? `/api/columns/${column.id}/updates?lastSeen=${lastSeen}`
+            : `/api/columns/${column.id}/updates`
 
-          if (data.type === 'connected') {
-            console.log(`SSE: Confirmed connection to column ${column.id}`)
-            setSseConnectionStatus('connected')
-          } else if (data.type === 'update' && data.items) {
-            // Add new items to column data with deduplication
+          console.log(`LongPoll: Requesting updates for column ${column.id}`, { lastSeen })
+
+          const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          })
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+          }
+
+          const data = await response.json()
+
+          // Update last seen timestamp
+          if (data.timestamp) {
+            lastSeenTimestamps.set(column.id, data.timestamp)
+          }
+
+          // Process new items
+          if (data.success && data.items && data.items.length > 0) {
+            console.log(`LongPoll: Received ${data.items.length} new items for column ${column.id}`)
+
             setColumnData((prev) => {
               const existingItems = prev[column.id] || []
 
-              // Deduplicate using item.dbId (unique database ID) as primary key
+              // Deduplicate using item.dbId (unique database ID)
               const newItems = data.items.filter(
                 (newItem: NewsItemType) =>
                   !existingItems.some(existing => existing.dbId === newItem.dbId)
               )
 
-              // Skip update if no new items
               if (newItems.length === 0) {
                 return prev
               }
 
-              console.log(`SSE: Adding ${newItems.length} new items to column ${column.id}`)
+              console.log(`LongPoll: Adding ${newItems.length} deduplicated items to column ${column.id}`)
 
               // Play notification sound if column is not muted
               if (!mutedColumns.has(column.id) && audioRef.current) {
@@ -329,61 +342,44 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
               }
             })
           }
-        } catch (error) {
-          console.error('Error parsing SSE message:', error)
+
+          // Immediately start next poll
+          setSseConnectionStatus('connected')
+        } catch (error: any) {
+          if (error.name === 'AbortError') {
+            // Polling was cancelled, exit loop
+            console.log(`LongPoll: Aborted for column ${column.id}`)
+            break
+          }
+
+          console.error(`LongPoll: Error for column ${column.id}`, error)
+          setSseConnectionStatus('disconnected')
+
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 2000))
         }
-      })
-
-      eventSource.onerror = (error) => {
-        console.error(`SSE: Connection error for column ${column.id}`, error)
-        eventSource.close()
-        eventSources.delete(column.id)
-
-        if (isCleaningUp) {
-          return
-        }
-
-        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
-        const currentAttempt = reconnectAttemptsRef.current.get(column.id) || 0
-        const backoffTime = Math.min(1000 * Math.pow(2, currentAttempt), 30000)
-
-        reconnectAttemptsRef.current.set(column.id, currentAttempt + 1)
-        setSseConnectionStatus('disconnected')
-
-        console.log(`SSE: Reconnecting to column ${column.id} in ${backoffTime}ms...`)
-
-        const timeout = setTimeout(() => {
-          createSSEConnection(column, currentAttempt + 1)
-        }, backoffTime)
-
-        reconnectTimeoutsRef.current.set(column.id, timeout)
       }
 
-      eventSources.set(column.id, eventSource)
+      // Cleanup for this column
+      abortControllers.delete(column.id)
     }
 
-    // Create SSE connection for each non-archived column
+    // Start long polling for each non-archived column
     dashboard.columns.forEach((column) => {
       if (!column.isArchived) {
-        createSSEConnection(column)
+        startLongPolling(column)
       }
     })
 
-    // Cleanup: close all SSE connections and clear timeouts
+    // Cleanup: abort all polling
     return () => {
       isCleaningUp = true
 
-      // Capture refs at cleanup time to follow React best practices
-      const timeouts = reconnectTimeoutsRef.current
-      const attempts = reconnectAttemptsRef.current
-
-      eventSources.forEach((es) => es.close())
-      eventSources.clear()
-
-      timeouts.forEach((timeout) => clearTimeout(timeout))
-      timeouts.clear()
-
-      attempts.clear()
+      abortControllers.forEach((controller) => controller.abort())
+      abortControllers.clear()
+      lastSeenTimestamps.clear()
+      reconnectTimeoutsRef.current.clear()
+      reconnectAttemptsRef.current.clear()
     }
   }, [dashboard?.columns, mutedColumns])
 
