@@ -345,8 +345,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
           // Immediately start next poll
           setSseConnectionStatus('connected')
-        } catch (error: any) {
-          if (error.name === 'AbortError') {
+        } catch (error) {
+          if (error instanceof Error && error.name === 'AbortError') {
             // Polling was cancelled, exit loop
             console.log(`LongPoll: Aborted for column ${column.id}`)
             break
@@ -375,11 +375,15 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     return () => {
       isCleaningUp = true
 
+      // Capture refs at cleanup time to follow React best practices
+      const timeouts = reconnectTimeoutsRef.current
+      const attempts = reconnectAttemptsRef.current
+
       abortControllers.forEach((controller) => controller.abort())
       abortControllers.clear()
       lastSeenTimestamps.clear()
-      reconnectTimeoutsRef.current.clear()
-      reconnectAttemptsRef.current.clear()
+      timeouts.clear()
+      attempts.clear()
     }
   }, [dashboard?.columns, mutedColumns])
 

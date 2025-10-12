@@ -274,7 +274,7 @@ export const ingestNewsItems = async (
 
   // Publish to Pub/Sub for real-time updates (async, don't wait)
   const columnIdsArray = Array.from(matchingColumns)
-  newsdeckPubSub.publishNewsUpdate(columnIdsArray, insertedItems).catch(err => {
+  newsdeckPubSub.publishNewsUpdate(columnIdsArray, insertedItems).catch(() => {
     // Error already logged in pubsub service, just swallow here
   })
 
