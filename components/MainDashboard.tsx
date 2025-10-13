@@ -9,7 +9,7 @@ import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
 import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react'
-import { motion, AnimatePresence, PanInfo } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -80,7 +80,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const reconnectAttemptsRef = useRef<Map<string, number>>(new Map())
   const [mutedColumns, setMutedColumns] = useState<Set<string>>(new Set())
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [audioReady, setAudioReady] = useState(false)
   const [showAudioPrompt, setShowAudioPrompt] = useState(false)
 
   // Mobile navigation state
@@ -135,17 +134,44 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     // Try to preload and enable audio
     audio.load()
 
+    // Check if user has made an audio preference choice
+    const audioPreference = localStorage.getItem('audioEnabled')
+
     // Test if audio can play (autoplay policy check)
     const testAudio = async () => {
+      // If user has explicitly disabled audio, don't show prompt
+      if (audioPreference === 'false') {
+        console.log('🔇 Audio disabled by user preference')
+        return
+      }
+
+      // If user has already enabled audio, try to initialize silently
+      if (audioPreference === 'true') {
+        try {
+          await audio.play()
+          audio.pause()
+          audio.currentTime = 0
+          console.log('✅ Audio initialized successfully from saved preference')
+          return
+        } catch (error) {
+          console.log('⚠️ Audio blocked despite saved preference:', error)
+        }
+      }
+
+      // First-time visit or previous attempt failed - test autoplay
       try {
         await audio.play()
         audio.pause()
         audio.currentTime = 0
-        setAudioReady(true)
         console.log('✅ Audio initialized successfully')
+        // Save successful autoplay
+        localStorage.setItem('audioEnabled', 'true')
       } catch (error) {
         console.log('⚠️ Audio blocked by autoplay policy. User interaction needed:', error)
-        setShowAudioPrompt(true)
+        // Only show prompt if user hasn't made a choice yet
+        if (!audioPreference) {
+          setShowAudioPrompt(true)
+        }
       }
     }
 
@@ -429,12 +455,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     })
 
     // Cleanup: abort all polling
+    const timeouts = reconnectTimeoutsRef.current
+    const attempts = reconnectAttemptsRef.current
+
     return () => {
       isCleaningUp = true
-
-      // Capture refs at cleanup time to follow React best practices
-      const timeouts = reconnectTimeoutsRef.current
-      const attempts = reconnectAttemptsRef.current
 
       abortControllers.forEach((controller) => controller.abort())
       abortControllers.clear()
@@ -1914,7 +1939,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                         await audioRef.current.play()
                         audioRef.current.pause()
                         audioRef.current.currentTime = 0
-                        setAudioReady(true)
+                        localStorage.setItem('audioEnabled', 'true')
                         setShowAudioPrompt(false)
                         console.log('✅ Audio enabled by user')
                       }
@@ -1927,10 +1952,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   Aktivera ljud
                 </button>
                 <button
-                  onClick={() => setShowAudioPrompt(false)}
+                  onClick={() => {
+                    localStorage.setItem('audioEnabled', 'false')
+                    setShowAudioPrompt(false)
+                    console.log('🔇 Audio disabled by user')
+                  }}
                   className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
                 >
-                  Senare
+                  Aldrig
                 </button>
               </div>
             </div>

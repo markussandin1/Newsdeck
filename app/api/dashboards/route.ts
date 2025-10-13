@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
         filteredDashboards = dashboards.filter(d =>
           d.createdBy === userId || followingIds.has(d.id)
         )
-      } catch (err) {
-        // Ignore follow errors in development
-        console.log('Skipping user follows in development')
+      } catch (error) {
+        // Ignore follow errors in development but log for diagnostics
+        console.log('Skipping user follows in development', error)
       }
     }
 
@@ -41,9 +41,9 @@ export async function GET(request: NextRequest) {
             isFollowing = session?.user?.email
               ? followers.some(f => f.userId === session.user.email)
               : false
-          } catch (err) {
-            // Ignore follower errors in development
-            console.log('Skipping followers in development')
+          } catch (error) {
+            // Ignore follower errors in development but log for diagnostics
+            console.log('Skipping followers in development', error)
           }
         }
 
