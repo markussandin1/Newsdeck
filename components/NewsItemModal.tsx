@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { MapPin, ExternalLink, X, Paperclip, Settings, Map } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { AnimatePresence, motion } from 'framer-motion'
 
 // Dynamically import LeafletMap to avoid SSR issues
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -46,7 +47,9 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
     return () => clearTimeout(timer)
   }, [copiedField])
 
-  if (!item) return null
+  if (!item) {
+    return <AnimatePresence>{null}</AnimatePresence>
+  }
 
   const getNewsValueStyle = (newsValue: number) => {
     switch (newsValue) {
@@ -201,15 +204,24 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
 
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-      onClick={onClose}
-    >
-      <div
-        className={`bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-l-8 ${getNewsValueStyle(item.newsValue)}`}
-        onClick={(e) => e.stopPropagation()}
+    <AnimatePresence>
+      <motion.div
+        key={item.dbId ?? item.id ?? item.title}
+        className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
       >
+        <motion.div
+          className={`bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-l-8 ${getNewsValueStyle(item.newsValue)}`}
+          onClick={(e) => e.stopPropagation()}
+          initial={{ y: 24, opacity: 0, scale: 0.94 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 12, opacity: 0, scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+        >
         {/* Header */}
         <div className="p-6 border-b border-border">
           <div className="flex justify-between items-start">
@@ -446,7 +458,8 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   )
 }
