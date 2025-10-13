@@ -23,8 +23,8 @@ A real-time news dashboard application with TweetDeck-style columns and persiste
 
 - Node.js 18+
 - npm or yarn
-- Google Cloud account (for deployment)
-- PostgreSQL database (Google Cloud SQL recommended)
+- Docker (for local database)
+- Google Cloud account (for production deployment)
 
 ### Local Development
 
@@ -39,21 +39,28 @@ A real-time news dashboard application with TweetDeck-style columns and persiste
    npm install
    ```
 
-3. **Start development server:**
+3. **Set up local database:**
    ```bash
-   npm run dev
+   npm run db:setup
    ```
 
-4. **Set up environment variables:**
+   This will:
+   - Start PostgreSQL in a Docker container
+   - Create the `newsdeck_dev` database
+   - Run all migrations
+   - Create a default dashboard with sample column
+
+4. **Start development server:**
    ```bash
-   cp .env.example .env.local
-   # Edit .env.local with your DATABASE_URL
+   npm run dev
    ```
 
 5. **Open in browser:**
    - Application: http://localhost:3000
    - Admin panel: http://localhost:3000/admin
    - API Logs: http://localhost:3000/admin/api-logs
+
+> **💡 Tip**: See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed local development guide, including testdata, troubleshooting, and mobile testing.
 
 ### Deployment to Google Cloud
 
@@ -171,11 +178,20 @@ Any system that can send HTTP POST requests can integrate with Newsdeck.
 
 ### Available Scripts
 
+**Development:**
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
+
+**Database Management:**
+- `npm run db:setup` - Set up local database (first time)
+- `npm run db:start` - Start database container
+- `npm run db:stop` - Stop database container
+- `npm run db:reset` - Reset database (delete all data)
+- `npm run db:logs` - View database logs
+- `npm run db:connect` - Connect to database CLI
 
 ### Project Structure
 

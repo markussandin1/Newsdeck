@@ -9,6 +9,21 @@ export const metadata: Metadata = {
     shortcut: '/newsdeck-icon.svg',
     apple: '/newsdeck-icon.svg',
   },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover', // iOS safe area support
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'NewsDeck',
+  },
+  formatDetection: {
+    telephone: false,
+  },
 }
 
 export default function RootLayout({

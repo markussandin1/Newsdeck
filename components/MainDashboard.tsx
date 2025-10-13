@@ -8,7 +8,8 @@ import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn }
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
-import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX } from 'lucide-react'
+import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react'
+import { motion, AnimatePresence, PanInfo } from 'framer-motion'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -74,11 +75,24 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
   const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
   const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
-  const [sseConnectionStatus, setSseConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting')
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting')
   const reconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const reconnectAttemptsRef = useRef<Map<string, number>>(new Map())
   const [mutedColumns, setMutedColumns] = useState<Set<string>>(new Set())
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [audioReady, setAudioReady] = useState(false)
+  const [showAudioPrompt, setShowAudioPrompt] = useState(false)
+
+  // Mobile navigation state
+  const [isMobile, setIsMobile] = useState(false)
+  const [activeColumnIndex, setActiveColumnIndex] = useState(0)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const touchStartY = useRef(0)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Extract UUID from workflow URL
   const extractWorkflowId = (input: string): string => {
@@ -101,9 +115,42 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     return trimmed
   }
 
-  // Initialize audio element
+  // Detect mobile viewport
   useEffect(() => {
-    audioRef.current = new Audio('/52pj7t0b7w3-notification-sfx-10.mp3')
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Initialize audio element and handle autoplay policy
+  useEffect(() => {
+    const audio = new Audio('/52pj7t0b7w3-notification-sfx-10.mp3')
+    audio.volume = 0.5
+
+    // Try to preload and enable audio
+    audio.load()
+
+    // Test if audio can play (autoplay policy check)
+    const testAudio = async () => {
+      try {
+        await audio.play()
+        audio.pause()
+        audio.currentTime = 0
+        setAudioReady(true)
+        console.log('✅ Audio initialized successfully')
+      } catch (error) {
+        console.log('⚠️ Audio blocked by autoplay policy. User interaction needed:', error)
+        setShowAudioPrompt(true)
+      }
+    }
+
+    audioRef.current = audio
+    testAudio()
   }, [])
 
   // Load muted columns from localStorage
@@ -244,7 +291,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     }
   }, [])
 
-  // Initial load only - SSE handles real-time updates
+  // Initial load only - Long polling handles real-time updates
   useEffect(() => {
     if (dashboard?.id) {
       fetchColumnData()
@@ -280,7 +327,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       const controller = new AbortController()
       abortControllers.set(column.id, controller)
 
-      setSseConnectionStatus('connected')
+      setConnectionStatus('connected')
 
       // Long polling loop
       while (!isCleaningUp && !column.isArchived && !controller.signal.aborted) {
@@ -317,11 +364,16 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
             setColumnData((prev) => {
               const existingItems = prev[column.id] || []
 
-              // Deduplicate using item.dbId (unique database ID)
-              const newItems = data.items.filter(
-                (newItem: NewsItemType) =>
-                  !existingItems.some(existing => existing.dbId === newItem.dbId)
-              )
+              // Deduplicate using item.dbId (unique database ID) and mark as new
+              const newItems = data.items
+                .filter(
+                  (newItem: NewsItemType) =>
+                    !existingItems.some(existing => existing.dbId === newItem.dbId)
+                )
+                .map(item => ({
+                  ...item,
+                  isNew: true
+                }))
 
               if (newItems.length === 0) {
                 return prev
@@ -331,9 +383,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
               // Play notification sound if column is not muted
               if (!mutedColumns.has(column.id) && audioRef.current) {
+                console.log(`🔔 Trying to play notification for column ${column.id}`)
+                audioRef.current.currentTime = 0 // Reset to start
                 audioRef.current.play().catch(e => {
-                  console.log('Could not play notification sound:', e)
+                  console.warn('⚠️ Could not play notification sound:', e)
+                  setShowAudioPrompt(true)
                 })
+              } else if (mutedColumns.has(column.id)) {
+                console.log(`🔇 Column ${column.id} is muted, skipping sound`)
               }
 
               return {
@@ -344,7 +401,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           }
 
           // Immediately start next poll
-          setSseConnectionStatus('connected')
+          setConnectionStatus('connected')
         } catch (error) {
           if (error instanceof Error && error.name === 'AbortError') {
             // Polling was cancelled, exit loop
@@ -353,7 +410,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           }
 
           console.error(`LongPoll: Error for column ${column.id}`, error)
-          setSseConnectionStatus('disconnected')
+          setConnectionStatus('disconnected')
 
           // Wait before retry
           await new Promise(resolve => setTimeout(resolve, 2000))
@@ -590,6 +647,68 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       return next
     })
   }, [])
+
+  // Mobile column navigation
+  const nextColumn = useCallback(() => {
+    const activeColumns = dashboard?.columns?.filter(col => !col.isArchived) || []
+    if (activeColumnIndex < activeColumns.length - 1) {
+      setActiveColumnIndex(prev => prev + 1)
+    }
+  }, [activeColumnIndex, dashboard?.columns])
+
+  const prevColumn = useCallback(() => {
+    if (activeColumnIndex > 0) {
+      setActiveColumnIndex(prev => prev - 1)
+    }
+  }, [activeColumnIndex])
+
+  const goToColumn = useCallback((index: number) => {
+    setActiveColumnIndex(index)
+  }, [])
+
+  // Pull-to-refresh handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const container = scrollContainerRef.current
+    if (!container || container.scrollTop > 0) return
+
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const container = scrollContainerRef.current
+    if (!container || container.scrollTop > 0 || isRefreshing) return
+
+    const currentY = e.touches[0].clientY
+    const distance = Math.max(0, currentY - touchStartY.current)
+
+    // Apply resistance to pull distance
+    const resistance = 0.5
+    const maxPull = 120
+    const adjustedDistance = Math.min(distance * resistance, maxPull)
+
+    setPullDistance(adjustedDistance)
+  }, [isRefreshing])
+
+  const handleTouchEnd = useCallback(async () => {
+    const threshold = 60 // Minimum pull distance to trigger refresh
+
+    if (pullDistance >= threshold && !isRefreshing) {
+      setIsRefreshing(true)
+
+      // Trigger data refresh
+      await fetchColumnData()
+
+      // Small delay for visual feedback
+      setTimeout(() => {
+        setIsRefreshing(false)
+        setPullDistance(0)
+      }, 500)
+    } else {
+      setPullDistance(0)
+    }
+
+    touchStartY.current = 0
+  }, [pullDistance, isRefreshing, fetchColumnData])
 
   const reorderColumns = async (draggedColumnId: string, targetColumnId: string) => {
     const columns = dashboard?.columns?.filter(col => !col.isArchived) || []
@@ -900,152 +1019,334 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   ColumnContent.displayName = 'ColumnContent'
 
 
+  // Get active columns for mobile navigation
+  const activeColumns = useMemo(() =>
+    dashboard?.columns?.filter(col => !col.isArchived) || [],
+    [dashboard?.columns]
+  )
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="glass border-b border-slate-200 sticky top-0 z-50">
-        <div className="px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboards">
-                <div className="w-16 h-16 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
-                  <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={64} height={64} className="w-16 h-16 object-contain" />
-                </div>
-              </Link>
-              <div className="relative" ref={dropdownRef}>
-                <button 
-                  className="flex items-center gap-2 hover:bg-slate-100 rounded-lg px-3 py-2 smooth-transition"
-                  onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
-                >
-                  <div>
-                    <h1 className="text-xl font-semibold text-slate-900 text-left">{dashboard.name}</h1>
-                    <div className="flex items-center gap-4 text-sm text-slate-600">
-                      <span>{dashboard?.columns?.filter(col => !col.isArchived)?.length || 0} kolumner</span>
-                      <span>•</span>
-                      <span>{getTotalNewsCount()} händelser</span>
-                    </div>
-                  </div>
-                  <svg 
-                    className={`w-4 h-4 text-slate-400 smooth-transition ${showDashboardDropdown ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {/* Dashboard Dropdown */}
-                {showDashboardDropdown && (
-                  <div className="absolute top-full left-0 mt-2 w-72 glass rounded-xl shadow-soft-lg border border-slate-200 py-2 z-50">
-                    <div className="px-4 py-2 border-b border-slate-200/50">
-                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                        Dashboards
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={() => {
-                        setShowCreateDashboardModal(true)
-                        setShowDashboardDropdown(false)
-                      }}
-                      className="w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center gap-3"
-                    >
-                      <div className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-md flex items-center justify-center text-sm font-bold">
-                        +
-                      </div>
-                      <span className="font-medium text-slate-900">Ny Dashboard</span>
-                    </button>
-                    
-                    <div className="border-t border-slate-200/50 mt-1 pt-1">
-                      {allDashboards.map((dash) => (
-                        <button
-                          key={dash.id}
-                          onClick={() => {
-                            if (dash.slug !== dashboard.slug) {
-                              navigateToDashboard(dash.slug)
-  }
+      <div className="glass border-b border-slate-200 sticky top-0 z-50 safe-area-top">
+        <div className="px-4 py-4 safe-area-left safe-area-right">
+          {isMobile ? (
+            // Mobile Header
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setShowMobileMenu(true)}
+                className="p-2 hover:bg-slate-100 active:bg-slate-200 rounded-lg smooth-transition"
+                aria-label="Öppna meny"
+              >
+                <Menu className="h-6 w-6 text-slate-700" />
+              </button>
 
-                            setShowDashboardDropdown(false)
-                          }}
-                          className={`w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center justify-between ${
-                            dash.id === dashboard.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
-                          }`}
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium text-slate-900">{dash.name}</div>
-                            {dash.description && (
-                              <div className="text-xs text-slate-500 mt-1">{dash.description}</div>
-                            )}
-                            <div className="text-xs text-slate-400 mt-1">
-                              {dash.columnCount ?? 0} kolumner
-                            </div>
-                          </div>
-                          {dash.id === dashboard.id && (
-                            <div className="text-blue-500 text-sm">✓</div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="flex-1 text-center px-4">
+                <h1 className="text-base font-semibold text-slate-900 truncate">
+                  {activeColumns[activeColumnIndex]?.title || dashboard.name}
+                </h1>
+                <div className="text-xs text-slate-500">
+                  {activeColumns[activeColumnIndex]
+                    ? `${memoizedColumnData[activeColumns[activeColumnIndex].id]?.length || 0} händelser`
+                    : `${activeColumns.length} kolumner`
+                  }
+                </div>
               </div>
+
+              <button
+                onClick={() => setShowDashboardDropdown(true)}
+                className="p-2 hover:bg-slate-100 active:bg-slate-200 rounded-lg smooth-transition"
+                aria-label="Fler alternativ"
+              >
+                <MoreVertical className="h-6 w-6 text-slate-700" />
+              </button>
             </div>
-            
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                <span>{isLoading ? 'Uppdaterar...' : `Live • ${lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}`}</span>
-              </div>
-              
+          ) : (
+            // Desktop Header
+            <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowAddColumnModal(true)}
-                  className="px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition text-sm font-medium"
-                >
-                  + Lägg till kolumn
-                </button>
-                <button
-                  onClick={fetchColumnData}
-                  disabled={isLoading}
-                  className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 smooth-transition text-sm font-medium"
-                >
-                  🔄 Uppdatera
-                </button>
-                <Link
-                  href={`/admin?dashboardId=${dashboard.id}`}
-                  className="px-3 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 smooth-transition text-sm font-medium"
-                >
-                  Admin
+                <Link href="/dashboards">
+                  <div className="w-16 h-16 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
+                    <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={64} height={64} className="w-16 h-16 object-contain" />
+                  </div>
                 </Link>
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    className="flex items-center gap-2 hover:bg-slate-100 rounded-lg px-3 py-2 smooth-transition"
+                    onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
+                  >
+                    <div>
+                      <h1 className="text-xl font-semibold text-slate-900 text-left">{dashboard.name}</h1>
+                      <div className="flex items-center gap-4 text-sm text-slate-600">
+                        <span>{dashboard?.columns?.filter(col => !col.isArchived)?.length || 0} kolumner</span>
+                        <span>•</span>
+                        <span>{getTotalNewsCount()} händelser</span>
+                      </div>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-slate-400 smooth-transition ${showDashboardDropdown ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Dashboard Dropdown */}
+                  {showDashboardDropdown && (
+                    <div className="absolute top-full left-0 mt-2 w-72 glass rounded-xl shadow-soft-lg border border-slate-200 py-2 z-50">
+                      <div className="px-4 py-2 border-b border-slate-200/50">
+                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                          Dashboards
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setShowCreateDashboardModal(true)
+                          setShowDashboardDropdown(false)
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center gap-3"
+                      >
+                        <div className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-md flex items-center justify-center text-sm font-bold">
+                          +
+                        </div>
+                        <span className="font-medium text-slate-900">Ny Dashboard</span>
+                      </button>
+
+                      <div className="border-t border-slate-200/50 mt-1 pt-1">
+                        {allDashboards.map((dash) => (
+                          <button
+                            key={dash.id}
+                            onClick={() => {
+                              if (dash.slug !== dashboard.slug) {
+                                navigateToDashboard(dash.slug)
+    }
+
+                              setShowDashboardDropdown(false)
+                            }}
+                            className={`w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center justify-between ${
+                              dash.id === dashboard.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-slate-900">{dash.name}</div>
+                              {dash.description && (
+                                <div className="text-xs text-slate-500 mt-1">{dash.description}</div>
+                              )}
+                              <div className="text-xs text-slate-400 mt-1">
+                                {dash.columnCount ?? 0} kolumner
+                              </div>
+                            </div>
+                            {dash.id === dashboard.id && (
+                              <div className="text-blue-500 text-sm">✓</div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
+                  <span>{isLoading ? 'Uppdaterar...' : `Live • ${lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}`}</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowAddColumnModal(true)}
+                    className="px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition text-sm font-medium"
+                  >
+                    + Lägg till kolumn
+                  </button>
+                  <button
+                    onClick={fetchColumnData}
+                    disabled={isLoading}
+                    className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 smooth-transition text-sm font-medium"
+                  >
+                    🔄 Uppdatera
+                  </button>
+                  <Link
+                    href={`/admin?dashboardId=${dashboard.id}`}
+                    className="px-3 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 smooth-transition text-sm font-medium"
+                  >
+                    Admin
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* TweetDeck-style Columns */}
-      <div className="flex overflow-x-auto h-[calc(100vh-100px)]">
-        {(dashboard?.columns || [])
-          .filter(col => !col.isArchived)
-          .sort((a, b) => a.order - b.order)
-          .map((column) => {
-            const columnItems = memoizedColumnData[column.id] || []
+      {/* TweetDeck-style Columns / Mobile Single Column View */}
+      <div className={isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "flex overflow-x-auto h-[calc(100vh-100px)]"}>
+        {isMobile ? (
+          // Mobile: Show one column at a time with swipe gestures
+          activeColumns.length > 0 && activeColumns[activeColumnIndex] ? (
+            <div className="relative h-full">
+              {/* Navigation buttons - Left/Right arrows */}
+              {activeColumns.length > 1 && (
+                <>
+                  {activeColumnIndex > 0 && (
+                    <button
+                      onClick={prevColumn}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white active:bg-slate-100 shadow-lg rounded-full p-3 transition-all"
+                      aria-label="Föregående kolumn"
+                    >
+                      <ChevronLeft className="h-6 w-6 text-slate-700" />
+                    </button>
+                  )}
+                  {activeColumnIndex < activeColumns.length - 1 && (
+                    <button
+                      onClick={nextColumn}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white active:bg-slate-100 shadow-lg rounded-full p-3 transition-all"
+                      aria-label="Nästa kolumn"
+                    >
+                      <ChevronRight className="h-6 w-6 text-slate-700" />
+                    </button>
+                  )}
+                </>
+              )}
 
-            // Use a very stable column container that never changes
-            return (
-              <div
-                key={column.id}
-                data-column-id={column.id}
-                onDragOver={(e) => handleDragOver(e, column.id)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, column.id)}
-                className={`flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col transition-colors ${
-                  draggedColumn === column.id ? 'opacity-50' : ''
-                } ${
-                  dragOverColumn === column.id && draggedColumn !== column.id ? 'border-l-4 border-blue-500 bg-blue-50' : ''
-                }`}
+              <motion.div
+                key={activeColumns[activeColumnIndex].id}
+                className="h-full bg-white flex flex-col"
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                onDragEnd={(e, info) => {
+                  const threshold = 50 // Minimum swipe distance
+                  const velocity = info.velocity.x
+
+                  // Swipe right (previous column)
+                  if (info.offset.x > threshold || velocity > 500) {
+                    prevColumn()
+                  }
+                  // Swipe left (next column)
+                  else if (info.offset.x < -threshold || velocity < -500) {
+                    nextColumn()
+                  }
+                }}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.2 }}
               >
+              {/* Pull-to-refresh indicator */}
+              <div
+                className="flex items-center justify-center transition-all duration-200 bg-blue-50"
+                style={{
+                  height: pullDistance,
+                  opacity: Math.min(pullDistance / 60, 1)
+                }}
+              >
+                {isRefreshing ? (
+                  <div className="flex items-center gap-2 text-blue-600 text-sm">
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span>Uppdaterar...</span>
+                  </div>
+                ) : pullDistance > 0 ? (
+                  <div className="text-blue-600 text-sm flex items-center gap-2">
+                    <motion.div
+                      animate={{ rotate: pullDistance > 60 ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      ↓
+                    </motion.div>
+                    <span>{pullDistance > 60 ? 'Släpp för att uppdatera' : 'Dra för att uppdatera'}</span>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Mobile column content without header (header is in mobile header) */}
+              <div
+                ref={scrollContainerRef}
+                className="flex-1 overflow-y-auto p-3"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                style={{
+                  transform: `translateY(${pullDistance}px)`,
+                  transition: isRefreshing || pullDistance === 0 ? 'transform 0.2s ease-out' : 'none'
+                }}
+              >
+                <ColumnContent
+                  columnId={activeColumns[activeColumnIndex].id}
+                  items={memoizedColumnData[activeColumns[activeColumnIndex].id] || []}
+                  onSelectNewsItem={setSelectedNewsItem}
+                />
+              </div>
+
+              {/* Mobile Column Indicator - Dots at bottom */}
+              {activeColumns.length > 1 && (
+                <div className="safe-area-bottom pb-4 pt-2 bg-white border-t border-gray-200">
+                  <div className="flex items-center justify-center gap-2">
+                    {activeColumns.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => goToColumn(index)}
+                        className="p-2"
+                        aria-label={`Gå till kolumn ${index + 1}`}
+                      >
+                        <motion.div
+                          className={`rounded-full transition-all ${
+                            index === activeColumnIndex
+                              ? 'bg-blue-500 w-8 h-2'
+                              : 'bg-gray-300 w-2 h-2'
+                          }`}
+                          layout
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+            </div>
+          ) : (
+            // No columns available
+            <div className="flex items-center justify-center h-full p-8 text-center">
+              <div>
+                <div className="mb-4 flex justify-center">
+                  <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={64} height={64} className="w-16 h-16 object-contain opacity-40" />
+                </div>
+                <div className="text-gray-500 mb-4">Inga kolumner ännu</div>
+                <button
+                  onClick={() => setShowAddColumnModal(true)}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition text-sm font-medium"
+                >
+                  + Lägg till kolumn
+                </button>
+              </div>
+            </div>
+          )
+        ) : (
+          // Desktop: Show all columns side by side
+          (dashboard?.columns || [])
+            .filter(col => !col.isArchived)
+            .sort((a, b) => a.order - b.order)
+            .map((column) => {
+              const columnItems = memoizedColumnData[column.id] || []
+
+              // Use a very stable column container that never changes
+              return (
+                <div
+                  key={column.id}
+                  data-column-id={column.id}
+                  onDragOver={(e) => handleDragOver(e, column.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, column.id)}
+                  className={`flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col transition-colors ${
+                    draggedColumn === column.id ? 'opacity-50' : ''
+                  } ${
+                    dragOverColumn === column.id && draggedColumn !== column.id ? 'border-l-4 border-blue-500 bg-blue-50' : ''
+                  }`}
+                >
                 {/* Static header with drag handle */}
                 <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl relative">
                   {/* Drag handle */}
@@ -1323,20 +1624,22 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 </div>
               </div>
             )
-          })}
-
-        {/* Add Column Button */}
-        <div className="flex-shrink-0 w-80 bg-gray-50 border-r border-gray-200 flex items-center justify-center">
-          <button
-            onClick={() => setShowAddColumnModal(true)}
-            className="flex flex-col items-center text-gray-600 hover:text-gray-800 p-8"
-          >
-            <div className="w-12 h-12 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center text-2xl mb-2">
-              +
-            </div>
-            <span className="text-sm">Lägg till kolumn</span>
-          </button>
-        </div>
+          })
+        )}
+        {/* Add Column Button - Desktop only */}
+        {!isMobile && (
+          <div className="flex-shrink-0 w-80 bg-gray-50 border-r border-gray-200 flex items-center justify-center">
+            <button
+              onClick={() => setShowAddColumnModal(true)}
+              className="flex flex-col items-center text-gray-600 hover:text-gray-800 p-8"
+            >
+              <div className="w-12 h-12 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center text-2xl mb-2">
+                +
+              </div>
+              <span className="text-sm">Lägg till kolumn</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Add Column Modal */}
@@ -1593,6 +1896,48 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         </div>
       )}
       
+      {/* Audio Prompt */}
+      {showAudioPrompt && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-amber-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md">
+          <div className="flex items-start gap-3">
+            <Volume2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-medium mb-1">Ljud blockerat</div>
+              <div className="text-sm text-amber-50 mb-3">
+                Din webbläsare blockerar ljud. Klicka på knappen för att aktivera notisljud.
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      if (audioRef.current) {
+                        await audioRef.current.play()
+                        audioRef.current.pause()
+                        audioRef.current.currentTime = 0
+                        setAudioReady(true)
+                        setShowAudioPrompt(false)
+                        console.log('✅ Audio enabled by user')
+                      }
+                    } catch (e) {
+                      console.error('Failed to enable audio:', e)
+                    }
+                  }}
+                  className="px-4 py-2 bg-white text-amber-600 rounded-lg hover:bg-amber-50 font-medium text-sm"
+                >
+                  Aktivera ljud
+                </button>
+                <button
+                  onClick={() => setShowAudioPrompt(false)}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
+                >
+                  Senare
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast notification */}
       {toastMessage && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
@@ -1603,19 +1948,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       {/* Real-time connection indicator */}
       <div className="fixed bottom-4 right-4 bg-white rounded-full shadow-lg px-3 py-2 text-xs text-gray-600 border">
         <div className="flex items-center gap-2">
-          {sseConnectionStatus === 'connected' && (
+          {connectionStatus === 'connected' && (
             <>
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
               <span>Live</span>
             </>
           )}
-          {sseConnectionStatus === 'connecting' && (
+          {connectionStatus === 'connecting' && (
             <>
               <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
               <span>Ansluter...</span>
             </>
           )}
-          {sseConnectionStatus === 'disconnected' && (
+          {connectionStatus === 'disconnected' && (
             <>
               <div className="w-2 h-2 rounded-full bg-red-500"></div>
               <span>Återansluter...</span>
@@ -1689,7 +2034,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   ×
                 </button>
               </div>
-              
+
               <form onSubmit={(e) => {
                 e.preventDefault()
                 if (newDashboardName.trim()) {
@@ -1711,7 +2056,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                       autoFocus
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Beskrivning (valfritt)
@@ -1725,7 +2070,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex gap-3 pt-4 mt-6 border-t border-slate-200">
                   <button
                     type="submit"
@@ -1747,7 +2092,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                   </button>
                 </div>
               </form>
-              
+
               <div className="mt-6 p-3 bg-blue-50 rounded-lg">
                 <div className="text-sm text-blue-800">
                   <div className="font-medium mb-1">💡 Tips:</div>
@@ -1758,6 +2103,264 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           </div>
         </div>
       )}
+
+      {/* Mobile Menu (Hamburger) */}
+      <AnimatePresence>
+        {showMobileMenu && isMobile && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileMenu(false)}
+              className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            />
+
+            {/* Drawer from left */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.3 }}
+              className="fixed left-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white z-50 shadow-2xl overflow-y-auto safe-area-left safe-area-top safe-area-bottom"
+            >
+              {/* Header */}
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Image src="/newsdeck-icon.svg" alt="Newsdeck" width={40} height={40} className="w-10 h-10" />
+                  <h2 className="text-lg font-semibold text-slate-900">Newsdeck</h2>
+                </div>
+                <button
+                  onClick={() => setShowMobileMenu(false)}
+                  className="p-2 hover:bg-slate-100 rounded-lg"
+                  aria-label="Stäng meny"
+                >
+                  <X className="h-6 w-6 text-slate-700" />
+                </button>
+              </div>
+
+              {/* Current Dashboard Info */}
+              <div className="p-4 bg-slate-50 border-b border-slate-200">
+                <div className="text-xs text-slate-500 mb-1">Aktiv dashboard</div>
+                <div className="font-semibold text-slate-900">{dashboard.name}</div>
+                <div className="text-sm text-slate-600 mt-1">
+                  {activeColumns.length} kolumner • {getTotalNewsCount()} händelser
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <div className="p-2">
+                {/* Dashboards Section */}
+                <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Dashboards
+                </div>
+
+                {allDashboards.map((dash) => (
+                  <button
+                    key={dash.id}
+                    onClick={() => {
+                      if (dash.slug !== dashboard.slug) {
+                        navigateToDashboard(dash.slug)
+                      }
+                      setShowMobileMenu(false)
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left smooth-transition ${
+                      dash.id === dashboard.id
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{dash.name}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {dash.columnCount ?? 0} kolumner
+                      </div>
+                    </div>
+                    {dash.id === dashboard.id && (
+                      <Check className="h-5 w-5 text-blue-600" />
+                    )}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => {
+                    setShowCreateDashboardModal(true)
+                    setShowMobileMenu(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700 mt-1"
+                >
+                  <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                    +
+                  </div>
+                  <span className="font-medium">Ny Dashboard</span>
+                </button>
+
+                {/* Actions Section */}
+                <div className="px-3 py-2 mt-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-t border-slate-200 pt-4">
+                  Åtgärder
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowAddColumnModal(true)
+                    setShowMobileMenu(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700"
+                >
+                  <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                    +
+                  </div>
+                  <span className="font-medium">Lägg till kolumn</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    await fetchColumnData()
+                    setShowMobileMenu(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700"
+                >
+                  <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                    🔄
+                  </div>
+                  <span className="font-medium">Uppdatera data</span>
+                </button>
+
+                <Link
+                  href={`/admin?dashboardId=${dashboard.id}`}
+                  onClick={() => setShowMobileMenu(false)}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700"
+                >
+                  <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center">
+                    <Settings className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">Admin</span>
+                </Link>
+              </div>
+
+              {/* Footer Info */}
+              <div className="p-4 border-t border-slate-200 mt-4 text-xs text-slate-500">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                  <span>
+                    {connectionStatus === 'connected' ? 'Live-uppdateringar aktiva' : 'Ansluter...'}
+                  </span>
+                </div>
+                <div>Senast uppdaterad: {lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}</div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Column Actions Menu (Three Dots) */}
+      <AnimatePresence>
+        {showDashboardDropdown && isMobile && activeColumns[activeColumnIndex] && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDashboardDropdown(false)}
+              className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            />
+
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'tween', duration: 0.3 }}
+              className="fixed left-0 right-0 bottom-0 bg-white z-50 rounded-t-2xl shadow-2xl safe-area-bottom safe-area-left safe-area-right"
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-12 h-1 bg-slate-300 rounded-full"></div>
+              </div>
+
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-slate-200">
+                <h3 className="font-semibold text-slate-900 text-center">
+                  {activeColumns[activeColumnIndex]?.title}
+                </h3>
+                <p className="text-xs text-slate-500 text-center mt-1">
+                  {memoizedColumnData[activeColumns[activeColumnIndex]?.id]?.length || 0} händelser
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="p-2 pb-4">
+                <button
+                  onClick={() => {
+                    toggleMute(activeColumns[activeColumnIndex].id)
+                    setShowDashboardDropdown(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700"
+                >
+                  <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center">
+                    {mutedColumns.has(activeColumns[activeColumnIndex].id) ? (
+                      <VolumeX className="h-5 w-5" />
+                    ) : (
+                      <Volume2 className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">
+                      {mutedColumns.has(activeColumns[activeColumnIndex].id) ? 'Aktivera ljud' : 'Stäng av ljud'}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {mutedColumns.has(activeColumns[activeColumnIndex].id)
+                        ? 'Notisljud är avstängt för denna kolumn'
+                        : 'Ljudnotiser för nya händelser'}
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    startEditing(activeColumns[activeColumnIndex])
+                    setShowDashboardDropdown(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700"
+                >
+                  <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                    <Settings className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">Inställningar</div>
+                    <div className="text-xs text-slate-500">Redigera kolumn och workflow</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    await fetchColumnData()
+                    setShowDashboardDropdown(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700"
+                >
+                  <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                    🔄
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">Uppdatera</div>
+                    <div className="text-xs text-slate-500">Hämta nya händelser</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setShowDashboardDropdown(false)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 mt-2 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+                >
+                  Avbryt
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

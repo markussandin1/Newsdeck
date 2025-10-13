@@ -6,14 +6,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Check API key authentication
-  if (!verifyApiKey(request)) {
+  // Check API key authentication (skip in development)
+  if (process.env.NODE_ENV !== 'development' && !verifyApiKey(request)) {
     return unauthorizedResponse()
   }
   try {
     const { id } = await params
     const columnData = await db.getColumnData(id)
-    
+
     return NextResponse.json({
       success: true,
       columnId: id,

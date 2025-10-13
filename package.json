@@ -9,7 +9,13 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test": "rm -rf .test-dist && tsc --project tsconfig.test.json && node --test $(find .test-dist/tests -name '*.js') && rm -rf .test-dist"
+    "test": "rm -rf .test-dist && tsc --project tsconfig.test.json && node --test $(find .test-dist/tests -name '*.js') && rm -rf .test-dist",
+    "db:setup": "./scripts/setup-local-db.sh",
+    "db:start": "docker-compose up -d postgres",
+    "db:stop": "docker-compose down",
+    "db:reset": "docker-compose down -v && ./scripts/setup-local-db.sh",
+    "db:logs": "docker-compose logs -f postgres",
+    "db:connect": "docker exec -it newsdeck-postgres psql -U newsdeck -d newsdeck_dev"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +41,7 @@
     "clsx": "^2.1.1",
     "eslint": "^9.35.0",
     "eslint-config-next": "^15.5.3",
+    "framer-motion": "^12.23.24",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.545.0",
     "next": "^15.5.3",
