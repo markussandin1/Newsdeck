@@ -30,7 +30,7 @@ interface UseDashboardDataReturn {
   loadArchivedColumns: () => Promise<void>
   loadAllDashboards: () => Promise<void>
   refreshAllColumns: () => Promise<void>
-  updateColumnData: React.Dispatch<React.SetStateAction<ColumnData>>
+  updateColumnData: (updater: React.SetStateAction<ColumnData>) => void
 }
 
 export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashboardDataReturn {
@@ -141,6 +141,25 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
   }, [fetchColumnData])
 
   /**
+   * Update column data externally (e.g., from long-polling)
+   * This wrapper ensures columnDataRef and lastUpdate stay in sync
+   */
+  const updateColumnData = useCallback((updater: React.SetStateAction<ColumnData>) => {
+    setColumnData(prev => {
+      // Calculate new value (handle both function and direct value)
+      const newValue = typeof updater === 'function' ? updater(prev) : updater
+
+      // Update ref to keep it in sync
+      columnDataRef.current = newValue
+
+      // Update timestamp
+      setLastUpdate(new Date())
+
+      return newValue
+    })
+  }, [])
+
+  /**
    * Initial data load when dashboard changes
    */
   useEffect(() => {
@@ -165,6 +184,6 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
     loadArchivedColumns,
     loadAllDashboards,
     refreshAllColumns,
-    updateColumnData: setColumnData, // Expose setter for external updates (e.g., long-polling)
+    updateColumnData, // Wrapped setter that keeps ref and lastUpdate in sync
   }
 }
