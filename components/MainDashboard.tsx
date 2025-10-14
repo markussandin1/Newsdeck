@@ -10,6 +10,7 @@ import { extractWorkflowId } from '@/lib/dashboard/utils'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardPolling } from '@/lib/dashboard/hooks/useDashboardPolling'
 import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
+import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
@@ -53,6 +54,30 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     onNewItems: playNotification,
   })
 
+  // Layout and mobile state management (extracted to hook)
+  const {
+    isMobile,
+    activeColumnIndex,
+    showMobileMenu,
+    showDashboardDropdown,
+    pullDistance,
+    isRefreshing,
+    scrollContainerRef,
+    dropdownRef,
+    activeColumns,
+    setShowMobileMenu,
+    setShowDashboardDropdown,
+    nextColumn,
+    prevColumn,
+    goToColumn,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+  } = useDashboardLayout({
+    columns: dashboard?.columns || [],
+    onRefresh: fetchColumnData,
+  })
+
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [newColumnDescription, setNewColumnDescription] = useState('')
@@ -67,39 +92,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemType | null>(null)
-  const [showDashboardDropdown, setShowDashboardDropdown] = useState(false)
   const [showCreateDashboardModal, setShowCreateDashboardModal] = useState(false)
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
-  const dropdownRef = useRef<HTMLDivElement>(null)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
   const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
   const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
-
-  // Mobile navigation state
-  const [isMobile, setIsMobile] = useState(false)
-  const [activeColumnIndex, setActiveColumnIndex] = useState(0)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-
-  // Pull-to-refresh state
-  const [pullDistance, setPullDistance] = useState(0)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const touchStartY = useRef(0)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-
-  // Detect mobile viewport
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -131,24 +131,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
     return result
   }, [columnData])
-
-
-  // Handle click outside dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDashboardDropdown(false)
-      }
-    }
-
-    if (showDashboardDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showDashboardDropdown])
 
   const getTotalNewsCount = () => {
     return Object.values(columnData).reduce((total, items) => total + items.length, 0)
@@ -324,68 +306,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const navigateToDashboard = useCallback((slug: string) => {
     router.push(`/dashboard/${slug}`)
   }, [router])
-
-  // Mobile column navigation
-  const nextColumn = useCallback(() => {
-    const activeColumns = dashboard?.columns?.filter(col => !col.isArchived) || []
-    if (activeColumnIndex < activeColumns.length - 1) {
-      setActiveColumnIndex(prev => prev + 1)
-    }
-  }, [activeColumnIndex, dashboard?.columns])
-
-  const prevColumn = useCallback(() => {
-    if (activeColumnIndex > 0) {
-      setActiveColumnIndex(prev => prev - 1)
-    }
-  }, [activeColumnIndex])
-
-  const goToColumn = useCallback((index: number) => {
-    setActiveColumnIndex(index)
-  }, [])
-
-  // Pull-to-refresh handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const container = scrollContainerRef.current
-    if (!container || container.scrollTop > 0) return
-
-    touchStartY.current = e.touches[0].clientY
-  }, [])
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const container = scrollContainerRef.current
-    if (!container || container.scrollTop > 0 || isRefreshing) return
-
-    const currentY = e.touches[0].clientY
-    const distance = Math.max(0, currentY - touchStartY.current)
-
-    // Apply resistance to pull distance
-    const resistance = 0.5
-    const maxPull = 120
-    const adjustedDistance = Math.min(distance * resistance, maxPull)
-
-    setPullDistance(adjustedDistance)
-  }, [isRefreshing])
-
-  const handleTouchEnd = useCallback(async () => {
-    const threshold = 60 // Minimum pull distance to trigger refresh
-
-    if (pullDistance >= threshold && !isRefreshing) {
-      setIsRefreshing(true)
-
-      // Trigger data refresh
-      await fetchColumnData()
-
-      // Small delay for visual feedback
-      setTimeout(() => {
-        setIsRefreshing(false)
-        setPullDistance(0)
-      }, 500)
-    } else {
-      setPullDistance(0)
-    }
-
-    touchStartY.current = 0
-  }, [pullDistance, isRefreshing, fetchColumnData])
 
   const reorderColumns = async (draggedColumnId: string, targetColumnId: string) => {
     const columns = dashboard?.columns?.filter(col => !col.isArchived) || []
@@ -694,13 +614,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   })
 
   ColumnContent.displayName = 'ColumnContent'
-
-
-  // Get active columns for mobile navigation
-  const activeColumns = useMemo(() =>
-    dashboard?.columns?.filter(col => !col.isArchived) || [],
-    [dashboard?.columns]
-  )
 
   return (
     <div className="min-h-screen bg-slate-50">
