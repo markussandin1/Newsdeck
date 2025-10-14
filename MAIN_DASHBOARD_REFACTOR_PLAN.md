@@ -71,12 +71,20 @@ Säkerställ att projektet är stabilt före förändringar.
 
 ## Fas 2b – `useDashboardPolling`
 
-- Flytta long-polling-logiken, reconnect-handling, abort controllers, last-seen timestamps, `connectionStatus`
-- Hooken ska använda data från `useDashboardData` och exponera kontrollfunktioner (t.ex. `start`, `stop`, `status`)
-- Säkerställ att hooken inte behöver intern state från framtida ljud-hook; planera gränssnittet så att ljudhantering injiceras (ex. `playIfAllowed`)
-- Verifiering: `npm run lint`, `npm run type-check`
-- Manuell test: trigga nya händelser (använd testdata/API) och säkerställ att de dyker upp live
-- Commit, uppdatera PR-notes med vad som testats
+- [x] Flytta long-polling-logiken, reconnect-handling, abort controllers, last-seen timestamps, `connectionStatus`
+- [x] Hooken ska använda data från `useDashboardData` och exponera kontrollfunktioner (t.ex. `start`, `stop`, `status`)
+- [x] Säkerställ att hooken inte behöver intern state från framtida ljud-hook; planera gränssnittet så att ljudhantering injiceras (ex. `playIfAllowed`)
+- [x] Verifiering: `npm run lint`, `npm run type-check`
+- [x] Manuell test: trigga nya händelser (använd testdata/API) och säkerställ att de dyker upp live
+- [x] Commit, uppdatera PR-notes med vad som testats
+
+**Status:** ✅ Slutförd (commit: 11db119)
+- Skapade `lib/dashboard/hooks/useDashboardPolling.ts`
+- Extraherade all long-polling-logik (~140 rader)
+- Tog bort reconnectTimeoutsRef och reconnectAttemptsRef
+- Implementerade onNewItems callback för ljudhantering
+- Auto-startar polling för alla icke-arkiverade kolumner
+- API-test bekräftar att long-polling fungerar
 
 ## Fas 3 – Ljud & mute (`useColumnNotifications`)
 
