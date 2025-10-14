@@ -88,14 +88,26 @@ Säkerställ att projektet är stabilt före förändringar.
 
 ## Fas 3 – Ljud & mute (`useColumnNotifications`)
 
-- Flytta audio-initialisering, localStorage-hantering, `mutedColumns`, `showAudioPrompt`, `toggleMute`
-- Hooken bör tillhandahålla `playIfAllowed`, `toggleMute`, `isMuted`, `prompt` och exportera mute-setet för polling-hooken
-- Verifieringschecklista:
-  - [ ] Slå på ljud (`Aktivera ljud`) → hör pling vid ny händelse
-  - [ ] Muta kolumn → inget ljud från den kolumnen
-  - [ ] Ladda om sidan → mute-status kvarstår
-- Komplettera med `npm run lint`, `npm run type-check`
-- Commit och PR-uppdatering
+- [x] Flytta audio-initialisering, localStorage-hantering, `mutedColumns`, `showAudioPrompt`, `toggleMute`
+- [x] Hooken bör tillhandahålla `playIfAllowed`, `toggleMute`, `isMuted`, `prompt` och exportera mute-setet för polling-hooken
+- [x] Verifieringschecklista:
+  - [x] Slå på ljud (`Aktivera ljud`) → hör pling vid ny händelse
+  - [x] Muta kolumn → inget ljud från den kolumnen
+  - [x] Ladda om sidan → mute-status kvarstår
+- [x] Komplettera med `npm run lint`, `npm run type-check`
+- [x] Commit och PR-uppdatering
+
+**Status:** ✅ Slutförd (commit: 9083e2f)
+- Skapade `lib/dashboard/hooks/useColumnNotifications.ts`
+- Extraherade all audio-logik (~80 rader) från MainDashboard.tsx
+- Audio element initialization med autoplay policy handling
+- Per-kolumn mute state med localStorage persistence
+- Audio preference persistence (enabled/disabled/null)
+- Notification playback med error handling
+- Audio Prompt modal uppdaterad för att använda hook's enableAudio/disableAudio
+- Tog bort duplicate toggleMute function
+- Polling hook anropar playNotification vid nya items
+- Alla tester gröna (lint, type-check, API test)
 
 ## Fas 4 – Layout och mobilstate (`useDashboardLayout`)
 
