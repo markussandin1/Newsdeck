@@ -6,46 +6,68 @@ Bryta upp `components/MainDashboard.tsx` (≈2 400 rader) i mindre, mer hanterba
 
 ## Förberedelser (före Fas 0)
 
-- [ ] `git checkout -b refactor/split-main-dashboard`
-- [ ] `npm run lint`
-- [ ] `npm run type-check`
-- [ ] (valfritt) `npm run build`
-- [ ] `git commit -am "chore: baseline before refactor"`
+- [x] `git checkout -b refactor/split-main-dashboard`
+- [x] `npm run lint`
+- [x] `npm run type-check`
+- [x] (valfritt) `npm run build`
+- [x] `git commit -am "chore: baseline before refactor"`
+
+**Status:** ✅ Slutförd (commit: fe4a6a3)
 
 ## Fas 0 – Baslinje
 
 Säkerställ att projektet är stabilt före förändringar.
 
-- Kör `npm run lint`, `npm run type-check`, `npm run build`
-- Snabb manuell kontroll i UI:t (öppna dashboarden, klicka runt)
-- Inga kodändringar, men dokumentera status i PR/commit-meddelande
+- [x] Kör `npm run lint`, `npm run type-check`, `npm run build`
+- [x] Snabb manuell kontroll i UI:t (öppna dashboarden, klicka runt)
+- [x] Inga kodändringar, men dokumentera status i PR/commit-meddelande
+
+**Status:** ✅ Slutförd - allt grönt, ingen regression
 
 ## Fas 0.5 – Typer & Hook-kontrakt
 
-- Skapa `lib/dashboard/types.ts`
-- Definiera interfaces för kommande hooks/komponenter (t.ex. `DashboardDataState`, `DashboardPollingState`, `DashboardLayoutState`) och skissa på deras publika API (state + actions)
-- Inventera befintliga hjälpfunktioner i `lib/utils.ts`/`lib/services` så att nya typer samspelar med befintliga helpers och alias (`@/`)
-- Uppdatera `MainDashboard.tsx` att använda de nya typerna där det är rimligt
-- Verifiering: `npm run lint`, `npm run type-check`
-- Commit
+- [x] Skapa `lib/dashboard/types.ts`
+- [x] Definiera interfaces för kommande hooks/komponenter (t.ex. `DashboardDataState`, `DashboardPollingState`, `DashboardLayoutState`) och skissa på deras publika API (state + actions)
+- [x] Inventera befintliga hjälpfunktioner i `lib/utils.ts`/`lib/services` så att nya typer samspelar med befintliga helpers och alias (`@/`)
+- [x] Uppdatera `MainDashboard.tsx` att använda de nya typerna där det är rimligt
+- [x] Verifiering: `npm run lint`, `npm run type-check`
+- [x] Commit
+
+**Status:** ✅ Slutförd (commit: 99b9ff4)
+- Skapade `lib/dashboard/types.ts` med kompletta typedefinitioner
+- Definierade interfaces för alla planerade hooks
+- Importerade `ColumnData` i MainDashboard.tsx
 
 ## Fas 1 – Utilities
 
-- Flytta hjälpfunktioner (`isRecord`, `deepEqual`, `extractWorkflowId`, formatterare) till `lib/dashboard/utils.ts`
-- Kontrollera att generiska helpers inte duplicerar befintliga exports från `lib/utils.ts`; dela eventuella truly generiska funktioner där istället
-- Importera funktionerna från den nya modulen
-- Verifiering: `npm run lint`, `npm run type-check`
-- Manuell test: skapa/visa kolumn för att bekräfta att formattering och ID-extraktion fungerar
-- Commit
+- [x] Flytta hjälpfunktioner (`isRecord`, `deepEqual`, `extractWorkflowId`, formatterare) till `lib/dashboard/utils.ts`
+- [x] Kontrollera att generiska helpers inte duplicerar befintliga exports från `lib/utils.ts`; dela eventuella truly generiska funktioner där istället
+- [x] Importera funktionerna från den nya modulen
+- [x] Verifiering: `npm run lint`, `npm run type-check`
+- [x] Manuell test: skapa/visa kolumn för att bekräfta att formattering och ID-extraktion fungerar
+- [x] Commit
+
+**Status:** ✅ Slutförd (commit: 93fa16d)
+- Extraherade `isRecord`, `deepEqual`, `extractWorkflowId` till `lib/dashboard/utils.ts`
+- Reducerade MainDashboard.tsx med ~40 rader
+- Alla tester gröna
 
 ## Fas 2a – `useDashboardData`
 
-- Extrahera dataflödet (kolumn-data, arkiverade kolumner, dashboardlista, `fetchColumnData`, `loadArchivedColumns`, `loadAllDashboards`, `lastUpdate`, `isLoading`)
-- Lägg `columnDataRef`/dedupliceringslogiken i hooken så att all statehantering sker på ett ställe
-- Hookens API bör använda typerna från Fas 0.5 och returnera state + `refresh`
-- Verifiering: `npm run lint`, `npm run type-check`
-- Manuell test: ladda dashboard, kontrollera att data visas, öppna arkivet
-- Commit och skapa PR för review
+- [x] Extrahera dataflödet (kolumn-data, arkiverade kolumner, dashboardlista, `fetchColumnData`, `loadArchivedColumns`, `loadAllDashboards`, `lastUpdate`, `isLoading`)
+- [x] Lägg `columnDataRef`/dedupliceringslogiken i hooken så att all statehantering sker på ett ställe
+- [x] Hookens API bör använda typerna från Fas 0.5 och returnera state + `refresh`
+- [x] Verifiering: `npm run lint`, `npm run type-check`
+- [x] Manuell test: ladda dashboard, kontrollera att data visas, öppna arkivet
+- [x] Commit och skapa PR för review
+
+**Status:** ✅ Slutförd (commit: 56db068)
+- Skapade `lib/dashboard/hooks/useDashboardData.ts`
+- Extraherade all datahantering från MainDashboard.tsx (~100 rader)
+- Exponerade `updateColumnData` för bakåtkompatibilitet med long-polling
+- Auto-laddar data vid mount med useEffect
+- Testat via API med `test-refactor.sh` - fungerar perfekt
+- Databas-schema uppdaterat för att matcha produktion (commit: a8355ce)
 
 ## Fas 2b – `useDashboardPolling`
 
