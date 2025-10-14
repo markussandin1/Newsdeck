@@ -168,13 +168,26 @@ Säkerställ att projektet är stabilt före förändringar.
 
 - [x] Kör fulla `npm run lint`, `npm run type-check`, `npm run build`
 - [x] Manuell regression: testa viktiga flöden via API (`./test-refactor.sh`)
-- [ ] Uppdatera dokumentation (`lib/dashboard/README.md`) med hook-ansvar och komponenthierarki
-- [ ] Slutcommit + merge
+- [x] Uppdatera dokumentation (`lib/dashboard/README.md`) med hook-ansvar och komponenthierarki
+- [x] Slutcommit
 
-**Status:** 🚧 Pågående
+**Status:** ✅ Slutförd (commit: a72506b)
 - ✅ Alla verifieringssteg passerade (lint, type-check, build)
 - ✅ API-test via `test-refactor.sh` fungerar perfekt
-- 🔄 Dokumentation återstår
+- ✅ Dokumentation skapad: `lib/dashboard/README.md`
+  - Detaljerad beskrivning av alla hooks
+  - Komponenthierarki och dataflöde
+  - Migrationsnotes och refactoring-historik
+  - Testexempel och best practices
+
+**Refactoring Sammanfattning:**
+- MainDashboard.tsx: ~2,400 → ~1,950 rader (~450 rader borttagna)
+- Extraherade 4 custom hooks: useDashboardData, useDashboardPolling, useColumnNotifications, useDashboardLayout
+- Extraherade utilities och typedefinitioner
+- Inga beteendeändringar - all funktionalitet bevarad
+- Förbättrad testbarhet, underhållbarhet och kodorganisation
+
+**Redo för merge!** 🎉
 
 ## Extra rekommendationer
 
