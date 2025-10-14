@@ -6,7 +6,8 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import { ColumnData } from '@/lib/dashboard/types'
-import { deepEqual, extractWorkflowId } from '@/lib/dashboard/utils'
+import { extractWorkflowId } from '@/lib/dashboard/utils'
+import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
@@ -20,10 +21,19 @@ interface MainDashboardProps {
 
 export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDashboardProps) {
   const router = useRouter()
-  const [columnData, setColumnData] = useState<ColumnData>({})
-  const columnDataRef = useRef<ColumnData>({})
-  const [lastUpdate, setLastUpdate] = useState(new Date())
-  const [isLoading, setIsLoading] = useState(false)
+
+  // Dashboard data management (extracted to hook)
+  const {
+    columnData,
+    archivedColumns,
+    allDashboards,
+    lastUpdate,
+    isLoading,
+    fetchColumnData,
+    loadArchivedColumns,
+    updateColumnData,
+  } = useDashboardData({ dashboard })
+
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [newColumnDescription, setNewColumnDescription] = useState('')
@@ -36,10 +46,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [editFlowId, setEditFlowId] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemType | null>(null)
-  const [allDashboards, setAllDashboards] = useState<Array<DashboardType & { columnCount?: number }>>([])
   const [showDashboardDropdown, setShowDashboardDropdown] = useState(false)
   const [showCreateDashboardModal, setShowCreateDashboardModal] = useState(false)
   const [newDashboardName, setNewDashboardName] = useState('')
@@ -184,103 +192,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     return result
   }, [columnData])
 
-  const fetchColumnData = useCallback(async () => {
-    if (!dashboard?.id) {
-      return
-    }
-
-    try {
-      setIsLoading(true)
-      // Use the correct endpoint based on dashboard type
-      let endpoint = `/api/dashboards/${dashboard.slug}`
-      if (dashboard.id === 'main-dashboard') {
-        endpoint = '/api/dashboards/main-dashboard'
-      }
-
-      const response = await fetch(endpoint)
-      const data = await response.json() as {
-        success: boolean
-        columnData?: Record<string, NewsItemType[]>
-      }
-
-      if (data.success) {
-        const incomingData: ColumnData = data.columnData ? { ...data.columnData } : {}
-
-        // First check if the raw data has changed at all
-        const previousData = columnDataRef.current
-        const rawDataChanged = !deepEqual(previousData, incomingData)
-
-        if (!rawDataChanged) {
-          // No changes detected, skip all updates
-          return
-        }
-
-        // Process new items only if there are actual changes
-        const processedData: ColumnData = {}
-
-        Object.entries(incomingData).forEach(([columnId, newItems]) => {
-          const previousItems = previousData[columnId] ?? []
-
-          processedData[columnId] = newItems.map(item => ({
-            ...item,
-            isNew: previousItems.length > 0 && !previousItems.some(existing => existing.dbId === item.dbId)
-          }))
-        })
-
-        // Update state only when there are actual changes
-        setColumnData(processedData)
-        columnDataRef.current = processedData
-        setLastUpdate(new Date())
-
-        // No special scroll handling needed - columns should be stable
-      }
-    } catch (error) {
-      console.error('Failed to fetch column data:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [dashboard.id, dashboard.slug]) // columnData intentionally excluded to prevent infinite polling
-
-  // Deep equality check to prevent unnecessary re-renders
-  // Load archived columns
-  const loadArchivedColumns = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/columns/archived?dashboardId=${dashboard.id}`)
-      const data = await response.json() as { success: boolean; columns: DashboardColumn[] }
-      if (data.success) {
-        setArchivedColumns(data.columns)
-      }
-    } catch (error) {
-      console.error('Failed to load archived columns:', error)
-    }
-  }, [dashboard.id])
-
-  // Load all dashboards
-  const loadAllDashboards = useCallback(async () => {
-    try {
-      const response = await fetch('/api/dashboards')
-      const data = await response.json() as {
-        success: boolean
-        dashboards: Array<DashboardType & { columnCount?: number }>
-      }
-      if (data.success && Array.isArray(data.dashboards)) {
-        setAllDashboards(data.dashboards)
-      }
-    } catch (error) {
-      console.error('Failed to load dashboards:', error)
-    }
-  }, [])
-
-  // Initial load only - Long polling handles real-time updates
-  useEffect(() => {
-    if (dashboard?.id) {
-      fetchColumnData()
-      loadArchivedColumns()
-      loadAllDashboards()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboard?.id])
-
   // Set up long-polling for real-time updates
   useEffect(() => {
     if (!dashboard?.columns) {
@@ -341,7 +252,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           if (data.success && data.items && data.items.length > 0) {
             console.log(`LongPoll: Received ${data.items.length} new items for column ${column.id}`)
 
-            setColumnData((prev) => {
+            updateColumnData((prev) => {
               const existingItems = prev[column.id] || []
 
               // Deduplicate using item.dbId (unique database ID) and mark as new
@@ -421,7 +332,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       timeouts.clear()
       attempts.clear()
     }
-  }, [dashboard?.columns, mutedColumns])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboard?.columns, mutedColumns]) // updateColumnData is stable and intentionally excluded
 
   // Handle click outside dropdown
   useEffect(() => {
