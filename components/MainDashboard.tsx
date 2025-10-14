@@ -9,6 +9,7 @@ import { ColumnData } from '@/lib/dashboard/types'
 import { extractWorkflowId } from '@/lib/dashboard/utils'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardPolling } from '@/lib/dashboard/hooks/useDashboardPolling'
+import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
@@ -35,30 +36,21 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     updateColumnData,
   } = useDashboardData({ dashboard })
 
-  // Audio notification state (will be extracted to hook in Fas 2c)
-  const [mutedColumns, setMutedColumns] = useState<Set<string>>(new Set())
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [showAudioPrompt, setShowAudioPrompt] = useState(false)
-
-  // Callback for playing audio when new items arrive
-  const handleNewItems = useCallback((columnId: string) => {
-    if (!mutedColumns.has(columnId) && audioRef.current) {
-      console.log(`🔔 Trying to play notification for column ${columnId}`)
-      audioRef.current.currentTime = 0 // Reset to start
-      audioRef.current.play().catch(e => {
-        console.warn('⚠️ Could not play notification sound:', e)
-        setShowAudioPrompt(true)
-      })
-    } else if (mutedColumns.has(columnId)) {
-      console.log(`🔇 Column ${columnId} is muted, skipping sound`)
-    }
-  }, [mutedColumns])
+  // Audio notification management (extracted to hook)
+  const {
+    mutedColumns,
+    showAudioPrompt,
+    toggleMute,
+    playNotification,
+    enableAudio,
+    disableAudio,
+  } = useColumnNotifications({ dashboardId: dashboard.id })
 
   // Long-polling for real-time updates (extracted to hook)
   const { connectionStatus } = useDashboardPolling({
     columns: dashboard?.columns || [],
     updateColumnData,
-    onNewItems: handleNewItems,
+    onNewItems: playNotification,
   })
 
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
@@ -108,79 +100,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
-
-  // Initialize audio element and handle autoplay policy
-  useEffect(() => {
-    const audio = new Audio('/52pj7t0b7w3-notification-sfx-10.mp3')
-    audio.volume = 0.5
-
-    // Try to preload and enable audio
-    audio.load()
-
-    // Check if user has made an audio preference choice
-    const audioPreference = localStorage.getItem('audioEnabled')
-
-    // Test if audio can play (autoplay policy check)
-    const testAudio = async () => {
-      // If user has explicitly disabled audio, don't show prompt
-      if (audioPreference === 'false') {
-        console.log('🔇 Audio disabled by user preference')
-        return
-      }
-
-      // If user has already enabled audio, try to initialize silently
-      if (audioPreference === 'true') {
-        try {
-          await audio.play()
-          audio.pause()
-          audio.currentTime = 0
-          console.log('✅ Audio initialized successfully from saved preference')
-          return
-        } catch (error) {
-          console.log('⚠️ Audio blocked despite saved preference:', error)
-        }
-      }
-
-      // First-time visit or previous attempt failed - test autoplay
-      try {
-        await audio.play()
-        audio.pause()
-        audio.currentTime = 0
-        console.log('✅ Audio initialized successfully')
-        // Save successful autoplay
-        localStorage.setItem('audioEnabled', 'true')
-      } catch (error) {
-        console.log('⚠️ Audio blocked by autoplay policy. User interaction needed:', error)
-        // Only show prompt if user hasn't made a choice yet
-        if (!audioPreference) {
-          setShowAudioPrompt(true)
-        }
-      }
-    }
-
-    audioRef.current = audio
-    testAudio()
-  }, [])
-
-  // Load muted columns from localStorage
-  useEffect(() => {
-    const storageKey = `mutedColumns_${dashboard.id}`
-    const saved = localStorage.getItem(storageKey)
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setMutedColumns(new Set(parsed))
-      } catch (e) {
-        console.error('Failed to parse muted columns:', e)
-      }
-    }
-  }, [dashboard.id])
-
-  // Save muted columns to localStorage
-  useEffect(() => {
-    const storageKey = `mutedColumns_${dashboard.id}`
-    localStorage.setItem(storageKey, JSON.stringify(Array.from(mutedColumns)))
-  }, [mutedColumns, dashboard.id])
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -405,18 +324,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const navigateToDashboard = useCallback((slug: string) => {
     router.push(`/dashboard/${slug}`)
   }, [router])
-
-  const toggleMute = useCallback((columnId: string) => {
-    setMutedColumns(prev => {
-      const next = new Set(prev)
-      if (next.has(columnId)) {
-        next.delete(columnId)
-      } else {
-        next.add(columnId)
-      }
-      return next
-    })
-  }, [])
 
   // Mobile column navigation
   const nextColumn = useCallback(() => {
@@ -1678,30 +1585,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={async () => {
-                    try {
-                      if (audioRef.current) {
-                        await audioRef.current.play()
-                        audioRef.current.pause()
-                        audioRef.current.currentTime = 0
-                        localStorage.setItem('audioEnabled', 'true')
-                        setShowAudioPrompt(false)
-                        console.log('✅ Audio enabled by user')
-                      }
-                    } catch (e) {
-                      console.error('Failed to enable audio:', e)
-                    }
-                  }}
+                  onClick={enableAudio}
                   className="px-4 py-2 bg-white text-amber-600 rounded-lg hover:bg-amber-50 font-medium text-sm"
                 >
                   Aktivera ljud
                 </button>
                 <button
-                  onClick={() => {
-                    localStorage.setItem('audioEnabled', 'false')
-                    setShowAudioPrompt(false)
-                    console.log('🔇 Audio disabled by user')
-                  }}
+                  onClick={disableAudio}
                   className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
                 >
                   Aldrig
