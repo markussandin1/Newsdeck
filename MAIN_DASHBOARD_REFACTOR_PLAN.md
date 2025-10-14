@@ -111,14 +111,24 @@ Säkerställ att projektet är stabilt före förändringar.
 
 ## Fas 4 – Layout och mobilstate (`useDashboardLayout`)
 
-- Flytta `isMobile`, `activeColumnIndex`, `showMobileMenu`, `showDashboardDropdown`, pull-to-refresh (`pullDistance`, `isRefreshing`, `touchStartY`, `scrollContainerRef`)
-- Hooken exponerar state + handlers samt beräknade värden som `activeColumns` för header/menyer
-- Verifiering:
-  - [ ] Ändra fönsterbredd < 768px → mobilvy aktiveras
-  - [ ] Testa pull-to-refresh (touch-simulering i devtools) → kolumner laddas om
-  - [ ] Mobilmeny och kolumnmeny öppnas/stängs korrekt
-- Komplettera med `npm run lint`, `npm run type-check`
-- Commit
+- [x] Flytta `isMobile`, `activeColumnIndex`, `showMobileMenu`, `showDashboardDropdown`, pull-to-refresh (`pullDistance`, `isRefreshing`, `touchStartY`, `scrollContainerRef`)
+- [x] Hooken exponerar state + handlers samt beräknade värden som `activeColumns` för header/menyer
+- [x] Verifiering:
+  - [x] Ändra fönsterbredd < 768px → mobilvy aktiveras
+  - [x] Testa pull-to-refresh (touch-simulering i devtools) → kolumner laddas om
+  - [x] Mobilmeny och kolumnmeny öppnas/stängs korrekt
+- [x] Komplettera med `npm run lint`, `npm run type-check`
+- [x] Commit
+
+**Status:** ✅ Slutförd (commit: 1d55bd2)
+- Skapade `lib/dashboard/hooks/useDashboardLayout.ts`
+- Extraherade all layout- och mobillogik (~150 rader) från MainDashboard.tsx
+- Mobile viewport detection med resize listener
+- Pull-to-refresh state och touch event handlers
+- Mobile navigation (nextColumn, prevColumn, goToColumn)
+- Dropdown click-outside handling
+- Active columns computation (non-archived)
+- Alla tester gröna (lint, type-check, API test)
 
 ## Fas 5 – Presentationskomponenter
 
