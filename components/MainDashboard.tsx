@@ -5,50 +5,79 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
+import { ColumnData } from '@/lib/dashboard/types'
+import { extractWorkflowId } from '@/lib/dashboard/utils'
+import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
+import { useDashboardPolling } from '@/lib/dashboard/hooks/useDashboardPolling'
+import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
+import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
 import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null
-
-const deepEqual = (obj1: unknown, obj2: unknown): boolean => {
-  if (Object.is(obj1, obj2)) return true
-
-  if (Array.isArray(obj1) && Array.isArray(obj2)) {
-    if (obj1.length !== obj2.length) return false
-    return obj1.every((value, index) => deepEqual(value, obj2[index]))
-  }
-
-  if (isRecord(obj1) && isRecord(obj2)) {
-    const keys1 = Object.keys(obj1)
-    const keys2 = Object.keys(obj2)
-
-    if (keys1.length !== keys2.length) return false
-
-    return keys1.every(key => deepEqual(obj1[key], obj2[key]))
-  }
-
-  return false
-}
-
 interface MainDashboardProps {
   dashboard: DashboardType
   onDashboardUpdate: (dashboard: DashboardType) => void
 }
 
-interface ColumnData {
-  [columnId: string]: NewsItemType[]
-}
-
 export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDashboardProps) {
   const router = useRouter()
-  const [columnData, setColumnData] = useState<ColumnData>({})
-  const columnDataRef = useRef<ColumnData>({})
-  const [lastUpdate, setLastUpdate] = useState(new Date())
-  const [isLoading, setIsLoading] = useState(false)
+
+  // Dashboard data management (extracted to hook)
+  const {
+    columnData,
+    archivedColumns,
+    allDashboards,
+    lastUpdate,
+    isLoading,
+    fetchColumnData,
+    loadArchivedColumns,
+    updateColumnData,
+  } = useDashboardData({ dashboard })
+
+  // Audio notification management (extracted to hook)
+  const {
+    mutedColumns,
+    showAudioPrompt,
+    toggleMute,
+    playNotification,
+    enableAudio,
+    disableAudio,
+  } = useColumnNotifications({ dashboardId: dashboard.id })
+
+  // Long-polling for real-time updates (extracted to hook)
+  const { connectionStatus } = useDashboardPolling({
+    columns: dashboard?.columns || [],
+    updateColumnData,
+    onNewItems: playNotification,
+  })
+
+  // Layout and mobile state management (extracted to hook)
+  const {
+    isMobile,
+    activeColumnIndex,
+    showMobileMenu,
+    showDashboardDropdown,
+    pullDistance,
+    isRefreshing,
+    scrollContainerRef,
+    dropdownRef,
+    activeColumns,
+    setShowMobileMenu,
+    setShowDashboardDropdown,
+    nextColumn,
+    prevColumn,
+    goToColumn,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+  } = useDashboardLayout({
+    columns: dashboard?.columns || [],
+    onRefresh: fetchColumnData,
+  })
+
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [newColumnDescription, setNewColumnDescription] = useState('')
@@ -61,143 +90,16 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [editFlowId, setEditFlowId] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemType | null>(null)
-  const [allDashboards, setAllDashboards] = useState<Array<DashboardType & { columnCount?: number }>>([])
-  const [showDashboardDropdown, setShowDashboardDropdown] = useState(false)
   const [showCreateDashboardModal, setShowCreateDashboardModal] = useState(false)
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
-  const dropdownRef = useRef<HTMLDivElement>(null)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
   const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
   const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting')
-  const reconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
-  const reconnectAttemptsRef = useRef<Map<string, number>>(new Map())
-  const [mutedColumns, setMutedColumns] = useState<Set<string>>(new Set())
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [showAudioPrompt, setShowAudioPrompt] = useState(false)
-
-  // Mobile navigation state
-  const [isMobile, setIsMobile] = useState(false)
-  const [activeColumnIndex, setActiveColumnIndex] = useState(0)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-
-  // Pull-to-refresh state
-  const [pullDistance, setPullDistance] = useState(0)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const touchStartY = useRef(0)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-
-  // Extract UUID from workflow URL
-  const extractWorkflowId = (input: string): string => {
-    const trimmed = input.trim()
-
-    // If it looks like a URL, extract the UUID from it
-    if (trimmed.includes('://') || trimmed.includes('/workflows/')) {
-      // Match UUID pattern (8-4-4-4-12 hex digits)
-      const uuidMatch = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
-      if (uuidMatch) {
-        return uuidMatch[1]
-      }
-
-      // Fallback: take last segment after /
-      const segments = trimmed.split('/')
-      return segments[segments.length - 1]
-    }
-
-    // Otherwise return as-is (already a UUID or custom ID)
-    return trimmed
-  }
-
-  // Detect mobile viewport
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  // Initialize audio element and handle autoplay policy
-  useEffect(() => {
-    const audio = new Audio('/52pj7t0b7w3-notification-sfx-10.mp3')
-    audio.volume = 0.5
-
-    // Try to preload and enable audio
-    audio.load()
-
-    // Check if user has made an audio preference choice
-    const audioPreference = localStorage.getItem('audioEnabled')
-
-    // Test if audio can play (autoplay policy check)
-    const testAudio = async () => {
-      // If user has explicitly disabled audio, don't show prompt
-      if (audioPreference === 'false') {
-        console.log('🔇 Audio disabled by user preference')
-        return
-      }
-
-      // If user has already enabled audio, try to initialize silently
-      if (audioPreference === 'true') {
-        try {
-          await audio.play()
-          audio.pause()
-          audio.currentTime = 0
-          console.log('✅ Audio initialized successfully from saved preference')
-          return
-        } catch (error) {
-          console.log('⚠️ Audio blocked despite saved preference:', error)
-        }
-      }
-
-      // First-time visit or previous attempt failed - test autoplay
-      try {
-        await audio.play()
-        audio.pause()
-        audio.currentTime = 0
-        console.log('✅ Audio initialized successfully')
-        // Save successful autoplay
-        localStorage.setItem('audioEnabled', 'true')
-      } catch (error) {
-        console.log('⚠️ Audio blocked by autoplay policy. User interaction needed:', error)
-        // Only show prompt if user hasn't made a choice yet
-        if (!audioPreference) {
-          setShowAudioPrompt(true)
-        }
-      }
-    }
-
-    audioRef.current = audio
-    testAudio()
-  }, [])
-
-  // Load muted columns from localStorage
-  useEffect(() => {
-    const storageKey = `mutedColumns_${dashboard.id}`
-    const saved = localStorage.getItem(storageKey)
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setMutedColumns(new Set(parsed))
-      } catch (e) {
-        console.error('Failed to parse muted columns:', e)
-      }
-    }
-  }, [dashboard.id])
-
-  // Save muted columns to localStorage
-  useEffect(() => {
-    const storageKey = `mutedColumns_${dashboard.id}`
-    localStorage.setItem(storageKey, JSON.stringify(Array.from(mutedColumns)))
-  }, [mutedColumns, dashboard.id])
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -229,262 +131,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
 
     return result
   }, [columnData])
-
-  const fetchColumnData = useCallback(async () => {
-    if (!dashboard?.id) {
-      return
-    }
-
-    try {
-      setIsLoading(true)
-      // Use the correct endpoint based on dashboard type
-      let endpoint = `/api/dashboards/${dashboard.slug}`
-      if (dashboard.id === 'main-dashboard') {
-        endpoint = '/api/dashboards/main-dashboard'
-      }
-
-      const response = await fetch(endpoint)
-      const data = await response.json() as {
-        success: boolean
-        columnData?: Record<string, NewsItemType[]>
-      }
-
-      if (data.success) {
-        const incomingData: ColumnData = data.columnData ? { ...data.columnData } : {}
-
-        // First check if the raw data has changed at all
-        const previousData = columnDataRef.current
-        const rawDataChanged = !deepEqual(previousData, incomingData)
-
-        if (!rawDataChanged) {
-          // No changes detected, skip all updates
-          return
-        }
-
-        // Process new items only if there are actual changes
-        const processedData: ColumnData = {}
-
-        Object.entries(incomingData).forEach(([columnId, newItems]) => {
-          const previousItems = previousData[columnId] ?? []
-
-          processedData[columnId] = newItems.map(item => ({
-            ...item,
-            isNew: previousItems.length > 0 && !previousItems.some(existing => existing.dbId === item.dbId)
-          }))
-        })
-
-        // Update state only when there are actual changes
-        setColumnData(processedData)
-        columnDataRef.current = processedData
-        setLastUpdate(new Date())
-
-        // No special scroll handling needed - columns should be stable
-      }
-    } catch (error) {
-      console.error('Failed to fetch column data:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [dashboard.id, dashboard.slug]) // columnData intentionally excluded to prevent infinite polling
-
-  // Deep equality check to prevent unnecessary re-renders
-  // Load archived columns
-  const loadArchivedColumns = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/columns/archived?dashboardId=${dashboard.id}`)
-      const data = await response.json() as { success: boolean; columns: DashboardColumn[] }
-      if (data.success) {
-        setArchivedColumns(data.columns)
-      }
-    } catch (error) {
-      console.error('Failed to load archived columns:', error)
-    }
-  }, [dashboard.id])
-
-  // Load all dashboards
-  const loadAllDashboards = useCallback(async () => {
-    try {
-      const response = await fetch('/api/dashboards')
-      const data = await response.json() as {
-        success: boolean
-        dashboards: Array<DashboardType & { columnCount?: number }>
-      }
-      if (data.success && Array.isArray(data.dashboards)) {
-        setAllDashboards(data.dashboards)
-      }
-    } catch (error) {
-      console.error('Failed to load dashboards:', error)
-    }
-  }, [])
-
-  // Initial load only - Long polling handles real-time updates
-  useEffect(() => {
-    if (dashboard?.id) {
-      fetchColumnData()
-      loadArchivedColumns()
-      loadAllDashboards()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboard?.id])
-
-  // Set up long-polling for real-time updates
-  useEffect(() => {
-    if (!dashboard?.columns) {
-      return undefined
-    }
-
-    const abortControllers: Map<string, AbortController> = new Map()
-    const lastSeenTimestamps: Map<string, number> = new Map()
-    let isCleaningUp = false
-
-    const startLongPolling = async (column: DashboardColumn) => {
-      if (isCleaningUp || column.isArchived) {
-        return
-      }
-
-      // Clear any existing controller
-      const existingController = abortControllers.get(column.id)
-      if (existingController) {
-        existingController.abort()
-        abortControllers.delete(column.id)
-      }
-
-      // Create new abort controller for this polling loop
-      const controller = new AbortController()
-      abortControllers.set(column.id, controller)
-
-      setConnectionStatus('connected')
-
-      // Long polling loop
-      while (!isCleaningUp && !column.isArchived && !controller.signal.aborted) {
-        try {
-          const lastSeen = lastSeenTimestamps.get(column.id)
-          const url = lastSeen
-            ? `/api/columns/${column.id}/updates?lastSeen=${lastSeen}`
-            : `/api/columns/${column.id}/updates`
-
-          console.log(`LongPoll: Requesting updates for column ${column.id}`, { lastSeen })
-
-          const response = await fetch(url, {
-            signal: controller.signal,
-            headers: {
-              'Cache-Control': 'no-cache'
-            }
-          })
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`)
-          }
-
-          const data = await response.json()
-
-          // Update last seen timestamp
-          if (data.timestamp) {
-            lastSeenTimestamps.set(column.id, data.timestamp)
-          }
-
-          // Process new items
-          if (data.success && data.items && data.items.length > 0) {
-            console.log(`LongPoll: Received ${data.items.length} new items for column ${column.id}`)
-
-            setColumnData((prev) => {
-              const existingItems = prev[column.id] || []
-
-              // Deduplicate using item.dbId (unique database ID) and mark as new
-              const newItems = data.items
-                .filter(
-                  (newItem: NewsItemType) =>
-                    !existingItems.some(existing => existing.dbId === newItem.dbId)
-                )
-                .map(item => ({
-                  ...item,
-                  isNew: true
-                }))
-
-              if (newItems.length === 0) {
-                return prev
-              }
-
-              console.log(`LongPoll: Adding ${newItems.length} deduplicated items to column ${column.id}`)
-
-              // Play notification sound if column is not muted
-              if (!mutedColumns.has(column.id) && audioRef.current) {
-                console.log(`🔔 Trying to play notification for column ${column.id}`)
-                audioRef.current.currentTime = 0 // Reset to start
-                audioRef.current.play().catch(e => {
-                  console.warn('⚠️ Could not play notification sound:', e)
-                  setShowAudioPrompt(true)
-                })
-              } else if (mutedColumns.has(column.id)) {
-                console.log(`🔇 Column ${column.id} is muted, skipping sound`)
-              }
-
-              return {
-                ...prev,
-                [column.id]: [...newItems, ...existingItems]
-              }
-            })
-          }
-
-          // Immediately start next poll
-          setConnectionStatus('connected')
-        } catch (error) {
-          if (error instanceof Error && error.name === 'AbortError') {
-            // Polling was cancelled, exit loop
-            console.log(`LongPoll: Aborted for column ${column.id}`)
-            break
-          }
-
-          console.error(`LongPoll: Error for column ${column.id}`, error)
-          setConnectionStatus('disconnected')
-
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 2000))
-        }
-      }
-
-      // Cleanup for this column
-      abortControllers.delete(column.id)
-    }
-
-    // Start long polling for each non-archived column
-    dashboard.columns.forEach((column) => {
-      if (!column.isArchived) {
-        startLongPolling(column)
-      }
-    })
-
-    // Cleanup: abort all polling
-    const timeouts = reconnectTimeoutsRef.current
-    const attempts = reconnectAttemptsRef.current
-
-    return () => {
-      isCleaningUp = true
-
-      abortControllers.forEach((controller) => controller.abort())
-      abortControllers.clear()
-      lastSeenTimestamps.clear()
-      timeouts.clear()
-      attempts.clear()
-    }
-  }, [dashboard?.columns, mutedColumns])
-
-  // Handle click outside dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDashboardDropdown(false)
-      }
-    }
-
-    if (showDashboardDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showDashboardDropdown])
 
   const getTotalNewsCount = () => {
     return Object.values(columnData).reduce((total, items) => total + items.length, 0)
@@ -661,80 +307,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     router.push(`/dashboard/${slug}`)
   }, [router])
 
-  const toggleMute = useCallback((columnId: string) => {
-    setMutedColumns(prev => {
-      const next = new Set(prev)
-      if (next.has(columnId)) {
-        next.delete(columnId)
-      } else {
-        next.add(columnId)
-      }
-      return next
-    })
-  }, [])
-
-  // Mobile column navigation
-  const nextColumn = useCallback(() => {
-    const activeColumns = dashboard?.columns?.filter(col => !col.isArchived) || []
-    if (activeColumnIndex < activeColumns.length - 1) {
-      setActiveColumnIndex(prev => prev + 1)
-    }
-  }, [activeColumnIndex, dashboard?.columns])
-
-  const prevColumn = useCallback(() => {
-    if (activeColumnIndex > 0) {
-      setActiveColumnIndex(prev => prev - 1)
-    }
-  }, [activeColumnIndex])
-
-  const goToColumn = useCallback((index: number) => {
-    setActiveColumnIndex(index)
-  }, [])
-
-  // Pull-to-refresh handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const container = scrollContainerRef.current
-    if (!container || container.scrollTop > 0) return
-
-    touchStartY.current = e.touches[0].clientY
-  }, [])
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const container = scrollContainerRef.current
-    if (!container || container.scrollTop > 0 || isRefreshing) return
-
-    const currentY = e.touches[0].clientY
-    const distance = Math.max(0, currentY - touchStartY.current)
-
-    // Apply resistance to pull distance
-    const resistance = 0.5
-    const maxPull = 120
-    const adjustedDistance = Math.min(distance * resistance, maxPull)
-
-    setPullDistance(adjustedDistance)
-  }, [isRefreshing])
-
-  const handleTouchEnd = useCallback(async () => {
-    const threshold = 60 // Minimum pull distance to trigger refresh
-
-    if (pullDistance >= threshold && !isRefreshing) {
-      setIsRefreshing(true)
-
-      // Trigger data refresh
-      await fetchColumnData()
-
-      // Small delay for visual feedback
-      setTimeout(() => {
-        setIsRefreshing(false)
-        setPullDistance(0)
-      }, 500)
-    } else {
-      setPullDistance(0)
-    }
-
-    touchStartY.current = 0
-  }, [pullDistance, isRefreshing, fetchColumnData])
-
   const reorderColumns = async (draggedColumnId: string, targetColumnId: string) => {
     const columns = dashboard?.columns?.filter(col => !col.isArchived) || []
     const draggedIndex = columns.findIndex(col => col.id === draggedColumnId)
@@ -840,81 +412,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     setDragOverColumn(null)
   }
 
-  // Stable column structure that never gets recreated
-  const StableColumn = memo(({
-    column,
-    children,
-    onCopyId,
-    onEditColumn,
-    onRemoveColumn,
-    copiedId
-  }: {
-    column: DashboardColumn
-    children: React.ReactNode
-    onCopyId: (text: string | undefined, columnId: string, columnTitle: string, label?: string) => void
-    onEditColumn: (column: DashboardColumn) => void
-    onRemoveColumn: (columnId: string) => void
-    copiedId: string | null
-  }) => {
-    return (
-      <div className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col">
-        {/* Column Header - this part can update */}
-        <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2 flex-1">
-              <button
-                onClick={() => onCopyId(column.id, column.id, column.title)}
-                className="text-blue-500 hover:text-blue-700 p-1"
-                title="Kopiera kolumn-ID"
-              >
-                {copiedId === column.id ? '✓' : '📋'}
-              </button>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-800">
-                    {column.title}
-                  </h3>
-                  <button
-                    onClick={() => onEditColumn(column)}
-                    className="text-gray-400 hover:text-gray-600 text-xs"
-                    title="Redigera kolumn"
-                  >
-                    ✏️
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {memoizedColumnData[column.id]?.length || 0} händelser
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => onRemoveColumn(column.id)}
-              className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
-              title="Ta bort kolumn"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        {/* Stable scrollable content area */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          {children}
-        </div>
-      </div>
-    )
-  }, (prevProps, nextProps) => {
-    // Only re-render if column metadata changes, NOT content
-    return prevProps.column.id === nextProps.column.id &&
-           prevProps.column.title === nextProps.column.title &&
-           prevProps.column.flowId === nextProps.column.flowId &&
-           prevProps.copiedId === nextProps.copiedId
-  })
-
-  StableColumn.displayName = 'StableColumn'
-
-  // Separate component for column content that can update independently with pagination
-  const ColumnContent = memo(({
+  // Separate component for column content with pagination (no memo wrapper - allow all updates)
+  const ColumnContent = ({
     columnId,
     items,
     onSelectNewsItem
@@ -981,7 +480,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 className="h-auto p-0 text-blue-600 hover:underline font-medium"
               >
                 <a
-                  href="https://newsdeck-389280113319.europe-west1.run.app/"
+                  href="https://workflows-lab-iap.bnu.bn.nr/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -1032,23 +531,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         )}
       </>
     )
-  }, (prevProps, nextProps) => {
-    // Only re-render if items actually changed
-    return prevProps.items.length === nextProps.items.length &&
-           prevProps.items.every((item, index) =>
-             item.dbId === nextProps.items[index]?.dbId &&
-             item.isNew === nextProps.items[index]?.isNew
-           )
-  })
+  }
 
   ColumnContent.displayName = 'ColumnContent'
-
-
-  // Get active columns for mobile navigation
-  const activeColumns = useMemo(() =>
-    dashboard?.columns?.filter(col => !col.isArchived) || [],
-    [dashboard?.columns]
-  )
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -1933,30 +1418,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={async () => {
-                    try {
-                      if (audioRef.current) {
-                        await audioRef.current.play()
-                        audioRef.current.pause()
-                        audioRef.current.currentTime = 0
-                        localStorage.setItem('audioEnabled', 'true')
-                        setShowAudioPrompt(false)
-                        console.log('✅ Audio enabled by user')
-                      }
-                    } catch (e) {
-                      console.error('Failed to enable audio:', e)
-                    }
-                  }}
+                  onClick={enableAudio}
                   className="px-4 py-2 bg-white text-amber-600 rounded-lg hover:bg-amber-50 font-medium text-sm"
                 >
                   Aktivera ljud
                 </button>
                 <button
-                  onClick={() => {
-                    localStorage.setItem('audioEnabled', 'false')
-                    setShowAudioPrompt(false)
-                    console.log('🔇 Audio disabled by user')
-                  }}
+                  onClick={disableAudio}
                   className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm"
                 >
                   Aldrig

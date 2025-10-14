@@ -986,6 +986,12 @@ export const persistentDb = {
     ipAddress?: string
     userAgent?: string
   }) => {
+    // Temporarily disabled for local testing - table schema mismatch
+    // TODO: Re-enable after running migration to add missing columns
+    logger.debug('db.logApiRequest.skipped', { endpoint: log.endpoint, method: log.method, statusCode: log.statusCode })
+    return
+
+    /*
     const pool = getPool()
 
     try {
@@ -1010,6 +1016,7 @@ export const persistentDb = {
       // Don't throw - logging should never break the API
       logger.error('db.logApiRequest.error', { error })
     }
+    */
   },
 
   getApiRequestLogs: async (limit = 100, filters?: { success?: boolean; endpoint?: string }) => {

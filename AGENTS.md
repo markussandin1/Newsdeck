@@ -1,36 +1,108 @@
-# Repository Guidelines
+# CLAUDE.md
 
-## Project Structure & Module Organization
-- `app/` holds the Next.js App Router, including API routes under `app/api/` and admin views in `app/admin/`.
-- `components/` contains reusable React components; keep feature-specific UI close to its owning route.
-- `lib/` centralizes data access (`db.ts`, `db-persistent.ts`) and shared types; extend these before adding new persistence layers.
-- `public/` serves static assets, while `testdata.json` offers sample payloads for local experiments.
-- `.github/` stores CI workflows and issue templates; align new automation there.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build, Test, and Development Commands
-- `npm run dev` launches the local dev server with hot reload at `http://localhost:3000`.
-- `npm run build` compiles the production bundle; run before shipping complex changes.
-- `npm run start` serves the production build locally for sanity checks.
-- `npm run lint` runs ESLint via Next.js; pass `-- --fix` to auto-resolve style issues.
-- `npm run type-check` validates the codebase with the strict TypeScript configuration.
+## Project Overview
 
-## Coding Style & Naming Conventions
-- Stick to TypeScript, 2-space indentation, and trailing commas where ESLint expects them.
-- Name React components with PascalCase and hook/util functions with camelCase.
-- Co-locate component styles using Tailwind utility classes; prefer composable class lists to ad-hoc CSS.
-- Import shared utilities via the `@/` alias instead of relative `../../` chains.
+This is the **newsdeck-production** repository containing a news dashboard application called **Newsdeck**. The main codebase is located in this irectory. The root also contains a GCP migration plan.
 
-## Testing Guidelines
-- There is no default test runner yet; safeguard changes with `npm run lint` and `npm run type-check` at minimum.
-- When adding automated tests, colocate specs (e.g., `Component.test.tsx`) next to the feature and document any new script in `package.json`.
-- Use `testdata.json` or dedicated fixtures to simulate incoming payloads for API columns.
+## Development Commands
 
-## Commit & Pull Request Guidelines
-- Recent commits favour imperative subjects with optional Conventional Commit prefixes (`feat:`, `debug(scope):`); mirror that style.
-- Keep commits focused and include context in the body if the headline exceeds ~60 characters.
-- PRs should describe the user-facing change, list validation steps (lint/type-check/build), and attach screenshots or GIFs for UI tweaks.
-- Link issues or deployment notes when relevant so the GitHub Actions workflows can reference them.
+Navigate to the `Newsdeck/` directory for all development work:
 
-## Configuration & Secrets
-- Create `.env.local` for local KV credentials (`KV_REST_API_URL`, `KV_REST_API_TOKEN`).
-- Never commit secrets; add example keys to documentation or `.env.example` if new variables are introduced.
+```bash
+cd Newsdeck/
+```
+
+### Essential Commands
+- `npm run dev` - Start development server (http://localhost:3000)
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run type-check` - Run TypeScript type checking
+
+### Development Workflow
+1. Always run `npm run type-check` and `npm run lint` before committing changes
+2. Test locally with `npm run dev`
+3. Build and test production with `npm run build && npm run start`
+
+## Architecture Overview
+
+**Framework**: Next.js 15 with App Router, React 19, TypeScript, TailwindCSS
+
+### Core Data Model
+```typescript
+interface NewsItem {
+  id: string;
+  workflowId: string;
+  source: string;
+  timestamp: string; // ISO 8601
+  title: string;
+  description?: string;
+  newsValue: 1 | 2 | 3 | 4 | 5; // 5 = highest priority
+  category?: string;
+  severity?: "critical" | "high" | "medium" | "low" | null;
+  location?: {
+    municipality?: string;
+    county?: string;
+    name?: string;
+    coordinates?: [number, number];
+  };
+  extra?: Record<string, any>;
+  raw?: any;
+}
+```
+
+### Key Architecture Components
+
+**Database Layer** (`lib/`):
+- `db-persistent.ts` - Vercel KV (Redis) storage implementation
+- `db-upstash.ts` - Alternative Upstash Redis implementation
+- `db.ts` - Database interface/abstraction
+- Falls back to in-memory storage when KV credentials unavailable
+
+**API Routes** (`app/api/`):
+- `/api/columns` - Column management (CRUD)
+- `/api/dashboards` - Dashboard management
+- `/api/news-items` - NewsItem storage and retrieval
+
+**Core Pages**:
+- `/` - Dashboard listing homepage
+- `/admin` - Data input interface
+- `/dashboard/[id]` - Individual dashboard view with real-time updates
+- `/test-persistence` - Database connectivity testing
+
+### Visual Priority System
+NewsValue determines visual styling:
+- `newsValue: 5` - Red border + pulsing animation (critical)
+- `newsValue: 4` - Orange border (high)
+- `newsValue: 3` - Yellow border (medium)
+- `newsValue: 1-2` - Gray border (low)
+
+## Storage & Deployment
+
+**Local Development**: Uses in-memory storage when KV credentials not set
+
+**Production**: Uses Vercel KV (Redis) for persistence
+- Environment variables: `KV_REST_API_URL`, `KV_REST_API_TOKEN`
+- Alternative: Upstash Redis with different environment variables
+
+**Deployment**: Designed for Vercel deployment, see `DEPLOYMENT.md` for complete guide
+
+## External Integration
+
+**API Endpoints** for workflow integration:
+- `POST /api/columns/{id}` - Add news items to column
+- `GET /api/columns/{id}` - Retrieve column data
+- Compatible with n8n, Zapier, and custom workflows
+
+## Current Status
+
+The application is a **completed POC** with:
+- ✅ Full dashboard and column management
+- ✅ Real-time updates (5-second polling)
+- ✅ Visual priority system
+- ✅ Vercel KV persistence
+- ✅ Admin interface for data input
+- ✅ Responsive design for mobile/desktop/TV
+
