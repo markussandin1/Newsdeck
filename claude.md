@@ -1,315 +1,423 @@
-# Breaking News Dashboard POC
+# CLAUDE.md
 
-## Översikt
-Bygg en minimalistisk proof-of-concept för ett breaking news dashboard-system. Systemet tar emot nyhetshändelser från AI-drivna agentiska workflows via API och visar dem i realtid på anpassningsbara dashboards.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Kärnprinciper
-- **Ingen mockad data** - all data kommer från riktiga källor via API eller manuell inmatning
-- **Extremt enkelt** - inga användarkonton, alla dashboards är publika
-- **Realtidsuppdateringar** - nya händelser visas direkt
-- **Flexibelt** - dashboards kan filtrera på workflows, nyhetsvärde, geografi
+## Project Overview
 
-## Dataformat (TypeScript)
+NewsDeck is a real-time news dashboard system that receives news events from AI-driven workflow agents via API and displays them on customizable dashboards. The system is designed to be simple, with no user authentication—all dashboards are public and real-time updates are delivered via Google Cloud Pub/Sub and long-polling.
+
+### Workflows Integration
+
+NewsDeck is fed data by **Workflows** (https://workflows-lab-iap.bnu.bn.nr/workflows), a separate application where users build automated flows using AI agents as building blocks. These workflows monitor various data sources (news APIs, government feeds, social media, etc.) and process events through AI agents that:
+- Extract relevant information
+- Classify news value (1-5)
+- Determine geographic location
+- Generate summaries and descriptions
+
+Each workflow is assigned a unique `workflowId` (e.g., "workflow-breaking-news", "workflow-traffic-incidents"). When a workflow detects newsworthy events, it POSTs them to NewsDeck's `/api/workflows` endpoint with either:
+- **`workflowId`**: NewsDeck automatically routes events to ALL dashboard columns where `column.flowId === workflowId` (many-to-many relationship)
+- **`columnId`**: Direct routing to a specific column (one-to-one relationship)
+
+This dual routing mechanism enables both broad distribution (one workflow → multiple dashboards) and precise targeting (workflow → specific column).
+
+## Technology Stack
+
+- **Framework:** Next.js 15 (App Router) with TypeScript
+- **Styling:** Tailwind CSS v4
+- **Database:** PostgreSQL (Cloud SQL in production, Docker locally)
+- **Real-time:** Google Cloud Pub/Sub + long-polling fallback
+- **Authentication:** NextAuth v5 (optional, for admin features only)
+- **Deployment:** Google Cloud Run (europe-west1)
+- **CI/CD:** GitHub Actions with Workload Identity Federation
+
+## Development Commands
+
+### Local Development
+```bash
+# Start development server (requires DATABASE_URL)
+npm run dev
+
+# Type checking (run before commits)
+npm run type-check
+
+# Linting
+npm run lint
+
+# Build for production
+npm run build
+
+# Run tests
+npm test
+```
+
+### Database Management (Local Docker PostgreSQL)
+```bash
+# Initial setup: Create Docker container and run migrations
+npm run db:setup
+
+# Start PostgreSQL container
+npm run db:start
+
+# Stop PostgreSQL container
+npm run db:stop
+
+# Reset database (removes all data)
+npm run db:reset
+
+# View database logs
+npm run db:logs
+
+# Connect to PostgreSQL CLI
+npm run db:connect
+```
+
+**Local Database Connection:**
+```
+Host: localhost
+Port: 5432
+User: newsdeck-user
+Password: [see docker-compose.yml]
+Database: newsdeck
+```
+
+## Architecture Overview
+
+### Data Flow: Workflow → Dashboard
+
+1. **Ingestion** (`/api/workflows`)
+   - External workflow agents POST news items with `workflowId` or `columnId`
+   - Items validated and stored in `news_items` table with auto-generated `db_id` (UUID)
+   - System matches items to dashboard columns by comparing `workflowId` to `column.flowId`
+   - Matched items added to `column_data` table (junction table)
+   - Events published to Pub/Sub and local event queue
+
+2. **Storage** (`lib/db-postgresql.ts`)
+   - **`news_items`**: Master table for all news events (indexed by `db_id`)
+   - **`column_data`**: Junction table linking columns to news items (composite key: `column_id` + `news_item_db_id`)
+   - **`dashboards`**: Dashboard configuration (stored as JSONB including columns array)
+
+3. **Real-time Updates**
+   - **Primary:** Google Cloud Pub/Sub pushes events to `/api/pubsub/push` endpoint
+   - **Fallback:** Long-polling via `/api/columns/[id]/updates` (dev environment + backup)
+   - Frontend (`MainDashboard.tsx`) subscribes to updates and deduplicates by `dbId`
+
+4. **Rendering** (`MainDashboard.tsx`)
+   - Initial load: Fetch all column data via `/api/dashboards/[slug]`
+   - Real-time: Long-polling continuously checks for new items per column
+   - Deduplication: Items filtered by `dbId` to prevent duplicates in UI
+   - Visual priority: newsValue 5 = red + pulsing, 4 = orange, 3 = yellow, 1-2 = gray
+
+### Key Matching Logic
+
+**Column-to-Workflow Matching:**
 ```typescript
-interface NewsItem {
-  // Identifikation
-  id: string;                    // Unikt ID för händelsen
-  workflowId: string;            // ID för workflow som skapat datan
-  source: string;                // Källans namn (sos, polisen, smhi, tt, etc)
-  timestamp: string;             // ISO 8601 format
-  
-  // Innehåll
-  title: string;                 // Rubrik
-  description?: string;          // Kort beskrivning
-  
-  // Prioritering
-  newsValue: 1 | 2 | 3 | 4 | 5; // 5 = högst nyhetsvärde
-  category?: string;             // traffic, weather, crime, politics, economy, sports
-  severity?: "critical" | "high" | "medium" | "low" | null;
-  
-  // Geografi
-  location?: {
-    municipality?: string;       // Kommun
-    county?: string;            // Län
-    name?: string;              // Platsnamn
-    coordinates?: [number, number]; // [lat, lng]
-  };
-  
-  // Övrigt
-  extra?: Record<string, any>;  // Källspecifika fält
-  raw?: any;                    // Originaldata för debugging
+// In lib/services/ingestion.ts
+
+// Option 1: Direct column targeting
+{
+  "columnId": "col-breaking-d1a97...",
+  "items": [...]
 }
+// Result: Items added ONLY to specified column
 
-## Status: Slutfört
-
-### ✅ Fas 1: Grundstruktur (KLAR)
-**Datum:** 2025-09-11  
-**Status:** Komplett och fungerande
-
-**Implementerat:**
-- ✅ Next.js 15 app med TypeScript och Tailwind CSS v3
-- ✅ Komplett projektstruktur (/app, /components, /lib)
-- ✅ TypeScript interfaces för NewsItem och Dashboard
-- ✅ In-memory databas (lib/db.ts) för lagring
-- ✅ API endpoint `/api/news-items` (POST & GET)
-- ✅ Validering: obligatoriska fält, newsValue 1-5, timestamp-format
-- ✅ Startsida `/` med dashboard-översikt
-- ✅ Admin-sida `/admin` med exempeldata och feedback
-- ✅ Responsiv design med Tailwind CSS
-
-**Testresultat:**
-- ✅ API fungerar: POST och GET endpoints validerade
-- ✅ Admin-interface fungerar: kan mata in data och se feedback  
-- ✅ Applikation körs på http://localhost:3000
-- ✅ Alla sidor renderas korrekt
-
-**Teknisk arkitektur:**
-```
-/app
-  /page.tsx                 # ✅ Startsida med dashboard-lista
-  /admin/page.tsx          # ✅ Admin-interface för datainmatning
-  /api/news-items/route.ts # ✅ API endpoint
-  /layout.tsx              # ✅ Grundlayout
-  /globals.css             # ✅ Tailwind CSS
-/lib
-  /types.ts                # ✅ TypeScript interfaces
-  /db.ts                   # ✅ In-memory databas
-/components                # ✅ Redo för komponenter
+// Option 2: Workflow-based routing (many-to-many)
+{
+  "workflowId": "workflow-abc",
+  "items": [...]
+}
+// System searches ALL dashboards for columns where:
+column.flowId === workflowId  // Match!
+// Result: Items added to ALL matching columns across all dashboards
 ```
 
----
+**Deduplication in Frontend:**
+```typescript
+// In MainDashboard.tsx long-polling
+const newItems = data.items.filter(
+  (newItem) => !existingItems.some(existing =>
+    existing.dbId === newItem.dbId  // Compare database-generated UUID
+  )
+)
+```
 
-### ✅ Fas 2: Dashboard-visning (KLAR)
-**Datum:** 2025-09-11  
-**Status:** Komplett och fungerande
+## Database Schema (PostgreSQL)
 
-**Implementerat:**
-- ✅ NewsItem-komponent med visuell prioritering
-- ✅ Dashboard-komponent med realtidsuppdateringar
-- ✅ `/dashboard/[id]` route med dynamiska parametrar
-- ✅ Dashboard API endpoints (GET, PUT) med filtrering
-- ✅ Visual prioritering baserat på newsValue:
-  - newsValue 5: röd ram + pulsering (kritiskt)
-  - newsValue 4: orange ram (högt)
-  - newsValue 3: gul ram (medium)
-  - newsValue 1-2: grå ram (lågt)
-- ✅ Responsiva grid-layouts (2, 3, 4 kolumner)
-- ✅ Realtidsuppdateringar var 5:e sekund
-- ✅ Filter-visning och dashboard-konfiguration
-- ✅ Sticky header med dashboard-info och kontroller
+### Core Tables
+```sql
+-- Master news items table
+CREATE TABLE news_items (
+  db_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_id TEXT,              -- Optional ID from source system
+  workflow_id TEXT NOT NULL,   -- Workflow that created this item
+  source TEXT NOT NULL,
+  timestamp TIMESTAMPTZ NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  news_value INTEGER NOT NULL CHECK (news_value BETWEEN 1 AND 5),
+  category TEXT,
+  severity TEXT,
+  location JSONB,
+  extra JSONB,
+  raw JSONB,
+  created_in_db TIMESTAMPTZ DEFAULT NOW()
+);
 
-**Testresultat:**
-- ✅ Dashboard-visning fungerar: http://localhost:3000/dashboard/dashboard-1757625202432-kvjv6sqj9
-- ✅ Visuell prioritering testad: Brand (newsValue 5) röd + pulsering, trafikolycka (newsValue 3) gul
-- ✅ Filter fungerar: Bara nyheter med newsValue ≥ 2 visas
-- ✅ API endpoints fungerar: GET och PUT för dashboards
-- ✅ Responsiv design bekräftad i HTML-output
+-- Column-to-news-item junction table
+CREATE TABLE column_data (
+  column_id TEXT NOT NULL,
+  news_item_db_id UUID NOT NULL REFERENCES news_items(db_id) ON DELETE CASCADE,
+  data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (column_id, news_item_db_id)
+);
 
-**Tekniska förbättringar:**
-- ✅ Fixade Next.js 15 `params` async-problem
-- ✅ Korrekt TypeScript-typer för alla komponenter
-- ✅ Error handling och loading states
-- ✅ SEO-vänliga metadata för dashboard-sidor
-
----
-
-## Nästa steg: Fas 3
-
-### 🔄 Fas 3: Skapa dashboards (NÄSTA)
-Lägg till funktionalitet för att skapa och konfigurera dashboards.
-
-**Ursprunglig specifikation:**
-
-/ (Startsida)
-
-Lista alla skapade dashboards i ett grid
-Visa: namn, antal tittare (räknare), senast uppdaterad
-"Skapa ny dashboard" knapp
-Länk till /admin för datainmatning
-
-
-/admin (Datainmatning)
-
-Stort textarea för JSON-input
-Validera NewsItem-format innan sparning
-Visa success/error feedback
-Lista de 10 senaste mottagna items
-
-
-/api/news-items (API endpoint)
-
-POST: Ta emot NewsItem eller array av NewsItems
-Validera format
-Spara i minnet initialt (databas kommer senare)
-Returnera 200 OK eller 400 Bad Request med tydligt felmeddelande
-
-
-
-Fas 2: Dashboard-visning
-Implementera /dashboard/[id] som visar inkommande nyheter.
-Features:
-
-Layout: 2, 3 eller 4 kolumner (konfigurerbart)
-Realtid: Nya items visas direkt överst (polling var 5:e sekund)
-Visuell prioritering:
-
-newsValue 5 = röd ram + pulsering
-newsValue 4 = orange ram
-newsValue 3 = gul ram
-newsValue 1-2 = grå ram
-
-
-Visa alla fält som finns i NewsItem
-Responsiv: Fungerar på mobil, tablet, desktop, TV
-
-Fas 3: Skapa dashboards
-Lägg till funktionalitet för att skapa och konfigurera dashboards.
-Dashboard-konfiguration:
-typescriptinterface Dashboard {
-  id: string;
-  name: string;
-  layout: "2-col" | "3-col" | "4-col";
-  filters: {
-    workflowIds?: string[];      // Visa bara dessa workflows
-    minNewsValue?: number;        // Minimum nyhetsvärde
-    municipalities?: string[];    // Bara dessa kommuner
-    sources?: string[];          // Bara dessa källor
-  };
-  createdAt: string;
-}
-Skapa-flöde:
-
-Klick på "Skapa ny dashboard"
-Modal med formulär:
-
-Namn (required)
-Layout (dropdown)
-Workflow-filter (multiselect från alla unika workflowIds i systemet)
-
-
-Spara och redirect till nya dashboarden
-
-Fas 4: Databas och persistens
-Byt från in-memory till SQLite.
-Databasschema:
-sql-- Dashboards
+-- Dashboards (columns stored as JSONB array)
 CREATE TABLE dashboards (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  config JSON NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  view_count INTEGER DEFAULT 0,
-  last_viewed DATETIME
+  slug TEXT UNIQUE NOT NULL,
+  description TEXT,
+  columns JSONB NOT NULL DEFAULT '[]',
+  created_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  last_viewed TIMESTAMPTZ,
+  view_count INTEGER DEFAULT 0
 );
+```
 
--- Nyhetshändelser
-CREATE TABLE news_items (
-  id TEXT PRIMARY KEY,
-  workflow_id TEXT NOT NULL,
-  source TEXT NOT NULL,
-  news_value INTEGER NOT NULL,
-  municipality TEXT,
-  county TEXT,
-  data JSON NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+### Important Column Structure
+```typescript
+interface DashboardColumn {
+  id: string;           // e.g., "col-breaking-d1a97..."
+  title: string;
+  description?: string;
+  flowId?: string;      // Matches against incoming workflowId
+  isArchived?: boolean;
+  archivedAt?: string;
+}
+```
 
--- Index för snabb filtrering
-CREATE INDEX idx_workflow ON news_items(workflow_id);
-CREATE INDEX idx_newsvalue ON news_items(news_value);
-CREATE INDEX idx_municipality ON news_items(municipality);
-Fas 5: Förbättrad admin
-Gör det enklare att testa med olika data.
-Admin-features:
+## API Endpoints
 
-JSON-editor med syntax highlighting
-Exempel-data knapp som visar korrekt format
-Fil-uppladdning för bulk import
-Test-generator - formulär för att skapa enskilda NewsItems
-API-dokumentation med curl-exempel
-Data-översikt - visa statistik och senaste händelser
+### Public Endpoints (API Key Required)
+- `POST /api/workflows` - Ingest news items from workflow agents
+- `GET /api/status` - Health check
 
-Fas 6: Produktionsfeatures
-Förbättringar för riktig användning.
-Features att lägga till:
+### Protected Endpoints (Session Auth)
+- `GET /api/dashboards` - List all dashboards
+- `GET /api/dashboards/[slug]` - Get dashboard + column data
+- `PUT /api/dashboards/[slug]` - Update dashboard config
+- `POST /api/columns/[id]` - Update column settings
+- `DELETE /api/columns/[id]` - Clear column data
+- `GET /api/columns/[id]/updates?lastSeen=[timestamp]` - Long-polling for new items
 
-Auto-arkivering: Ta bort items äldre än 7 dagar
-Export: Ladda ner data som JSON/CSV
-Fullscreen-mode för TV-visning
-Dark mode toggle
-Sound alerts för newsValue 5
-Sökfunktion på startsidan
-Duplicera dashboard funktion
-Basic API-key för säkerhet (miljövariabel)
+### Pub/Sub Endpoints (No Auth)
+- `POST /api/pubsub/push` - Receive Pub/Sub push notifications
 
-Testdata för /admin
-json{
-  "items": [
-    {
-      "id": "sos-001",
-      "workflowId": "workflow-emergency",
-      "source": "sos",
-      "timestamp": "2025-09-11T12:00:00Z",
-      "title": "Brand i flerfamiljshus i Sundsvall",
+## Deployment (Google Cloud Platform)
+
+### Infrastructure
+- **Project ID:** `newsdeck-473620`
+- **Region:** `europe-west1`
+- **Service:** Cloud Run (`newsdeck`)
+- **Database:** Cloud SQL PostgreSQL (private IP)
+- **Real-time:** Pub/Sub topic `newsdeck-news-updates`
+- **Registry:** Artifact Registry (`cloud-run-source-deploy`)
+
+### Deployment Process
+1. Push to `main` branch triggers CI workflow (`.github/workflows/ci.yml`)
+2. CI runs: `npm run type-check`, `npm run lint`, `npm test`
+3. On CI success, deploy workflow (`.github/workflows/deploy.yml`) triggers:
+   - Authenticate via Workload Identity Federation
+   - Build Docker image (multi-stage build from `Dockerfile`)
+   - Push to Artifact Registry
+   - Deploy to Cloud Run with latest image
+4. Cloud Run automatically handles traffic shifting
+
+### Required Environment Variables (Production)
+```bash
+# In Cloud Run service configuration:
+DATABASE_URL=postgresql://user:pass@/dbname?host=/cloudsql/project:region:instance
+NEXTAUTH_URL=https://newsdeck-xxxxxx-ew.a.run.app
+NEXTAUTH_SECRET=[generated secret]
+API_KEY=[workflow auth key]
+GOOGLE_PROJECT_ID=newsdeck-473620
+PUBSUB_TOPIC=newsdeck-news-updates
+```
+
+### Manual Deployment Commands
+```bash
+# Authenticate
+gcloud auth login
+gcloud config set project newsdeck-473620
+
+# Build and deploy
+gcloud run deploy newsdeck \
+  --source . \
+  --region europe-west1 \
+  --platform managed \
+  --allow-unauthenticated
+
+# View logs
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=newsdeck" --limit 50
+
+# Describe service
+gcloud run services describe newsdeck --region europe-west1
+```
+
+## Project Structure
+
+```
+/app
+  /api
+    /workflows/route.ts        # Main ingestion endpoint
+    /dashboards/[slug]/route.ts # Dashboard CRUD
+    /columns/[id]/route.ts     # Column management
+    /pubsub/push/route.ts      # Pub/Sub receiver
+  /dashboard/[slug]/page.tsx   # Dashboard view
+  /admin/page.tsx              # Admin interface
+
+/lib
+  /db-postgresql.ts            # PostgreSQL adapter (main DB layer)
+  /db-config.ts                # DB instance selector
+  /services/ingestion.ts       # Workflow ingestion logic
+  /pubsub.ts                   # Google Cloud Pub/Sub client
+  /event-queue.ts              # In-memory event queue (dev fallback)
+  /api-auth.ts                 # API key verification
+  /types.ts                    # TypeScript interfaces
+
+/components
+  /MainDashboard.tsx           # Main dashboard UI (⚠️ large file, 2000+ lines)
+  /NewsItem.tsx                # Individual news item card
+  /NewsItemModal.tsx           # Detail view modal
+
+/migrations                    # SQL migration files
+/scripts                       # Setup scripts (db setup, etc.)
+```
+
+## Important Implementation Notes
+
+### MainDashboard.tsx Complexity
+- **Size:** 2000+ lines, handles all dashboard UI logic
+- **Responsibilities:** Layout, real-time updates, long-polling, drag & drop, modals, mobile UI
+- **Refactoring Plan:** See inline comments for planned breakdown into:
+  - Custom hooks: `useDashboardData`, `useDashboardPolling`, `useColumnNotifications`, `useDashboardLayout`
+  - Presentational components: `DashboardHeader`, `ColumnBoard`, `DashboardModals`
+- **Current State:** Functional but monolithic—refactor carefully with incremental testing
+
+### Real-time Update Strategy
+1. **Pub/Sub (Production):** Google Cloud Pub/Sub pushes events to `/api/pubsub/push`
+2. **Long-polling (Dev + Fallback):** Frontend polls `/api/columns/[id]/updates` every ~30s
+3. **Event Queue (Dev):** In-memory queue for immediate local delivery
+4. **Deduplication:** All three paths converge on same `dbId`-based deduplication in frontend
+
+### Audio Notifications
+- Stored in localStorage: `audioEnabled` (true/false/null)
+- Per-column mute settings: `mutedColumns_{dashboardId}` in localStorage
+- Browser autoplay policy requires user interaction on first visit
+
+## Common Development Tasks
+
+### Adding a New API Endpoint
+1. Create `/app/api/your-endpoint/route.ts`
+2. Export `GET`, `POST`, etc. as async functions
+3. Use `verifyApiKey()` or `verifySession()` for auth
+4. Return `NextResponse.json()` responses
+5. Add logging via `logger.info/warn/error`
+
+### Adding a Database Migration
+1. Create `migrations/XXX-description.sql`
+2. Run manually: `psql -h localhost -U newsdeck-user -d newsdeck -f migrations/XXX-description.sql`
+3. Update schema in `lib/db-postgresql.ts` if needed
+4. Test locally with `npm run db:reset` before deploying
+
+### Testing Real-time Updates Locally
+```bash
+# Terminal 1: Start dev server
+npm run dev
+
+# Terminal 2a: Send test event with workflowId (many-to-many routing)
+curl -X POST http://localhost:3000/api/workflows \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${API_KEY}" \
+  -d '{
+    "workflowId": "test-workflow",
+    "items": [{
+      "id": "sos-12345",
+      "title": "Brand i flerfamiljshus, Sundsvall",
       "description": "Räddningstjänst på plats med flera enheter",
-      "newsValue": 4,
+      "source": "sos",
+      "newsValue": 5,
       "category": "emergency",
       "severity": "high",
+      "timestamp": "2025-10-14T10:00:00Z",
       "location": {
         "municipality": "Sundsvall",
-        "county": "Västernorrland",
-        "name": "Storgatan 45"
+        "county": "Västernorrlands län",
+        "name": "Storgatan 45",
+        "coordinates": [62.3908, 17.3069]
       }
-    },
-    {
-      "id": "police-002",
-      "workflowId": "workflow-police",
-      "source": "polisen",
-      "timestamp": "2025-09-11T12:15:00Z",
-      "title": "Trafikolycka E4 Rotebro",
-      "description": "Två bilar inblandade, långa köer",
-      "newsValue": 2,
-      "category": "traffic",
-      "location": {
-        "municipality": "Sollentuna",
-        "county": "Stockholm"
-      }
-    }
-  ]
-}
-Teknisk implementation
-Setup:
-bashnpx create-next-app@latest dashboard-poc --typescript --tailwind --app
-npm install sqlite3 sqlite
-npm install date-fns
-Mappstruktur:
-/app
-  /page.tsx                 # Startsida
-  /admin/page.tsx          # Admin-interface
-  /dashboard/[id]/page.tsx # Dashboard-visning
-  /api
-    /news-items/route.ts   # POST endpoint
-    /dashboards/route.ts   # CRUD för dashboards
-/components
-  /NewsItem.tsx            # Komponent för att visa en nyhet
-  /Dashboard.tsx           # Dashboard-layout
-  /CreateDashboard.tsx     # Modal för att skapa dashboard
-/lib
-  /db.ts                   # Databasanslutning
-  /types.ts                # TypeScript interfaces
-Prioriteringsordning:
+    }]
+  }'
+# → Event appears in ALL columns with flowId: "test-workflow"
 
-Få upp grundstruktur med API endpoint
-Implementera admin för datainmatning
-Skapa enkel dashboard som visar all data
-Lägg till filtrering och konfiguration
-Implementera databas
-Polisha och lägg till extra features
+# Terminal 2b: Send test event with columnId (direct routing)
+curl -X POST http://localhost:3000/api/workflows \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${API_KEY}" \
+  -d '{
+    "columnId": "col-breaking-d1a97dfa-32f1-4d6c-9e00-7c11ec6a3704",
+    "items": [{
+      "title": "Trafikolycka E4 söderut",
+      "source": "trafikverket",
+      "newsValue": 3,
+      "timestamp": "2025-10-14T10:05:00Z"
+    }]
+  }'
+# → Event appears ONLY in specified column
+```
 
-Kom ihåg:
+## Debugging Tips
 
-Ingen mockad data - vänta på riktig input via API/admin
-Håll det enkelt - ingen autentisering, alla kan se allt
-Fokus på visualisering - gör det tydligt vad som är viktigt (newsValue)
-Realtid är viktigt - nya händelser ska synas direkt
-Responsiv design - måste fungera på TV-skärmar och mobiler
+### Database Connection Issues
+```bash
+# Check if DATABASE_URL is set
+echo $DATABASE_URL
+
+# Test connection
+npm run db:connect
+
+# Check logs
+npm run db:logs
+```
+
+### Cloud Run Issues
+```bash
+# View recent logs
+gcloud logging read "resource.type=cloud_run_revision" --limit 50 --format json
+
+# Check service status
+gcloud run services describe newsdeck --region europe-west1
+
+# View revisions
+gcloud run revisions list --service newsdeck --region europe-west1
+```
+
+### Long-polling Not Working
+- Check browser console for `LongPoll:` log messages
+- Verify column has `flowId` set and matches incoming `workflowId`
+- Check `/api/columns/[id]/updates` endpoint manually
+- Verify Pub/Sub topic and subscription exist in GCP
+
+## Known Issues / Tech Debt
+
+1. **Duplicate Events:** Same news item can be inserted multiple times with different `dbId` if workflow sends same event repeatedly. Deduplication only happens in frontend, not at database level.
+
+2. **MainDashboard.tsx Size:** 2000+ lines, needs refactoring into smaller components and hooks.
+
+3. **No Database Migrations System:** Migrations are manual SQL files, no automatic tracking of applied migrations.
+
+4. **API Key Security:** Single API key in environment variable, no per-client keys or rate limiting.
+
+5. **No Cleanup Job:** Old news items accumulate indefinitely, no automatic archival/deletion.

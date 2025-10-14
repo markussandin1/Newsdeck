@@ -981,7 +981,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 className="h-auto p-0 text-blue-600 hover:underline font-medium"
               >
                 <a
-                  href="https://newsdeck-389280113319.europe-west1.run.app/"
+                  href="https://workflows-lab-iap.bnu.bn.nr/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
