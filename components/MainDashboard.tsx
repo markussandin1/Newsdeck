@@ -8,6 +8,7 @@ import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn }
 import { ColumnData } from '@/lib/dashboard/types'
 import { extractWorkflowId } from '@/lib/dashboard/utils'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
+import { useDashboardPolling } from '@/lib/dashboard/hooks/useDashboardPolling'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
@@ -34,6 +35,32 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     updateColumnData,
   } = useDashboardData({ dashboard })
 
+  // Audio notification state (will be extracted to hook in Fas 2c)
+  const [mutedColumns, setMutedColumns] = useState<Set<string>>(new Set())
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [showAudioPrompt, setShowAudioPrompt] = useState(false)
+
+  // Callback for playing audio when new items arrive
+  const handleNewItems = useCallback((columnId: string) => {
+    if (!mutedColumns.has(columnId) && audioRef.current) {
+      console.log(`🔔 Trying to play notification for column ${columnId}`)
+      audioRef.current.currentTime = 0 // Reset to start
+      audioRef.current.play().catch(e => {
+        console.warn('⚠️ Could not play notification sound:', e)
+        setShowAudioPrompt(true)
+      })
+    } else if (mutedColumns.has(columnId)) {
+      console.log(`🔇 Column ${columnId} is muted, skipping sound`)
+    }
+  }, [mutedColumns])
+
+  // Long-polling for real-time updates (extracted to hook)
+  const { connectionStatus } = useDashboardPolling({
+    columns: dashboard?.columns || [],
+    updateColumnData,
+    onNewItems: handleNewItems,
+  })
+
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [newColumnDescription, setNewColumnDescription] = useState('')
@@ -58,12 +85,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
   const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
   const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting')
-  const reconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
-  const reconnectAttemptsRef = useRef<Map<string, number>>(new Map())
-  const [mutedColumns, setMutedColumns] = useState<Set<string>>(new Set())
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [showAudioPrompt, setShowAudioPrompt] = useState(false)
 
   // Mobile navigation state
   const [isMobile, setIsMobile] = useState(false)
@@ -192,148 +213,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     return result
   }, [columnData])
 
-  // Set up long-polling for real-time updates
-  useEffect(() => {
-    if (!dashboard?.columns) {
-      return undefined
-    }
-
-    const abortControllers: Map<string, AbortController> = new Map()
-    const lastSeenTimestamps: Map<string, number> = new Map()
-    let isCleaningUp = false
-
-    const startLongPolling = async (column: DashboardColumn) => {
-      if (isCleaningUp || column.isArchived) {
-        return
-      }
-
-      // Clear any existing controller
-      const existingController = abortControllers.get(column.id)
-      if (existingController) {
-        existingController.abort()
-        abortControllers.delete(column.id)
-      }
-
-      // Create new abort controller for this polling loop
-      const controller = new AbortController()
-      abortControllers.set(column.id, controller)
-
-      setConnectionStatus('connected')
-
-      // Long polling loop
-      while (!isCleaningUp && !column.isArchived && !controller.signal.aborted) {
-        try {
-          const lastSeen = lastSeenTimestamps.get(column.id)
-          const url = lastSeen
-            ? `/api/columns/${column.id}/updates?lastSeen=${lastSeen}`
-            : `/api/columns/${column.id}/updates`
-
-          console.log(`LongPoll: Requesting updates for column ${column.id}`, { lastSeen })
-
-          const response = await fetch(url, {
-            signal: controller.signal,
-            headers: {
-              'Cache-Control': 'no-cache'
-            }
-          })
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`)
-          }
-
-          const data = await response.json()
-
-          // Update last seen timestamp
-          if (data.timestamp) {
-            lastSeenTimestamps.set(column.id, data.timestamp)
-          }
-
-          // Process new items
-          if (data.success && data.items && data.items.length > 0) {
-            console.log(`LongPoll: Received ${data.items.length} new items for column ${column.id}`)
-
-            updateColumnData((prev) => {
-              const existingItems = prev[column.id] || []
-
-              // Deduplicate using item.dbId (unique database ID) and mark as new
-              const newItems = data.items
-                .filter(
-                  (newItem: NewsItemType) =>
-                    !existingItems.some(existing => existing.dbId === newItem.dbId)
-                )
-                .map(item => ({
-                  ...item,
-                  isNew: true
-                }))
-
-              if (newItems.length === 0) {
-                return prev
-              }
-
-              console.log(`LongPoll: Adding ${newItems.length} deduplicated items to column ${column.id}`)
-
-              // Play notification sound if column is not muted
-              if (!mutedColumns.has(column.id) && audioRef.current) {
-                console.log(`🔔 Trying to play notification for column ${column.id}`)
-                audioRef.current.currentTime = 0 // Reset to start
-                audioRef.current.play().catch(e => {
-                  console.warn('⚠️ Could not play notification sound:', e)
-                  setShowAudioPrompt(true)
-                })
-              } else if (mutedColumns.has(column.id)) {
-                console.log(`🔇 Column ${column.id} is muted, skipping sound`)
-              }
-
-              return {
-                ...prev,
-                [column.id]: [...newItems, ...existingItems]
-              }
-            })
-          }
-
-          // Immediately start next poll
-          setConnectionStatus('connected')
-        } catch (error) {
-          if (error instanceof Error && error.name === 'AbortError') {
-            // Polling was cancelled, exit loop
-            console.log(`LongPoll: Aborted for column ${column.id}`)
-            break
-          }
-
-          console.error(`LongPoll: Error for column ${column.id}`, error)
-          setConnectionStatus('disconnected')
-
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 2000))
-        }
-      }
-
-      // Cleanup for this column
-      abortControllers.delete(column.id)
-    }
-
-    // Start long polling for each non-archived column
-    dashboard.columns.forEach((column) => {
-      if (!column.isArchived) {
-        startLongPolling(column)
-      }
-    })
-
-    // Cleanup: abort all polling
-    const timeouts = reconnectTimeoutsRef.current
-    const attempts = reconnectAttemptsRef.current
-
-    return () => {
-      isCleaningUp = true
-
-      abortControllers.forEach((controller) => controller.abort())
-      abortControllers.clear()
-      lastSeenTimestamps.clear()
-      timeouts.clear()
-      attempts.clear()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboard?.columns, mutedColumns]) // updateColumnData is stable and intentionally excluded
 
   // Handle click outside dropdown
   useEffect(() => {
