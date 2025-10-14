@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
+import { ColumnData } from '@/lib/dashboard/types'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
@@ -37,10 +38,6 @@ const deepEqual = (obj1: unknown, obj2: unknown): boolean => {
 interface MainDashboardProps {
   dashboard: DashboardType
   onDashboardUpdate: (dashboard: DashboardType) => void
-}
-
-interface ColumnData {
-  [columnId: string]: NewsItemType[]
 }
 
 export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDashboardProps) {
