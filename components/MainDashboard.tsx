@@ -412,81 +412,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     setDragOverColumn(null)
   }
 
-  // Stable column structure that never gets recreated
-  const StableColumn = memo(({
-    column,
-    children,
-    onCopyId,
-    onEditColumn,
-    onRemoveColumn,
-    copiedId
-  }: {
-    column: DashboardColumn
-    children: React.ReactNode
-    onCopyId: (text: string | undefined, columnId: string, columnTitle: string, label?: string) => void
-    onEditColumn: (column: DashboardColumn) => void
-    onRemoveColumn: (columnId: string) => void
-    copiedId: string | null
-  }) => {
-    return (
-      <div className="flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col">
-        {/* Column Header - this part can update */}
-        <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2 flex-1">
-              <button
-                onClick={() => onCopyId(column.id, column.id, column.title)}
-                className="text-blue-500 hover:text-blue-700 p-1"
-                title="Kopiera kolumn-ID"
-              >
-                {copiedId === column.id ? '✓' : '📋'}
-              </button>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-800">
-                    {column.title}
-                  </h3>
-                  <button
-                    onClick={() => onEditColumn(column)}
-                    className="text-gray-400 hover:text-gray-600 text-xs"
-                    title="Redigera kolumn"
-                  >
-                    ✏️
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {memoizedColumnData[column.id]?.length || 0} händelser
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => onRemoveColumn(column.id)}
-              className="ml-2 text-red-500 hover:text-red-700 text-sm p-1"
-              title="Ta bort kolumn"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        {/* Stable scrollable content area */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          {children}
-        </div>
-      </div>
-    )
-  }, (prevProps, nextProps) => {
-    // Only re-render if column metadata changes, NOT content
-    return prevProps.column.id === nextProps.column.id &&
-           prevProps.column.title === nextProps.column.title &&
-           prevProps.column.flowId === nextProps.column.flowId &&
-           prevProps.copiedId === nextProps.copiedId
-  })
-
-  StableColumn.displayName = 'StableColumn'
-
-  // Separate component for column content that can update independently with pagination
-  const ColumnContent = memo(({
+  // Separate component for column content with pagination (no memo wrapper - allow all updates)
+  const ColumnContent = ({
     columnId,
     items,
     onSelectNewsItem
@@ -604,14 +531,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
         )}
       </>
     )
-  }, (prevProps, nextProps) => {
-    // Only re-render if items actually changed
-    return prevProps.items.length === nextProps.items.length &&
-           prevProps.items.every((item, index) =>
-             item.dbId === nextProps.items[index]?.dbId &&
-             item.isNew === nextProps.items[index]?.isNew
-           )
-  })
+  }
 
   ColumnContent.displayName = 'ColumnContent'
 
