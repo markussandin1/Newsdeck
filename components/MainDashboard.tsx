@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -16,14 +16,18 @@ import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
 import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import ColumnMapButton from './ColumnMapButton'
 
 interface MainDashboardProps {
   dashboard: DashboardType
   onDashboardUpdate: (dashboard: DashboardType) => void
+  dashboardSlug?: string
 }
 
-export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDashboardProps) {
+export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardSlug }: MainDashboardProps) {
   const router = useRouter()
+
+  const effectiveDashboardSlug = dashboardSlug || dashboard.slug || (dashboard.id === 'main-dashboard' ? 'main' : dashboard.id)
 
   // Dashboard data management (extracted to hook)
   const {
@@ -1098,6 +1102,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                             {column.title}
                           </h3>
                           <div className="flex items-center gap-1">
+                            {effectiveDashboardSlug && (
+                              <ColumnMapButton
+                                dashboardSlug={effectiveDashboardSlug}
+                                columnId={column.id}
+                                columnTitle={column.title}
+                              />
+                            )}
                             <Button
                               onClick={() => toggleMute(column.id)}
                               variant="ghost"

@@ -198,6 +198,17 @@
   }
 }
 
+.newsdeck-map-tooltip {
+  background-color: rgba(15, 23, 42, 0.95);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
 /* Glass-morphism utilities */
 .glass {
   @apply bg-white/80 backdrop-blur-md border border-white/20;

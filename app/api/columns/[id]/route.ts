@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyApiKey, unauthorizedResponse, verifySession, sessionUnauthorizedResponse } from '@/lib/api-auth'
 
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(uuid)
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -12,6 +17,15 @@ export async function GET(
   }
   try {
     const { id } = await params
+
+    // Validate UUID format to prevent injection attacks
+    if (!isValidUUID(id)) {
+      return NextResponse.json(
+        { error: 'Invalid column ID format' },
+        { status: 400 }
+      )
+    }
+
     const columnData = await db.getColumnData(id)
 
     return NextResponse.json({
