@@ -11,6 +11,11 @@ import type { Dashboard, DashboardColumn, NewsItem as NewsItemType } from '@/lib
 const HOURS_OPTIONS = [6, 12, 24]
 const POLL_INTERVAL_MS = 30000
 
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(uuid)
+}
+
 function getEventTimestamp(item: NewsItemType) {
   const value = item.createdInDb || item.timestamp
   return new Date(value).getTime()
@@ -48,6 +53,13 @@ export default function ColumnMapPage() {
 
   const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!slug || !columnId) return
+
+    // Validate columnId format to prevent injection attacks
+    if (!isValidUUID(columnId)) {
+      setError('Ogiltig kolumn-ID format')
+      setIsLoading(false)
+      return
+    }
 
     const silent = options?.silent ?? false
     if (silent) {

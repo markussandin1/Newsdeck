@@ -44,6 +44,7 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     if (!containerRef.current || mapInstanceRef.current) return
 
     let isCancelled = false
+    let mapInstance: LeafletMapInstance | null = null
 
     const init = async () => {
       const container = containerRef.current
@@ -60,6 +61,10 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
       }
 
       const { default: L } = await import('leaflet')
+
+      // Check if cancelled after async operation
+      if (isCancelled) return
+
       leafletRef.current = L
 
       const defaultIconPrototype = L.Icon.Default.prototype as unknown as { _getIconUrl?: () => string }
@@ -70,9 +75,10 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
       })
 
-      if (isCancelled || !container) return
+      // Check again before DOM manipulation
+      if (isCancelled || !containerRef.current) return
 
-      const map = L.map(container, {
+      mapInstance = L.map(containerRef.current, {
         center: DEFAULT_CENTER,
         zoom: 5,
         minZoom: 4,
@@ -81,26 +87,34 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
-      }).addTo(map)
+      }).addTo(mapInstance)
 
-      markersLayerRef.current = L.layerGroup().addTo(map)
-      mapInstanceRef.current = map
+      markersLayerRef.current = L.layerGroup().addTo(mapInstance)
+      mapInstanceRef.current = mapInstance
 
-      map.attributionControl.setPrefix('')
+      mapInstance.attributionControl.setPrefix('')
       setIsReady(true)
     }
 
     init()
 
+    // Capture current values for cleanup
     const markerStore = markersRef.current
     const layerStore = markersLayerRef.current
 
     return () => {
       isCancelled = true
+
+      // Clean up map instance created in this effect
+      if (mapInstance) {
+        mapInstance.remove()
+      }
+      // Also clean up ref in case it was set
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
       }
+
       markerStore.clear()
       if (layerStore) {
         layerStore.clearLayers()
