@@ -11,10 +11,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Check API key authentication (skip in development)
-  if (process.env.NODE_ENV !== 'development' && !verifyApiKey(request)) {
-    return unauthorizedResponse()
-  }
+  // Public endpoint - no authentication required for reading column data
+  // This matches the public access pattern of /api/dashboards/[slug]
   try {
     const { id } = await params
 
