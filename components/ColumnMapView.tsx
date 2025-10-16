@@ -105,22 +105,27 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     return () => {
       isCancelled = true
 
-      // Clean up map instance created in this effect
-      if (mapInstance) {
-        mapInstance.remove()
-      }
-      // Also clean up ref in case it was set
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove()
-        mapInstanceRef.current = null
-      }
-
+      // Clean up markers first
       markerStore.clear()
       if (layerStore) {
         layerStore.clearLayers()
       }
+
+      // Only remove the map instance once (prefer the ref)
+      const mapToRemove = mapInstanceRef.current || mapInstance
+      if (mapToRemove) {
+        try {
+          mapToRemove.remove()
+        } catch {
+          // Map may already be removed, ignore errors
+          console.debug('Map cleanup: instance already removed')
+        }
+        mapInstanceRef.current = null
+      }
+
       markersLayerRef.current = null
       leafletRef.current = null
+      setIsReady(false)
     }
   }, [])
 

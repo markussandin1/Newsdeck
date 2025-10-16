@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { verifyApiKey, unauthorizedResponse, verifySession, sessionUnauthorizedResponse } from '@/lib/api-auth'
+import { verifySession, sessionUnauthorizedResponse } from '@/lib/api-auth'
 
 function isValidUUID(uuid: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
