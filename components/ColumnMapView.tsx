@@ -235,7 +235,12 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
       }
       if (isSelected && item.location?.coordinates?.length === 2) {
         const [lat, lng] = item.location.coordinates
-        map.panTo([lat, lng], { animate: true })
+        // Animate to the selected location with zoom
+        map.flyTo([lat, lng], 12, {
+          animate: true,
+          duration: 1.2, // 1.2 seconds animation
+          easeLinearity: 0.25
+        })
       }
     })
   }, [selectedItemId, createMarkerIcon, isReady])
