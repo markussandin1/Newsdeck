@@ -273,23 +273,31 @@ export default function ColumnMapPage() {
               Inga händelser inom valt intervall.
             </div>
           ) : (
-            <div className="max-h-[45vh] space-y-3 overflow-y-auto px-4 py-4 md:max-h-[calc(100vh-340px)]">
-              {sortedItems.map((item) => (
-                <div
-                  key={item.dbId}
-                  className={`rounded-xl border transition ${
-                    selectedItemId === item.dbId
-                      ? 'border-blue-500 shadow-md'
-                      : 'border-slate-200 hover:border-blue-300'
-                  }`}
-                >
-                  <NewsItem
-                    item={item}
-                    compact
+            <div className="max-h-[45vh] overflow-y-auto md:max-h-[calc(100vh-340px)]">
+              {sortedItems.map((item) => {
+                const timestamp = new Date(item.createdInDb || item.timestamp)
+                const timeStr = timestamp.toLocaleString('sv-SE', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  month: 'short',
+                  day: 'numeric'
+                })
+                return (
+                  <button
+                    key={item.dbId}
+                    type="button"
                     onClick={() => setSelectedItemId(item.dbId)}
-                  />
-                </div>
-              ))}
+                    className={`w-full border-b border-slate-200 px-4 py-3 text-left transition hover:bg-slate-50 ${
+                      selectedItemId === item.dbId ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <div className="font-medium text-slate-900 text-sm line-clamp-2">
+                      {item.title || 'Okänd händelse'}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">{timeStr}</div>
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
