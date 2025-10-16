@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Map as LeafletMapInstance, LayerGroup, Marker as LeafletMarker } from 'leaflet'
 import type { NewsItem } from '@/lib/types'
+import { getCategoryIcon } from '@/lib/categories'
+import MapInfoCard from './MapInfoCard'
 
 interface ColumnMapViewProps {
   items: NewsItem[]
@@ -20,16 +22,8 @@ function getNewsValueColor(newsValue: number) {
   return '#6B7280'
 }
 
-function getCategorySymbol(category?: string) {
-  if (!category) return '📍'
-  const value = category.toLowerCase()
-  if (value.includes('brand') || value.includes('fire')) return '🔥'
-  if (value.includes('oly') || value.includes('accident') || value.includes('trafik') || value.includes('traffic')) return '🚗'
-  if (value.includes('crime') || value.includes('polis') || value.includes('brott')) return '🚔'
-  if (value.includes('weather') || value.includes('väder') || value.includes('storm')) return '🌧️'
-  if (value.includes('rescue') || value.includes('rädd')) return '🆘'
-  return '📍'
-}
+// getCategorySymbol moved to lib/categories.ts
+// Using getCategoryIcon instead for standardized category icons
 
 export default function ColumnMapView({ items, selectedItemId, onSelectItem, emptyState }: ColumnMapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -38,6 +32,7 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
   const leafletRef = useRef<typeof import('leaflet') | null>(null)
   const markersRef = useRef<Map<string, { marker: LeafletMarker; item: NewsItem }>>(new Map())
   const [isReady, setIsReady] = useState(false)
+  const [showInfoCard, setShowInfoCard] = useState(false)
 
   // Initialize map only once
   useEffect(() => {
@@ -134,7 +129,7 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
       const L = leafletRef.current
       if (!L) return undefined
       const color = getNewsValueColor(item.newsValue)
-      const symbol = getCategorySymbol(item.category)
+      const symbol = getCategoryIcon(item.category)
       const ringColor = isSelected ? '#1D4ED8' : '#FFFFFF'
 
       const html = `
@@ -241,9 +236,26 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
           duration: 1.2, // 1.2 seconds animation
           easeLinearity: 0.25
         })
+        // Show info card after a short delay to let animation start
+        setTimeout(() => setShowInfoCard(true), 100)
       }
     })
+
+    // Hide info card when no item is selected
+    if (!selectedItemId) {
+      setShowInfoCard(false)
+    }
   }, [selectedItemId, createMarkerIcon, isReady])
+
+  // Get the selected item object
+  const selectedItem = useMemo(() => {
+    if (!selectedItemId) return null
+    return items.find(item => item.dbId === selectedItemId) || null
+  }, [selectedItemId, items])
+
+  const handleCloseInfoCard = () => {
+    setShowInfoCard(false)
+  }
 
   return (
     <div className="relative h-full w-full">
@@ -252,6 +264,9 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
         <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur">
           {emptyState}
         </div>
+      )}
+      {showInfoCard && selectedItem && (
+        <MapInfoCard item={selectedItem} onClose={handleCloseInfoCard} />
       )}
     </div>
   )

@@ -14,7 +14,7 @@ export interface NewsItem {
   
   // Prioritering
   newsValue: number;             // 5 = högst nyhetsvärde (tillåter 0 i nya flöden)
-  category?: string;             // traffic, weather, crime, politics, economy, sports
+  category?: string;             // Standardiserade kategorier från lib/categories.ts (brand, trafikolycka, etc.)
   severity?: string | null;
   
   // Geografi
