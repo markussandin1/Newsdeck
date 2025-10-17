@@ -9,7 +9,7 @@ import MapInfoCard from './MapInfoCard'
 interface ColumnMapViewProps {
   items: NewsItem[]
   selectedItemId?: string | null
-  onSelectItem: (item: NewsItem) => void
+  onSelectItem: (item: NewsItem, userInitiated?: boolean) => void
   emptyState?: React.ReactNode
 }
 
@@ -183,7 +183,10 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
         icon: createMarkerIcon(item, item.dbId === selectedItemId)
       })
 
-      marker.on('click', () => onSelectItem(item))
+      marker.on('click', () => {
+        hasUserInteractedRef.current = true
+        onSelectItem(item, true)
+      })
 
       const timeValue = new Date(item.createdInDb || item.timestamp)
       const title = item.title || 'Okänd händelse'
@@ -214,6 +217,9 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     }
   }, [items, createMarkerIcon, onSelectItem, selectedItemId, isReady])
 
+  // Track if user has interacted with the map
+  const hasUserInteractedRef = useRef(false)
+
   // Highlight selected item without recreating all markers
   useEffect(() => {
     if (!isReady) return
@@ -236,8 +242,10 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
           duration: 1.2, // 1.2 seconds animation
           easeLinearity: 0.25
         })
-        // Show info card after a short delay to let animation start
-        setTimeout(() => setShowInfoCard(true), 100)
+        // Only show info card if user has explicitly clicked something
+        if (hasUserInteractedRef.current) {
+          setTimeout(() => setShowInfoCard(true), 100)
+        }
       }
     })
 

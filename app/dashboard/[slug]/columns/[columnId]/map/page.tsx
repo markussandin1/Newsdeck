@@ -153,7 +153,9 @@ export default function ColumnMapPage() {
         <ColumnMapView
           items={sortedItems}
           selectedItemId={selectedItemId}
-          onSelectItem={(item) => setSelectedItemId(item.dbId)}
+          onSelectItem={(item) => {
+            setSelectedItemId(item.dbId)
+          }}
           emptyState={
             <div className="flex flex-col items-center gap-2 text-center text-slate-100">
               <MapPin className="h-8 w-8 text-slate-200" />
