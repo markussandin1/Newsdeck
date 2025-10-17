@@ -42,6 +42,7 @@ export default function ColumnMapPage() {
   const [error, setError] = useState<string | null>(null)
   const [timeWindowHours, setTimeWindowHours] = useState<number>(24)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [userInitiatedSelection, setUserInitiatedSelection] = useState(false)
 
   useEffect(() => {
     setDashboard(null)
@@ -144,6 +145,16 @@ export default function ColumnMapPage() {
     }
   }, [sortedItems, selectedItemId])
 
+  // Reset the user-initiated flag after it's been processed
+  useEffect(() => {
+    if (userInitiatedSelection) {
+      const timeout = setTimeout(() => {
+        setUserInitiatedSelection(false)
+      }, 100)
+      return () => clearTimeout(timeout)
+    }
+  }, [userInitiatedSelection])
+
   const headline = column?.title || 'Kolumnkarta'
   const subHeadline = column?.description || dashboard?.description
 
@@ -154,8 +165,10 @@ export default function ColumnMapPage() {
           items={sortedItems}
           selectedItemId={selectedItemId}
           onSelectItem={(item) => {
+            setUserInitiatedSelection(true)
             setSelectedItemId(item.dbId)
           }}
+          userInitiatedSelection={userInitiatedSelection}
           emptyState={
             <div className="flex flex-col items-center gap-2 text-center text-slate-100">
               <MapPin className="h-8 w-8 text-slate-200" />
@@ -282,7 +295,10 @@ export default function ColumnMapPage() {
                   <button
                     key={item.dbId}
                     type="button"
-                    onClick={() => setSelectedItemId(item.dbId)}
+                    onClick={() => {
+                      setUserInitiatedSelection(true)
+                      setSelectedItemId(item.dbId)
+                    }}
                     className={`w-full border-b border-slate-200 px-4 py-3 text-left transition hover:bg-slate-50 ${
                       selectedItemId === item.dbId ? 'bg-blue-50' : ''
                     }`}

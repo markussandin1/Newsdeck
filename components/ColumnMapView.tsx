@@ -11,6 +11,7 @@ interface ColumnMapViewProps {
   selectedItemId?: string | null
   onSelectItem: (item: NewsItem, userInitiated?: boolean) => void
   emptyState?: React.ReactNode
+  userInitiatedSelection?: boolean
 }
 
 const DEFAULT_CENTER: [number, number] = [62, 16]
@@ -25,7 +26,7 @@ function getNewsValueColor(newsValue: number) {
 // getCategorySymbol moved to lib/categories.ts
 // Using getCategoryIcon instead for standardized category icons
 
-export default function ColumnMapView({ items, selectedItemId, onSelectItem, emptyState }: ColumnMapViewProps) {
+export default function ColumnMapView({ items, selectedItemId, onSelectItem, emptyState, userInitiatedSelection }: ColumnMapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<LeafletMapInstance | null>(null)
   const markersLayerRef = useRef<LayerGroup | null>(null)
@@ -229,6 +230,11 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     const L = leafletRef.current
     if (!map || !L) return
 
+    // Track user-initiated selection from parent component
+    if (userInitiatedSelection) {
+      hasUserInteractedRef.current = true
+    }
+
     markersRef.current.forEach(({ marker, item }) => {
       const isSelected = item.dbId === selectedItemId
       const icon = createMarkerIcon(item, isSelected)
@@ -327,7 +333,7 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     if (!selectedItemId) {
       setShowInfoCard(false)
     }
-  }, [selectedItemId, createMarkerIcon, isReady])
+  }, [selectedItemId, createMarkerIcon, isReady, userInitiatedSelection])
 
   // Get the selected item object
   const selectedItem = useMemo(() => {
