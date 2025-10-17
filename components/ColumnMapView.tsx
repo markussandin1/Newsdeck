@@ -219,6 +219,7 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
 
   // Track if user has interacted with the map
   const hasUserInteractedRef = useRef(false)
+  const previousLocationRef = useRef<[number, number] | null>(null)
 
   // Highlight selected item without recreating all markers
   useEffect(() => {
@@ -236,16 +237,70 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
       }
       if (isSelected && item.location?.coordinates?.length === 2) {
         const [lat, lng] = item.location.coordinates
-        // Animate to the selected location with zoom
-        map.flyTo([lat, lng], 12, {
-          animate: true,
-          duration: 1.2, // 1.2 seconds animation
-          easeLinearity: 0.25
-        })
-        // Only show info card if user has explicitly clicked something
-        if (hasUserInteractedRef.current) {
-          setTimeout(() => setShowInfoCard(true), 100)
+        const newLocation: [number, number] = [lat, lng]
+
+        // Calculate distance from previous location if we have one
+        const previousLocation = previousLocationRef.current
+
+        if (previousLocation && hasUserInteractedRef.current) {
+          // Calculate distance in kilometers using Haversine formula
+          const distance = L.latLng(previousLocation).distanceTo(L.latLng(newLocation)) / 1000 // km
+
+          // Determine intermediate zoom level based on distance
+          // Close (<50km): zoom to 9, Medium (50-200km): zoom to 7, Far (>200km): zoom to 5
+          let intermediateZoom = 9
+          if (distance > 200) {
+            intermediateZoom = 5
+          } else if (distance > 50) {
+            intermediateZoom = 7
+          } else if (distance > 10) {
+            intermediateZoom = 9
+          } else {
+            // Very close, just pan directly
+            map.flyTo(newLocation, 12, {
+              animate: true,
+              duration: 1.0,
+              easeLinearity: 0.25
+            })
+            previousLocationRef.current = newLocation
+            setTimeout(() => setShowInfoCard(true), 100)
+            return
+          }
+
+          // Create bounds that include both points
+          const bounds = L.latLngBounds([previousLocation, newLocation])
+
+          // Zoom out to show both points, then zoom in on target
+          map.flyToBounds(bounds.pad(0.3), {
+            animate: true,
+            duration: 1.5,
+            easeLinearity: 0.2,
+            maxZoom: intermediateZoom
+          })
+
+          // After the zoom-out animation, zoom in on the target
+          setTimeout(() => {
+            map.flyTo(newLocation, 12, {
+              animate: true,
+              duration: 1.2,
+              easeLinearity: 0.25
+            })
+          }, 1500)
+
+          setTimeout(() => setShowInfoCard(true), 2700)
+        } else {
+          // First time or no previous location - direct fly
+          map.flyTo(newLocation, 12, {
+            animate: true,
+            duration: 1.2,
+            easeLinearity: 0.25
+          })
+          if (hasUserInteractedRef.current) {
+            setTimeout(() => setShowInfoCard(true), 100)
+          }
         }
+
+        previousLocationRef.current = newLocation
       }
     })
 
