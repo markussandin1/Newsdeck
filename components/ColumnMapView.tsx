@@ -259,8 +259,8 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
             // Very close, just pan directly
             map.flyTo(newLocation, 12, {
               animate: true,
-              duration: 1.0,
-              easeLinearity: 0.25
+              duration: 0.8,
+              easeLinearity: 0.5
             })
             previousLocationRef.current = newLocation
             setTimeout(() => setShowInfoCard(true), 100)
@@ -273,8 +273,8 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
           // Zoom out to show both points, then zoom in on target
           map.flyToBounds(bounds.pad(0.3), {
             animate: true,
-            duration: 1.5,
-            easeLinearity: 0.2,
+            duration: 1.2,
+            easeLinearity: 0.5,
             maxZoom: intermediateZoom
           })
 
@@ -282,18 +282,18 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
           setTimeout(() => {
             map.flyTo(newLocation, 12, {
               animate: true,
-              duration: 1.2,
-              easeLinearity: 0.25
+              duration: 1.0,
+              easeLinearity: 0.5
             })
-          }, 1500)
+          }, 1200)
 
-          setTimeout(() => setShowInfoCard(true), 2700)
+          setTimeout(() => setShowInfoCard(true), 2200)
         } else {
           // First time or no previous location - direct fly
           map.flyTo(newLocation, 12, {
             animate: true,
-            duration: 1.2,
-            easeLinearity: 0.25
+            duration: 1.0,
+            easeLinearity: 0.5
           })
           if (hasUserInteractedRef.current) {
             setTimeout(() => setShowInfoCard(true), 100)
