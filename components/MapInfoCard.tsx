@@ -79,7 +79,7 @@ export default function MapInfoCard({ item, onClose }: MapInfoCardProps) {
 
   return (
     <div
-      className="absolute left-8 top-1/2 -translate-y-1/2 w-80 bg-white rounded-lg shadow-2xl border border-border z-[500] animate-in fade-in slide-in-from-left-5 duration-300"
+      className="absolute left-1/4 top-1/2 -translate-y-1/2 w-80 bg-white rounded-lg shadow-2xl border border-border z-[500] animate-in fade-in slide-in-from-left-5 duration-300"
       style={{ maxWidth: 'calc(100vw - 2rem)' }}
     >
       {/* Header with close button */}
