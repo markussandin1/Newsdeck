@@ -243,6 +243,8 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
         const previousLocation = previousLocationRef.current
 
         if (previousLocation && hasUserInteractedRef.current) {
+          const currentZoom = map.getZoom()
+
           // Calculate distance in kilometers using Haversine formula
           const distance = L.latLng(previousLocation).distanceTo(L.latLng(newLocation)) / 1000 // km
 
@@ -267,27 +269,44 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
             return
           }
 
-          // Create bounds that include both points
-          const bounds = L.latLngBounds([previousLocation, newLocation])
+          // Only do smooth zoom-out if we're currently zoomed in enough
+          // Otherwise the animation looks weird
+          if (currentZoom >= 10) {
+            // Step 1: Zoom out from current position
+            map.setZoom(intermediateZoom, {
+              animate: true,
+              duration: 0.6
+            })
 
-          // Zoom out to show both points, then zoom in on target
-          map.flyToBounds(bounds.pad(0.3), {
-            animate: true,
-            duration: 1.2,
-            easeLinearity: 0.5,
-            maxZoom: intermediateZoom
-          })
+            // Step 2: Pan to show both points
+            setTimeout(() => {
+              const bounds = L.latLngBounds([previousLocation, newLocation])
+              map.fitBounds(bounds.pad(0.3), {
+                animate: true,
+                duration: 0.6,
+                maxZoom: intermediateZoom
+              })
+            }, 600)
 
-          // After the zoom-out animation, zoom in on the target
-          setTimeout(() => {
+            // Step 3: Zoom in on target
+            setTimeout(() => {
+              map.flyTo(newLocation, 12, {
+                animate: true,
+                duration: 1.0,
+                easeLinearity: 0.5
+              })
+            }, 1200)
+
+            setTimeout(() => setShowInfoCard(true), 2200)
+          } else {
+            // Not zoomed in enough, just fly directly
             map.flyTo(newLocation, 12, {
               animate: true,
               duration: 1.0,
               easeLinearity: 0.5
             })
-          }, 1200)
-
-          setTimeout(() => setShowInfoCard(true), 2200)
+            setTimeout(() => setShowInfoCard(true), 100)
+          }
         } else {
           // First time or no previous location - direct fly
           map.flyTo(newLocation, 12, {
