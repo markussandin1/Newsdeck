@@ -349,7 +349,7 @@ curl -X POST http://localhost:3000/api/workflows \
       "description": "Räddningstjänst på plats med flera enheter",
       "source": "sos",
       "newsValue": 5,
-      "category": "emergency",
+      "category": "brand",
       "severity": "high",
       "timestamp": "2025-10-14T10:00:00Z",
       "location": {
@@ -372,10 +372,40 @@ curl -X POST http://localhost:3000/api/workflows \
       "title": "Trafikolycka E4 söderut",
       "source": "trafikverket",
       "newsValue": 3,
+      "category": "trafikolycka",
       "timestamp": "2025-10-14T10:05:00Z"
     }]
   }'
 # → Event appears ONLY in specified column
+```
+
+## News Categories
+
+NewsDeck uses **standardized, predefined categories** for all news events. AI agents in Workflows must always map events to one of these exact categories.
+
+### Category System
+
+All categories are defined in `lib/categories.ts` with associated icons for map display:
+
+- **Emergency & Rescue:** brand 🔥, explosion 💥, räddning 🆘, gasläcka ☣️, kemolycka ⚠️
+- **Crime & Police:** rån 💰, mord 🔪, misshandel 🤕, skjutning 🔫, inbrott 🏠, stöld 👜, våldtäkt 🚨, mordförsök ⚠️, hot 💬
+- **Traffic:** trafikolycka 🚗, personpåhållning 🚂, vägarbete 🚧, fordonsbrand 🔥, kö 🚙
+- **Rail & Transit:** växelfel 🔧, urspårning 🚂, signalfel 🚦, strömavbrott-tåg ⚡, inställd-trafik 🚫
+- **Weather & Nature:** översvämning 🌊, storm 🌪️, snöoväder ❄️, halka 🧊, värmebölja 🌡️, skogsbrand 🌲, ras ⛰️, skyfall 🌧️
+- **Other:** strömavbrott ⚡, vattenläcka 💧, olycka ⚠️, sjukdom 🏥, djur 🦌, larm 🔔, annan 📍
+
+### For Workflow AI Agents
+
+When creating workflows that send data to NewsDeck, instruct your AI agent to use **only these exact category values**. See `docs/WORKFLOW_CATEGORY_INSTRUCTIONS.md` for detailed instructions and examples.
+
+**Example prompt for AI agent:**
+```
+Analyze this event and set category to ONE of these exact values:
+brand, explosion, räddning, gasläcka, kemolycka, rån, mord, misshandel, skjutning,
+inbrott, stöld, våldtäkt, mordförsök, hot, trafikolycka, personpåhållning, vägarbete,
+fordonsbrand, kö, växelfel, urspårning, signalfel, strömavbrott-tåg, inställd-trafik,
+översvämning, storm, snöoväder, halka, värmebölja, skogsbrand, ras, skyfall,
+strömavbrott, vattenläcka, olycka, sjukdom, djur, larm, annan
 ```
 
 ## Debugging Tips

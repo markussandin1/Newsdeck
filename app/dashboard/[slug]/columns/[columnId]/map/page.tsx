@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Clock, Globe2, MapPin, RefreshCw } from 'lucide-react'
 import ColumnMapView from '@/components/ColumnMapView'
-import NewsItem from '@/components/NewsItem'
 import type { Dashboard, DashboardColumn, NewsItem as NewsItemType } from '@/lib/types'
 
 const HOURS_OPTIONS = [6, 12, 24]
@@ -143,11 +142,6 @@ export default function ColumnMapPage() {
     if (!selectedItemId || !sortedItems.some((item) => item.dbId === selectedItemId)) {
       setSelectedItemId(sortedItems[0].dbId)
     }
-  }, [sortedItems, selectedItemId])
-
-  const selectedItem = useMemo(() => {
-    if (!selectedItemId) return null
-    return sortedItems.find((item) => item.dbId === selectedItemId) || null
   }, [sortedItems, selectedItemId])
 
   const headline = column?.title || 'Kolumnkarta'
@@ -301,13 +295,6 @@ export default function ColumnMapPage() {
             </div>
           )}
         </div>
-
-        {selectedItem && (
-          <div className="pointer-events-auto rounded-3xl bg-white/95 p-4 text-slate-800 shadow-xl backdrop-blur">
-            <div className="mb-2 text-sm font-semibold text-slate-700">Detaljer</div>
-            <NewsItem item={selectedItem} />
-          </div>
-        )}
       </div>
     </div>
   )
