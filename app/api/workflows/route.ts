@@ -4,6 +4,7 @@ import { ingestNewsItems, IngestionError } from '@/lib/services/ingestion'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { verifyApiKey, unauthorizedResponse } from '@/lib/api-auth'
+import { checkRateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
@@ -48,6 +49,55 @@ export async function POST(request: NextRequest) {
         error: 'Request body must be valid JSON'
       },
       { status: 400 }
+    )
+  }
+
+  // Extract workflowId from body for rate limiting
+  const workflowId = (body && typeof body === 'object' && 'workflowId' in body)
+    ? (body as { workflowId?: string }).workflowId
+    : null
+
+  // Check rate limit
+  const rateLimitIdentifier = getRateLimitIdentifier(workflowId, ipAddress)
+  const rateLimit = await checkRateLimit(rateLimitIdentifier)
+
+  if (!rateLimit.success) {
+    logger.warn('api.workflows.rateLimited', {
+      identifier: rateLimitIdentifier,
+      limit: rateLimit.limit,
+      reset: new Date(rateLimit.reset).toISOString()
+    })
+
+    // Log rate limit error
+    await db.logApiRequest({
+      endpoint: '/api/workflows',
+      method: 'POST',
+      statusCode: 429,
+      success: false,
+      errorMessage: `Rate limit exceeded: ${rateLimit.limit} requests per minute`,
+      ipAddress,
+      userAgent,
+      requestBody: body
+    })
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Rate limit exceeded',
+        message: `Maximum ${rateLimit.limit} requests per minute. Try again in ${Math.ceil((rateLimit.reset - Date.now()) / 1000)} seconds.`,
+        limit: rateLimit.limit,
+        remaining: rateLimit.remaining,
+        reset: rateLimit.reset
+      },
+      {
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': rateLimit.limit.toString(),
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': rateLimit.reset.toString(),
+          'Retry-After': Math.ceil((rateLimit.reset - Date.now()) / 1000).toString()
+        }
+      }
     )
   }
 

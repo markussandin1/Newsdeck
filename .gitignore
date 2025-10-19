@@ -67,3 +67,14 @@ temp/
 .claude/
 fix-column-data-schema.sql
 init-db.sql
+
+# Prevent duplicate CLAUDE.md (case-sensitivity issue on macOS)
+claude.md
+
+# Screenshots and images (should not be in version control)
+*.png
+*.jpg
+*.jpeg
+*.gif
+Skärmavbild*
+Screenshot*

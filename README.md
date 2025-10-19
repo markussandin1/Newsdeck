@@ -9,7 +9,7 @@ A real-time news dashboard application with TweetDeck-style columns and persiste
 
 - **📊 Dashboard Management**: Create and organize multiple dashboards
 - **📑 Column-based Layout**: TweetDeck-style columns for organized content viewing
-- **⚡ Real-time Updates**: Server-Sent Events (SSE) for instant live updates
+- **⚡ Real-time Updates**: Long-polling + Google Cloud Pub/Sub for instant live updates
 - **💾 Persistent Storage**: PostgreSQL on Google Cloud SQL for reliable data persistence
 - **🔧 Admin Interface**: Easy-to-use admin panel for data management
 - **🌐 API Integration**: RESTful API for external workflow integration
@@ -131,9 +131,11 @@ GET /api/columns
 ├── lib/                     # Utilities and database
 │   ├── db-postgresql.ts     # PostgreSQL integration
 │   ├── db.ts                # Database interface
-│   ├── events.ts            # Server-Sent Events
+│   ├── pubsub.ts            # Google Cloud Pub/Sub client
+│   ├── event-queue.ts       # In-memory event queue (dev)
+│   ├── rate-limit.ts        # API rate limiting
 │   └── types.ts             # TypeScript definitions
-├── migrations/              # Database migrations
+├── db/                      # Database initialization
 └── .github/                 # GitHub workflows and templates
 ```
 
@@ -142,7 +144,8 @@ GET /api/columns
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Styling**: TailwindCSS, PostCSS
 - **Database**: PostgreSQL (Google Cloud SQL)
-- **Real-time**: Server-Sent Events (SSE)
+- **Real-time**: Long-polling (30s intervals) + Google Cloud Pub/Sub push notifications
+- **Rate Limiting**: PostgreSQL-based rate limiting (100 req/min, zero extra cost)
 - **Deployment**: Google Cloud Run with GitHub Actions CI/CD
 - **Authentication**: NextAuth.js with Google OAuth
 - **API**: REST endpoints for external integrations
@@ -257,7 +260,8 @@ We provide templates for:
 - ✅ PostgreSQL persistence (Google Cloud SQL)
 - ✅ Admin interface with API logging
 - ✅ API endpoints for external integration
-- ✅ Real-time updates via Server-Sent Events (SSE)
+- ✅ Real-time updates via long-polling + Pub/Sub
+- ✅ Rate limiting with PostgreSQL (100 req/min, zero extra cost)
 - ✅ Google OAuth authentication
 - ✅ Request logging and debugging tools
 
