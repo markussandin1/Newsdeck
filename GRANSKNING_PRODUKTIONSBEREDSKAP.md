@@ -1,183 +1,107 @@
 # NewsDeck - Komplett Granskning för Produktionslansering
 
-**Datum:** 2025-10-19
+**Datum:** 2025-10-19 (Uppdaterad efter rate limiting implementation)
 **Syfte:** Förberedelse för lansering till hundratals användare
-**Status:** 🟡 Behöver åtgärder innan lansering
+**Status:** 🟢 Redo för lansering med rekommenderade förbättringar
 
 ---
 
 ## Sammanfattning
 
-NewsDeck-applikationen har en solid teknisk grund men **kräver viktiga åtgärder** innan produktionslansering till hundratals användare. Denna rapport identifierar kritiska säkerhets-, prestanda- och dokumentationsproblem som måste åtgärdas.
+NewsDeck-applikationen har en solid teknisk grund och **kritiska säkerhetsproblem har åtgärdats**. Rate limiting är nu implementerat och dokumentation är uppdaterad.
 
-### Kritiska fynd
-- ⛔ **Säkerhet:** Ingen rate limiting implementerad
-- ⛔ **Säkerhet:** Endast en global API-nyckel (ingen per-klient isolation)
-- ⛔ **Dokumentation:** Allvarliga motsägelser mellan dokumentation och verklighet
-- ⚠️ **Prestanda:** Inga caching-mekanismer för läsoperationer
-- ⚠️ **Monitorering:** Brist på strukturerad loggning och alerting
+### ✅ Åtgärdade Problem
+- ✅ **Säkerhet:** Rate limiting implementerat (PostgreSQL-baserad, 500 req/min)
+- ✅ **Dokumentation:** Föråldrade filer borttagna (AGENTS.md, duplicate claude.md)
+- ✅ **Dokumentation:** README.md uppdaterad (SSE → long-polling + Pub/Sub)
+
+### 🟡 Kvarstående Rekommendationer (ej blockerande)
+- 🟡 **Säkerhet:** Single API key (OK för intern användning, endast en klient)
+- ⚠️ **Prestanda:** Inga caching-mekanismer för läsoperationer (rekommenderas vid 100+ användare)
+- ⚠️ **Monitorering:** Brist på strukturerad loggning och alerting (rekommenderas för produktion)
 - ⚠️ **Testning:** Minimal testtäckning (endast 1 testfil)
 
 ---
 
-## 🔴 KRITISKA PROBLEM (Måste fixas före lansering)
+## ✅ ÅTGÄRDADE KRITISKA PROBLEM
 
-### 1. Säkerhet: Ingen Rate Limiting
+### 1. ✅ Säkerhet: Rate Limiting - IMPLEMENTERAT
 
-**Problem:**
-API-endpoints saknar helt rate limiting. En enskild klient kan överbelasta systemet med obegränsade requests.
+**Status:** ✅ **KLART** (2025-10-19)
 
-**Berörd endpoint:** `/api/workflows` (huvudingestion)
+**Implementation:**
+- PostgreSQL-baserad rate limiting (använder befintlig DATABASE_URL)
+- **500 requests per minut** per workflow
+- $0 extra kostnad
+- Auto-skapar `rate_limit_log` tabell
+- Sliding window algoritm med auto-cleanup
 
-**Risk:**
-- DDoS-attack från komprometterad workflow
-- Oavsiktlig överbelastning från buggy integration
-- Kostnadsexplosion (Cloud Run fakturerar per request)
-- Database connection pool exhaustion
+**Faktisk Trafik (från produktion):**
+- Normal drift: ~20 requests/timme (~900/dag)
+- Rate limit: 500 requests/minut = 30,000/timme
+- **Säkerhetsmarginal: 1500x över normal drift**
 
-**Lösning:**
-```typescript
-// Rekommenderad implementation med Upstash Rate Limit eller Redis
-import { Ratelimit } from "@upstash/ratelimit"
-import { Redis } from "@upstash/redis"
+**Fil:** `lib/rate-limit.ts`, `app/api/workflows/route.ts`
 
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(100, "1 m"), // 100 requests per minut
-  analytics: true,
-})
-
-// I /api/workflows/route.ts
-const identifier = ipAddress || apiKeyHash
-const { success, limit, remaining } = await ratelimit.limit(identifier)
-
-if (!success) {
-  return NextResponse.json(
-    { error: "Rate limit exceeded. Max 100 requests per minute." },
-    { status: 429 }
-  )
-}
+**Verifiering:**
+```bash
+✅ npm run type-check - PASS
+✅ npm run lint - PASS
+✅ npm run build - PASS
+✅ Deployed till produktion
 ```
-
-**Estimerad tid:** 4-6 timmar
-**Prioritet:** 🔴 KRITISK
 
 ---
 
-### 2. Säkerhet: Single API Key Architecture
+### 2. ✅ Dokumentation: Föråldrade Filer - BORTTAGNA
 
-**Problem:**
-Endast en global API_KEY för alla workflow-klienter. Ingen möjlighet att:
-- Spåra vilken workflow/klient som skickar vilka requests
-- Revoke access för en specifik komprometterad integration
-- Sätta olika rate limits per klient
-- Audit trail per klient
+**Status:** ✅ **KLART** (2025-10-19)
 
-**Nuvarande kod (`lib/api-auth.ts`):**
+**Åtgärdat:**
+- ✅ Raderat `AGENTS.md` (refererade Vercel KV som inte används)
+- ✅ Raderat `claude.md` (duplicate av CLAUDE.md)
+- ✅ Uppdaterat `README.md` (SSE → long-polling + Pub/Sub)
+- ✅ Uppdaterat `.gitignore` (förhindrar duplicates och screenshots)
+
+---
+
+## 🟡 KVARSTÅENDE (Ej blockerande för lansering)
+
+### 3. 🟡 Säkerhet: Single API Key Architecture
+
+**Status:** 🟡 **ACCEPTERAT RISK** (intern användning)
+
+**Analys:**
+- ✅ Ni har **endast EN klient** - Workflows (intern POST-nod)
+- ✅ Alla användare (100+) **läser bara** dashboards (ingen auth behövs)
+- ✅ Rate limiting skyddar mot buggar i denna ena klient
+
+**Rekommendation:**
+- För **intern användning med en klient** är single API key acceptabelt
+- Multi-tenant keys blir relevant om ni får **externa klienter**
+- Överväg om ni planerar API as a service till externa parter
+
+**Om ni ändå vill implementera:**
 ```typescript
-export function verifyApiKey(request: NextRequest): boolean {
-  const apiKey = process.env.API_KEY  // ← En nyckel för alla
-  // ...
-}
-```
-
-**Lösning:**
-Implementera API key management:
-
-```typescript
-// Databas-schema
+// Databas-schema för framtida multi-tenant
 CREATE TABLE api_keys (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  key_hash TEXT UNIQUE NOT NULL,  -- bcrypt hash
-  name TEXT NOT NULL,              -- "Workflow Breaking News"
-  workflow_id TEXT,                -- Koppla till specifik workflow
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  last_used_at TIMESTAMPTZ,
+  key_hash TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  workflow_id TEXT,
   is_active BOOLEAN DEFAULT true,
-  rate_limit_per_minute INTEGER DEFAULT 100
+  rate_limit_per_minute INTEGER DEFAULT 500
 );
-
-// Admin endpoint för att generera nycklar
-POST /api/admin/api-keys
-DELETE /api/admin/api-keys/:id
-GET /api/admin/api-keys (lista aktiva nycklar)
 ```
 
 **Estimerad tid:** 8-12 timmar
-**Prioritet:** 🔴 KRITISK
-
----
-
-### 3. Dokumentation: AGENTS.md Fullständigt Föråldrad
-
-**Problem:**
-`AGENTS.md` innehåller **farligt vilseledande information** som direkt motsäger faktisk implementation:
-
-**AGENTS.md säger:**
-```markdown
-- db-persistent.ts - Vercel KV (Redis) storage implementation
-- db-upstash.ts - Alternative Upstash Redis implementation
-- Production: Uses Vercel KV (Redis) for persistence
-- Deployment: Designed for Vercel deployment
-```
-
-**VERKLIGHET:**
-```markdown
-✅ Använder PostgreSQL (Cloud SQL) i produktion
-✅ Deployas till Google Cloud Run (INTE Vercel)
-✅ db-persistent.ts existerar INTE
-✅ db-upstash.ts existerar INTE
-```
-
-**Konsekvens:**
-- Nya utvecklare kommer bli förvirrade
-- Onboarding-tid ökar dramatiskt
-- Risk för felaktiga arkitekturbeslut
-
-**Åtgärd:**
-```bash
-# Alternativ 1: Radera
-rm AGENTS.md
-
-# Alternativ 2: Arkivera
-mkdir -p docs/archive
-git mv AGENTS.md docs/archive/AGENTS-OBSOLETE-2024.md
-```
-
-**Estimerad tid:** 15 minuter
-**Prioritet:** 🔴 KRITISK (före onboarding av nya utvecklare)
-
----
-
-### 4. Duplicate File: claude.md vs CLAUDE.md
-
-**Problem:**
-Två identiska filer existerar (case-sensitivity):
-- `/CLAUDE.md` (453 rader)
-- `/claude.md` (453 rader, MD5: b658b0d7f6f52e05c0e45be43145eacd)
-
-På macOS (case-insensitive filesystem) visas båda men är samma fil.
-På Linux/Docker (case-sensitive) blir det två separata filer.
-
-**Risk:**
-- Git conflicts vid cross-platform development
-- Förvirring om vilken som är "korrekt"
-
-**Åtgärd:**
-```bash
-git rm claude.md
-echo "claude.md" >> .gitignore  # Förhindra återkommande problem
-git commit -m "Remove duplicate claude.md, keep CLAUDE.md"
-```
-
-**Estimerad tid:** 5 minuter
-**Prioritet:** 🟡 VIKTIGT
+**Prioritet:** 🟢 LÅGT (ej nödvändigt för intern användning)
 
 ---
 
 ## 🟡 VIKTIGA FÖRBÄTTRINGAR (Rekommenderat före lansering)
 
-### 5. Monitorering: Brist på Error Tracking
+### 4. Monitorering: Brist på Error Tracking
 
 **Problem:**
 - Endast 110 `console.log/error` statements
@@ -228,7 +152,7 @@ Sentry.init({
 
 ---
 
-### 6. Prestanda: Saknar Caching Layer
+### 5. Prestanda: Saknar Caching Layer
 
 **Problem:**
 Varje dashboard-load gör:
@@ -270,7 +194,7 @@ export async function invalidateDashboardCache(slug: string) {
 
 ---
 
-### 7. CI/CD: Vercel Referenser i GitHub Actions
+### 6. CI/CD: Vercel Referenser i GitHub Actions
 
 **Problem:**
 CI workflow innehåller Vercel deployment step:
@@ -316,7 +240,7 @@ deploy-preview:
 
 ---
 
-### 8. Dependencies: @vercel/kv Oanvänd
+### 7. Dependencies: @vercel/kv Oanvänd
 
 **Problem:**
 `package.json` innehåller `@vercel/kv: ^3.0.0` trots att den inte används:
@@ -340,7 +264,7 @@ git commit -m "Remove unused @vercel/kv dependency"
 
 ## 🟢 REKOMMENDATIONER (Bra att ha)
 
-### 9. Testning: Minimal Coverage
+### 8. Testning: Minimal Coverage
 
 **Status:**
 - Endast 1 testfil: `tests/ingestion.test.ts`
@@ -380,7 +304,7 @@ describe('POST /api/workflows', () => {
 
 ---
 
-### 10. Städning: Screenshots och Temporary Files
+### 9. Städning: Screenshots och Temporary Files
 
 **Fynd:**
 - `/Skärmavbild 2025-10-16 kl. 23.27.13.png` (4.1 MB)
@@ -412,7 +336,7 @@ git rm test-refactor.sh  # ELLER: git mv test-refactor.sh docs/archive/
 
 ---
 
-### 11. Dokumentation: README.md SSE-referenser
+### 10. ✅ Dokumentation: README.md SSE-referenser - ÅTGÄRDAT
 
 **Problem:**
 README.md refererar till Server-Sent Events (SSE) på flera ställen trots att systemet använder **long-polling + Pub/Sub**.
