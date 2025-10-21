@@ -21,9 +21,9 @@ class NewsDeckPubSub {
    * Publish news items update to Pub/Sub
    */
   async publishNewsUpdate(columnIds: string[], items: NewsItem[]): Promise<void> {
-    // Skip if no Pub/Sub in development (will use local EventEmitter instead)
-    if (process.env.NODE_ENV === 'development' && !process.env.PUBSUB_EMULATOR_HOST) {
-      logger.debug('pubsub.skip', { reason: 'development mode without emulator' })
+    // Skip if no Pub/Sub in development or test (will use local EventEmitter instead)
+    if ((process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') && !process.env.PUBSUB_EMULATOR_HOST) {
+      logger.debug('pubsub.skip', { reason: `${process.env.NODE_ENV} mode without emulator` })
       return
     }
 

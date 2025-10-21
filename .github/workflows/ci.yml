@@ -28,6 +28,7 @@ jobs:
     - name: Run tests
       run: npm test
       env:
+        NODE_ENV: test  # Disable PubSub in tests
         TZ: Europe/Stockholm  # Match production timezone for time-based tests
 
     - name: Run lint
