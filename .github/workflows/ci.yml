@@ -27,6 +27,8 @@ jobs:
 
     - name: Run tests
       run: npm test
+      env:
+        TZ: Europe/Stockholm  # Match production timezone for time-based tests
 
     - name: Run lint
       run: npm run lint
