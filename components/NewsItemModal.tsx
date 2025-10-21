@@ -175,14 +175,32 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
     return flags.length > 0 ? flags.join(' ') : '🌍'
   }
 
-  const renderExtraValue = (value: unknown): string => {
+  const renderExtraValue = (value: unknown): ReactNode => {
     if (value === null || value === undefined) {
       return ''
     }
     if (typeof value === 'object') {
       return JSON.stringify(value, null, 2) ?? ''
     }
-    return String(value)
+
+    const stringValue = String(value)
+
+    // Check if the value is a URL
+    if (isUrl(stringValue)) {
+      return (
+        <a
+          href={stringValue}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline inline-flex items-center gap-1"
+        >
+          {stringValue}
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      )
+    }
+
+    return stringValue
   }
 
   const extraSection: ReactNode = item?.extra && Object.keys(item.extra).length > 0 ? (

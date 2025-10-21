@@ -126,6 +126,41 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
     })
   }
 
+  const formatCompactTime = (timestamp: string) => {
+    const date = new Date(timestamp)
+    const now = new Date()
+
+    // Set both dates to midnight for day comparison
+    const dateAtMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const nowAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    // Calculate difference in days
+    const diffTime = nowAtMidnight.getTime() - dateAtMidnight.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+    const timeStr = date.toLocaleTimeString('sv-SE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Stockholm'
+    })
+
+    if (diffDays === 0) {
+      // Today - show only time
+      return timeStr
+    } else if (diffDays === 1) {
+      // Yesterday
+      return `Igår ${timeStr}`
+    } else {
+      // Older - show date and time
+      const dateStr = date.toLocaleDateString('sv-SE', {
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'Europe/Stockholm'
+      })
+      return `${dateStr} ${timeStr}`
+    }
+  }
+
 
 
 
@@ -172,7 +207,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
               )}
             </div>
             <time className="text-xs text-muted-foreground">
-              {new Date(item.createdInDb || item.timestamp).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
+              {formatCompactTime(item.createdInDb || item.timestamp)}
             </time>
           </div>
           
@@ -310,12 +345,35 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           <div>
             <div className="text-sm font-semibold text-foreground mb-1">Extra data</div>
             <div className="space-y-1 text-sm text-muted-foreground">
-              {Object.entries(item.extra).map(([key, value]) => (
-                <div key={key} className="flex items-start gap-2">
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground/60 whitespace-nowrap">{key}</span>
-                  <span className="break-words">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                </div>
-              ))}
+              {Object.entries(item.extra).map(([key, value]) => {
+                let displayValue
+                if (typeof value === 'object') {
+                  displayValue = JSON.stringify(value)
+                } else {
+                  const stringValue = String(value)
+                  if (isUrl(stringValue)) {
+                    displayValue = (
+                      <a
+                        href={stringValue}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        {stringValue}
+                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                      </a>
+                    )
+                  } else {
+                    displayValue = stringValue
+                  }
+                }
+                return (
+                  <div key={key} className="flex items-start gap-2">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground/60 whitespace-nowrap">{key}</span>
+                    <span className="break-words">{displayValue}</span>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
