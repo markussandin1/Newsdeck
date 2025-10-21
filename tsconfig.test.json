@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": ".test-dist",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "noEmit": false,
+    "incremental": false,
+    "jsx": "react"
+  },
+  "include": [
+    "tests/**/*",
+    "lib/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

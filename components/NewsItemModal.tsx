@@ -7,6 +7,7 @@ import { MapPin, ExternalLink, X, Paperclip, Settings, Map } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AnimatePresence, motion } from 'framer-motion'
+import { formatFullTime, isUrl, getHostname } from '@/lib/time-utils'
 
 // Dynamically import LeafletMap to avoid SSR issues
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -78,24 +79,6 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
   }
 
 
-  const isUrl = (value?: string | null) => {
-    if (!value) return false
-    try {
-      new URL(value)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const getHostname = (value: string) => {
-    try {
-      const hostname = new URL(value).hostname
-      return hostname.replace(/^www\./, '')
-    } catch {
-      return value
-    }
-  }
 
   const rawSource = item.source?.trim()
   const rawUrl = item.url?.trim()
@@ -113,18 +96,6 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
   }
 
   const resolvedSource = displaySource || 'Okänd källa'
-
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('sv-SE', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZone: 'Europe/Stockholm'
-    })
-  }
 
 
   const getGoogleMapsUrl = (lat: number, lng: number) => {
@@ -262,7 +233,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
               <span className="font-semibold text-primary">{resolvedSource}</span>
             )}
             <span>•</span>
-            <span>{formatTime(item.createdInDb || item.timestamp)}</span>
+            <span>{formatFullTime(item.createdInDb || item.timestamp)}</span>
           </div>
         </div>
             <Button

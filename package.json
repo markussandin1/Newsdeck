@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test": "rm -rf .test-dist && tsc --project tsconfig.test.json && node --test $(find .test-dist/tests -name '*.js') && rm -rf .test-dist",
+    "test": "rm -rf .test-dist && tsc --project tsconfig.test.json && node --require ./tests/setup.js --test $(find .test-dist/tests -name '*.js') && rm -rf .test-dist",
     "db:setup": "./scripts/setup-local-db.sh",
     "db:start": "docker-compose up -d postgres",
     "db:stop": "docker-compose down",
@@ -56,5 +56,8 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.2",
     "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "tsconfig-paths": "^4.2.0"
   }
 }

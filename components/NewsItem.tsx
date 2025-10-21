@@ -2,6 +2,7 @@ import { NewsItem as NewsItemType } from '@/lib/types'
 import { useState, useEffect, memo } from 'react'
 import { MapPin, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { formatCompactTime, isUrl, getHostname } from '@/lib/time-utils'
 
 interface NewsItemProps {
   item: NewsItemType
@@ -70,24 +71,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
     return [primary, secondary, tertiary].filter(Boolean).join(' · ')
   }
 
-  const isUrl = (value?: string | null) => {
-    if (!value) return false
-    try {
-      new URL(value)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const getHostname = (value: string) => {
-    try {
-      const hostname = new URL(value).hostname
-      return hostname.replace(/^www\./, '')
-    } catch {
-      return value
-    }
-  }
 
   const getSourceInfo = () => {
     const rawSource = item.source?.trim()
@@ -124,41 +107,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
       minute: '2-digit',
       timeZone: 'Europe/Stockholm'
     })
-  }
-
-  const formatCompactTime = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-
-    // Set both dates to midnight for day comparison
-    const dateAtMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-    const nowAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-    // Calculate difference in days
-    const diffTime = nowAtMidnight.getTime() - dateAtMidnight.getTime()
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-
-    const timeStr = date.toLocaleTimeString('sv-SE', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Europe/Stockholm'
-    })
-
-    if (diffDays === 0) {
-      // Today - show only time
-      return timeStr
-    } else if (diffDays === 1) {
-      // Yesterday
-      return `Igår ${timeStr}`
-    } else {
-      // Older - show date and time
-      const dateStr = date.toLocaleDateString('sv-SE', {
-        month: 'short',
-        day: 'numeric',
-        timeZone: 'Europe/Stockholm'
-      })
-      return `${dateStr} ${timeStr}`
-    }
   }
 
 

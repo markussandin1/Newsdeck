@@ -3,6 +3,7 @@
 import { NewsItem } from '@/lib/types'
 import { X, ExternalLink } from 'lucide-react'
 import { getCategoryIcon } from '@/lib/categories'
+import { formatCompactTime, isUrl, getHostname } from '@/lib/time-utils'
 
 interface MapInfoCardProps {
   item: NewsItem
@@ -10,40 +11,6 @@ interface MapInfoCardProps {
 }
 
 export default function MapInfoCard({ item, onClose }: MapInfoCardProps) {
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-
-    // Set both dates to midnight for day comparison
-    const dateAtMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-    const nowAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-    // Calculate difference in days
-    const diffTime = nowAtMidnight.getTime() - dateAtMidnight.getTime()
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-
-    const timeStr = date.toLocaleTimeString('sv-SE', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Europe/Stockholm'
-    })
-
-    if (diffDays === 0) {
-      // Today - show only time
-      return timeStr
-    } else if (diffDays === 1) {
-      // Yesterday
-      return `Igår ${timeStr}`
-    } else {
-      // Older - show date and time
-      const dateStr = date.toLocaleDateString('sv-SE', {
-        month: 'short',
-        day: 'numeric',
-        timeZone: 'Europe/Stockholm'
-      })
-      return `${dateStr} ${timeStr}`
-    }
-  }
 
   const getNewsValueColor = (newsValue: number) => {
     switch (newsValue) {
@@ -58,24 +25,6 @@ export default function MapInfoCard({ item, onClose }: MapInfoCardProps) {
     }
   }
 
-  const isUrl = (value?: string | null) => {
-    if (!value) return false
-    try {
-      new URL(value)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const getHostname = (value: string) => {
-    try {
-      const hostname = new URL(value).hostname
-      return hostname.replace(/^www\./, '')
-    } catch {
-      return value
-    }
-  }
 
   const getSourceInfo = () => {
     const rawSource = item.source?.trim()
@@ -131,7 +80,7 @@ export default function MapInfoCard({ item, onClose }: MapInfoCardProps) {
               </span>
             )}
             <time className="text-xs text-muted-foreground">
-              {formatTime(item.createdInDb || item.timestamp)}
+              {formatCompactTime(item.createdInDb || item.timestamp)}
             </time>
           </div>
         </div>
