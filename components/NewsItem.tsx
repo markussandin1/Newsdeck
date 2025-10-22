@@ -15,7 +15,8 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
 
   useEffect(() => {
     if (item.isNew) {
-      // Clear "new" indicator after 60 seconds
+      // Clear "new" indicator after 60 seconds to stop the pulsing animation
+      // (The isNew flag is set based on createdInDb timestamp - items < 1 minute old)
       const timer = setTimeout(() => setIsNew(false), 60000)
       return () => clearTimeout(timer)
     }

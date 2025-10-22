@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test, describe } from 'node:test'
-import { formatCompactTime, formatFullTime, isUrl, getHostname } from '../lib/time-utils'
+import { formatCompactTime, formatFullTime, isUrl, getHostname, isNewsItemNew } from '../lib/time-utils'
 
 describe('formatCompactTime', () => {
   test('shows only time for today', () => {
@@ -141,5 +141,71 @@ describe('getHostname', () => {
   test('handles URLs with ports', () => {
     assert.equal(getHostname('https://example.com:8080'), 'example.com')
     assert.equal(getHostname('http://localhost:3000'), 'localhost')
+  })
+})
+
+describe('isNewsItemNew', () => {
+  test('returns true for items created less than 1 minute ago', () => {
+    const now = new Date()
+    const thirtySecondsAgo = new Date(now.getTime() - 30 * 1000)
+
+    assert.equal(isNewsItemNew(thirtySecondsAgo.toISOString()), true)
+  })
+
+  test('returns true for items created exactly 59 seconds ago', () => {
+    const now = new Date()
+    const fiftyNineSecondsAgo = new Date(now.getTime() - 59 * 1000)
+
+    assert.equal(isNewsItemNew(fiftyNineSecondsAgo.toISOString()), true)
+  })
+
+  test('returns false for items created exactly 1 minute ago', () => {
+    const now = new Date()
+    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000)
+
+    assert.equal(isNewsItemNew(oneMinuteAgo.toISOString()), false)
+  })
+
+  test('returns false for items created 2 minutes ago', () => {
+    const now = new Date()
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000)
+
+    assert.equal(isNewsItemNew(twoMinutesAgo.toISOString()), false)
+  })
+
+  test('returns false for items created 1 hour ago', () => {
+    const now = new Date()
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
+
+    assert.equal(isNewsItemNew(oneHourAgo.toISOString()), false)
+  })
+
+  test('returns false for items created yesterday', () => {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    assert.equal(isNewsItemNew(yesterday.toISOString()), false)
+  })
+
+  test('returns false when createdInDb is undefined', () => {
+    assert.equal(isNewsItemNew(undefined), false)
+  })
+
+  test('returns false when createdInDb is empty string', () => {
+    assert.equal(isNewsItemNew(''), false)
+  })
+
+  test('returns true for items created just now', () => {
+    const now = new Date()
+
+    assert.equal(isNewsItemNew(now.toISOString()), true)
+  })
+
+  test('handles items created in the future (clock skew)', () => {
+    const future = new Date()
+    future.setMinutes(future.getMinutes() + 5)
+
+    // Items "from the future" should be considered new
+    assert.equal(isNewsItemNew(future.toISOString()), true)
   })
 })

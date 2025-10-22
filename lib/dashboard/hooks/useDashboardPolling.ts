@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { DashboardColumn, NewsItem } from '@/lib/types'
 import type { ColumnData, ConnectionStatus } from '@/lib/dashboard/types'
+import { isNewsItemNew } from '@/lib/time-utils'
 
 interface UseDashboardPollingProps {
   columns: DashboardColumn[]
@@ -119,7 +120,7 @@ export function useDashboardPolling({
           updateColumnData((prev) => {
             const existingItems = prev[columnId] || []
 
-            // Deduplicate using item.dbId (unique database ID) and mark as new
+            // Deduplicate using item.dbId (unique database ID) and mark as new based on age
             const newItems = data.items
               .filter(
                 (newItem: NewsItem) =>
@@ -127,7 +128,7 @@ export function useDashboardPolling({
               )
               .map((item: NewsItem) => ({
                 ...item,
-                isNew: true
+                isNew: isNewsItemNew(item.createdInDb)
               }))
 
             if (newItems.length === 0) {
@@ -136,9 +137,15 @@ export function useDashboardPolling({
 
             console.log(`LongPoll: Adding ${newItems.length} deduplicated items to column ${columnId}`)
 
-            // Notify parent about new items (for audio notifications)
-            if (onNewItems) {
+            // Only play notification sound if:
+            // 1. This is NOT the first poll (lastSeen exists)
+            // 2. There are actually new items that are "new" (< 1 minute old)
+            const hasRecentItems = newItems.some(item => item.isNew)
+            if (onNewItems && lastSeen && hasRecentItems) {
+              console.log(`🔔 Playing notification for column ${columnId} (${newItems.filter(i => i.isNew).length} recent items)`)
               onNewItems(columnId)
+            } else if (!lastSeen) {
+              console.log(`🔇 Skipping notification for column ${columnId} (initial load)`)
             }
 
             return {

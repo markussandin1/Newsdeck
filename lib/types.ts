@@ -30,7 +30,7 @@ export interface NewsItem {
   
   // Metadata
   createdInDb?: string;         // ISO 8601 format - när posten skapades i databasen
-  isNew?: boolean;              // Om meddelandet är nytt (visas i 30 sekunder)
+  isNew?: boolean;              // Om meddelandet är nytt (yngre än 1 minut, visas med pulserande effekt i max 60 sekunder)
 
   // Övrigt
   extra?: Record<string, unknown>;  // Källspecifika fält

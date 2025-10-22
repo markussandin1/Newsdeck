@@ -12,6 +12,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Dashboard, NewsItem, DashboardColumn } from '@/lib/types'
 import { ColumnData } from '@/lib/dashboard/types'
 import { deepEqual } from '@/lib/dashboard/utils'
+import { isNewsItemNew } from '@/lib/time-utils'
 
 interface UseDashboardDataProps {
   dashboard: Dashboard
@@ -80,11 +81,10 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
         const processedData: ColumnData = {}
 
         Object.entries(incomingData).forEach(([columnId, newItems]) => {
-          const previousItems = previousData[columnId] ?? []
-
+          // Mark items as "new" if they were created in the last 1 minute
           processedData[columnId] = newItems.map(item => ({
             ...item,
-            isNew: previousItems.length > 0 && !previousItems.some(existing => existing.dbId === item.dbId)
+            isNew: isNewsItemNew(item.createdInDb)
           }))
         })
 

@@ -78,3 +78,23 @@ export function getHostname(value: string): string {
     return value
   }
 }
+
+/**
+ * Check if a news item should be marked as "new" based on its creation time.
+ * An item is considered "new" if it was created in the database less than 1 minute ago.
+ *
+ * @param createdInDb ISO 8601 timestamp when the item was created in the database
+ * @returns true if the item is less than 1 minute old
+ */
+export function isNewsItemNew(createdInDb?: string): boolean {
+  if (!createdInDb) {
+    return false
+  }
+
+  const now = new Date()
+  const created = new Date(createdInDb)
+  const ageInMilliseconds = now.getTime() - created.getTime()
+  const ageInMinutes = ageInMilliseconds / (1000 * 60)
+
+  return ageInMinutes < 1
+}
