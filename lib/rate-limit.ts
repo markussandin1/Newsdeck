@@ -156,11 +156,12 @@ export async function checkRateLimit(identifier: string): Promise<RateLimitResul
     }
   } catch (error) {
     console.error('Rate limit check failed:', error)
-    // On error, allow the request (fail open)
+    // On error, deny the request (fail closed) for security
+    // This protects the system even when rate limiting infrastructure fails
     return {
-      success: true,
+      success: false,
       limit: RATE_LIMIT_MAX_REQUESTS,
-      remaining: RATE_LIMIT_MAX_REQUESTS,
+      remaining: 0,
       reset: resetTime,
     }
   }
