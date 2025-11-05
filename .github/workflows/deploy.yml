@@ -65,7 +65,11 @@ jobs:
             --region=${{ env.REGION }} \
             --platform=managed \
             --allow-unauthenticated \
+            --set-env-vars GCP_PROJECT_ID=${{ env.PROJECT_ID }} \
             --quiet
+
+          # Note: Secrets (DATABASE_URL, API_KEY, etc.) are loaded from GCP Secret Manager
+          # No need to set them as environment variables!
 
       - name: Show service URL
         run: |

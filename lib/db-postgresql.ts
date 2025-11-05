@@ -2,13 +2,17 @@ import { Pool } from 'pg'
 import { parse as parseConnectionString } from 'pg-connection-string'
 import { NewsItem, Dashboard, DashboardColumn } from './types'
 import { logger } from './logger'
+import { secrets } from './secrets'
 
 // PostgreSQL connection pool
 let pool: Pool | null = null
 
-const getPool = () => {
+const getPool = async () => {
   if (!pool) {
-    const DATABASE_URL = process.env.DATABASE_URL
+    // Fetch DATABASE_URL from Secret Manager in production
+    const DATABASE_URL = process.env.NODE_ENV === 'production'
+      ? await secrets.getDatabaseUrl()
+      : process.env.DATABASE_URL
 
     if (!DATABASE_URL) {
       throw new Error('DATABASE_URL environment variable is not set')
@@ -95,7 +99,7 @@ const DEFAULT_DASHBOARD: Dashboard = {
 export const persistentDb = {
   // News items
   addNewsItem: async (item: NewsItem) => {
-    const pool = getPool()
+    const pool = await getPool()
     const itemWithTimestamp = {
       ...item,
       createdInDb: new Date().toISOString()
@@ -137,7 +141,7 @@ export const persistentDb = {
   },
 
   addNewsItems: async (items: NewsItem[]) => {
-    const pool = getPool()
+    const pool = await getPool()
     const client = await pool.connect()
 
     try {
@@ -192,7 +196,7 @@ export const persistentDb = {
   },
 
   getNewsItems: async () => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -218,7 +222,7 @@ export const persistentDb = {
   },
 
   getRecentNewsItems: async (limit = 10) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -246,7 +250,7 @@ export const persistentDb = {
   },
 
   deleteNewsItem: async (dbId: string) => {
-    const pool = getPool()
+    const pool = await getPool()
     const client = await pool.connect()
 
     try {
@@ -277,7 +281,7 @@ export const persistentDb = {
   },
 
   getNewsItemsPaginated: async (limit = 50, offset = 0) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -309,7 +313,7 @@ export const persistentDb = {
 
   // Dashboards
   addDashboard: async (dashboard: Dashboard) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       await pool.query(
@@ -345,7 +349,7 @@ export const persistentDb = {
   },
 
   getDashboards: async () => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -368,7 +372,7 @@ export const persistentDb = {
   },
 
   getDashboard: async (id: string) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     if (id === 'main-dashboard') {
       try {
@@ -430,7 +434,7 @@ export const persistentDb = {
   },
 
   getDashboardBySlug: async (slug: string) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -484,7 +488,7 @@ export const persistentDb = {
   },
 
   updateDashboard: async (id: string, updates: Partial<Dashboard>) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const existing = await persistentDb.getDashboard(id)
@@ -528,7 +532,7 @@ export const persistentDb = {
 
   // Column data management
   setColumnData: async (columnId: string, items: NewsItem[]) => {
-    const pool = getPool()
+    const pool = await getPool()
     const client = await pool.connect()
 
     try {
@@ -568,7 +572,7 @@ export const persistentDb = {
   },
 
   getColumnData: async (columnId: string, limit?: number) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const query = limit
@@ -636,7 +640,7 @@ export const persistentDb = {
 
   // Get news items for specific workflow
   getNewsItemsByWorkflow: async (workflowId: string) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -665,7 +669,7 @@ export const persistentDb = {
 
   // Get news items for multiple workflows
   getNewsItemsByWorkflows: async (workflowIds: string[]) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -694,7 +698,7 @@ export const persistentDb = {
 
   // Get unique values for admin interface
   getUniqueWorkflowIds: async () => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -708,7 +712,7 @@ export const persistentDb = {
   },
 
   getUniqueSources: async () => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -722,7 +726,7 @@ export const persistentDb = {
   },
 
   getUniqueMunicipalities: async () => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -740,7 +744,7 @@ export const persistentDb = {
 
   // Utility functions
   clearAllData: async () => {
-    const pool = getPool()
+    const pool = await getPool()
     const client = await pool.connect()
 
     try {
@@ -761,7 +765,7 @@ export const persistentDb = {
 
   // Cleanup old news items
   cleanupOldItems: async (olderThanDays = 7) => {
-    const pool = getPool()
+    const pool = await getPool()
     const client = await pool.connect()
 
     try {
@@ -802,7 +806,7 @@ export const persistentDb = {
 
   // Migration: Add createdInDb to existing items
   migrateCreatedInDb: async () => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -853,7 +857,7 @@ export const persistentDb = {
 
   // User preferences
   getUserPreferences: async (userId: string) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -875,7 +879,7 @@ export const persistentDb = {
   },
 
   setUserPreferences: async (userId: string, preferences: { defaultDashboardId?: string }) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       await pool.query(
@@ -896,7 +900,7 @@ export const persistentDb = {
 
   // Dashboard follows
   getUserDashboardFollows: async (userId: string) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -918,7 +922,7 @@ export const persistentDb = {
   },
 
   getDashboardFollowers: async (dashboardId: string) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       const result = await pool.query(
@@ -940,7 +944,7 @@ export const persistentDb = {
   },
 
   followDashboard: async (userId: string, dashboardId: string) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       await pool.query(
@@ -958,7 +962,7 @@ export const persistentDb = {
   },
 
   unfollowDashboard: async (userId: string, dashboardId: string) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       await pool.query(
@@ -992,7 +996,7 @@ export const persistentDb = {
     return
 
     /*
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       await pool.query(
@@ -1020,7 +1024,7 @@ export const persistentDb = {
   },
 
   getApiRequestLogs: async (limit = 100, filters?: { success?: boolean; endpoint?: string }) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       let query = `
@@ -1067,7 +1071,7 @@ export const persistentDb = {
   // Health check
   isConnected: async () => {
     try {
-      const pool = getPool()
+      const pool = await getPool()
       const result = await pool.query('SELECT 1')
       return result.rows.length > 0
     } catch (error) {

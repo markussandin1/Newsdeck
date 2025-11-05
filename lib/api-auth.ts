@@ -1,16 +1,19 @@
 // API Key authentication for external services
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
+import { secrets } from './secrets'
 
 /**
  * Verify API key from request headers
  * Supports both Authorization header and x-api-key header
  */
-export function verifyApiKey(request: NextRequest): boolean {
-  const apiKey = process.env.API_KEY
+export async function verifyApiKey(request: NextRequest): Promise<boolean> {
+  const apiKey = process.env.NODE_ENV === 'production'
+    ? await secrets.getApiKey()
+    : process.env.API_KEY
 
   if (!apiKey) {
-    console.error('API_KEY environment variable is not set')
+    console.error('API_KEY is not configured')
     return false
   }
 
