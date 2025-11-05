@@ -23,7 +23,6 @@
   "type": "commonjs",
   "dependencies": {
     "@google-cloud/pubsub": "^5.2.0",
-    "@google-cloud/secret-manager": "^6.1.1",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-slot": "^1.2.3",
