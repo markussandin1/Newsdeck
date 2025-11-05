@@ -19,6 +19,16 @@ const createMockDb = (): {
     addNewsItems: async (items) => {
       addNewsItemsCalls.push(items)
       return items
+    },
+    getColumnDataBatch: async (columnIds) => {
+      const result: Record<string, any[]> = {}
+      columnIds.forEach(id => {
+        result[id] = []
+      })
+      return result
+    },
+    setColumnDataBatch: async (columnData) => {
+      // Mock implementation
     }
   }
 
