@@ -594,7 +594,7 @@ export const persistentDb = {
 
   // Batch column data operations (optimized for performance)
   getColumnDataBatch: async (columnIds: string[]) => {
-    const pool = getPool()
+    const pool = await getPool()
 
     try {
       if (columnIds.length === 0) {
@@ -631,7 +631,7 @@ export const persistentDb = {
   },
 
   setColumnDataBatch: async (columnData: Record<string, NewsItem[]>) => {
-    const pool = getPool()
+    const pool = await getPool()
     const client = await pool.connect()
 
     try {
