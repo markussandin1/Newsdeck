@@ -2,15 +2,21 @@ import NextAuth from "next-auth"
 import type { NextAuthConfig } from "next-auth"
 import Google from "next-auth/providers/google"
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID ?? process.env.OAUTH_CLIENT_ID
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? process.env.OAUTH_CLIENT_SECRET
+// For development, use env vars directly
+// For production, these will be populated by initializeAuthSecrets()
+let googleClientId = process.env.GOOGLE_CLIENT_ID ?? process.env.OAUTH_CLIENT_ID
+let googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? process.env.OAUTH_CLIENT_SECRET
+let nextAuthSecret = process.env.NEXTAUTH_SECRET
+
 const isProductionBuild = process.env.NEXT_PHASE === "phase-production-build"
 
 if (!googleClientId || !googleClientSecret) {
   const message = "Missing Google OAuth credentials. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the environment."
 
-  if (isProductionBuild) {
-    console.warn(message)
+  if (isProductionBuild || process.env.NODE_ENV === 'production') {
+    console.warn(message + " Will be loaded from Secret Manager at runtime.")
+    googleClientId = googleClientId ?? ""
+    googleClientSecret = googleClientSecret ?? ""
   } else {
     throw new Error(message)
   }
@@ -128,5 +134,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/auth/signin",
     error: "/auth/error"
   },
-  secret: process.env.NEXTAUTH_SECRET
+  secret: nextAuthSecret
 } satisfies NextAuthConfig)
+
+/**
+ * Initialize auth secrets from Secret Manager (production only)
+ * Must be called before auth is used in production
+ */
+export async function initializeAuthSecrets() {
+  if (process.env.NODE_ENV === 'production') {
+    const { secrets } = await import('./lib/secrets')
+
+    try {
+      googleClientId = await secrets.getGoogleClientId()
+      googleClientSecret = await secrets.getGoogleClientSecret()
+      nextAuthSecret = await secrets.getNextAuthSecret()
+
+      console.log('✓ Auth secrets initialized from Secret Manager')
+    } catch (error) {
+      console.error('Failed to initialize auth secrets:', error)
+      throw error
+    }
+  }
+}

@@ -63,26 +63,62 @@ Newsdeck deployment architecture:
    npm run migrate
    ```
 
-## Step 3: Configure Environment Variables
+## Step 3: Configure Secrets with GCP Secret Manager 🔒
 
-Create a `.env.production` file or configure in Google Cloud Run:
+**NEW:** Newsdeck now uses GCP Secret Manager for enterprise-grade security.
+
+### Setup Secrets (One-time)
+
+Follow the complete guide: **[GCP_SECRET_MANAGER_SETUP.md](./GCP_SECRET_MANAGER_SETUP.md)**
+
+Quick setup:
+```bash
+# 1. Enable Secret Manager API
+gcloud services enable secretmanager.googleapis.com
+
+# 2. Create secrets (see GCP_SECRET_MANAGER_SETUP.md for details)
+echo -n "postgresql://user:pass@/cloudsql/project:region:instance/dbname" | \
+  gcloud secrets create newsdeck-database-url --data-file=-
+
+echo -n "$(openssl rand -base64 32)" | \
+  gcloud secrets create newsdeck-nextauth-secret --data-file=-
+
+echo -n "your-google-client-id" | \
+  gcloud secrets create newsdeck-google-client-id --data-file=-
+
+echo -n "your-google-client-secret" | \
+  gcloud secrets create newsdeck-google-client-secret --data-file=-
+
+echo -n "$(openssl rand -base64 32)" | \
+  gcloud secrets create newsdeck-api-key --data-file=-
+
+# 3. Grant Cloud Run access
+PROJECT_NUMBER=$(gcloud projects describe newsdeck-473620 --format="value(projectNumber)")
+SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+for SECRET in newsdeck-database-url newsdeck-nextauth-secret newsdeck-google-client-id newsdeck-google-client-secret newsdeck-api-key; do
+  gcloud secrets add-iam-policy-binding $SECRET \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+
+### Environment Variables (Cloud Run)
+
+Only these env vars are needed in Cloud Run:
 
 ```bash
-# Database
-DATABASE_URL=postgresql://user:pass@/cloudsql/project:region:instance/dbname
+# GCP Project ID (for Secret Manager)
+GCP_PROJECT_ID=newsdeck-473620
 
-# NextAuth
-NEXTAUTH_URL=https://your-app-url.run.app
-NEXTAUTH_SECRET=your-nextauth-secret-min-32-chars
-GOOGLE_CLIENT_ID=your-google-oauth-client-id
-GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
-
-# API Security
-API_KEY=your-secure-api-key
-
-# Build
+# Build flag
 DOCKER_BUILD=true
+
+# Optional: NextAuth URL (auto-detected from Cloud Run URL)
+NEXTAUTH_URL=https://your-app-url.run.app
 ```
+
+**Note:** DATABASE_URL, API_KEY, Google OAuth credentials are automatically loaded from Secret Manager in production.
 
 ## Step 4: Build and Deploy to Cloud Run
 
@@ -93,11 +129,13 @@ The repository includes a CI/CD pipeline in `.github/workflows/deploy.yml`:
 1. **Set up GitHub Secrets:**
    - `GCP_PROJECT_ID`: Your Google Cloud project ID
    - `GCP_SA_KEY`: Service account key JSON
-   - `DATABASE_URL`: PostgreSQL connection string
-   - `NEXTAUTH_SECRET`: NextAuth secret
-   - `GOOGLE_CLIENT_ID`: Google OAuth client ID
-   - `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
-   - `API_KEY`: API key for workflows
+
+   **Note:** The following secrets are NO LONGER needed in GitHub (they're in Secret Manager):
+   - ~~`DATABASE_URL`~~ - Now in Secret Manager
+   - ~~`NEXTAUTH_SECRET`~~ - Now in Secret Manager
+   - ~~`GOOGLE_CLIENT_ID`~~ - Now in Secret Manager
+   - ~~`GOOGLE_CLIENT_SECRET`~~ - Now in Secret Manager
+   - ~~`API_KEY`~~ - Now in Secret Manager
 
 2. **Push to main branch:**
    - GitHub Actions will automatically build and deploy
@@ -121,9 +159,11 @@ The repository includes a CI/CD pipeline in `.github/workflows/deploy.yml`:
      --platform managed \
      --region europe-west1 \
      --add-cloudsql-instances PROJECT:REGION:INSTANCE \
-     --set-env-vars DATABASE_URL="postgresql://...",NEXTAUTH_URL="https://...",API_KEY="..." \
+     --set-env-vars GCP_PROJECT_ID=newsdeck-473620,NEXTAUTH_URL="https://your-app.run.app" \
      --allow-unauthenticated
    ```
+
+   **Note:** No need to set DATABASE_URL, API_KEY, or OAuth secrets - they're loaded from Secret Manager!
 
 ## Step 5: Configure Google OAuth
 

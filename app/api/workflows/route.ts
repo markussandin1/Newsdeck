@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get('user-agent') || 'unknown'
 
   // Check API key authentication
-  if (!verifyApiKey(request)) {
+  if (!(await verifyApiKey(request))) {
     // Log unauthorized attempt
     await db.logApiRequest({
       endpoint: '/api/workflows',
