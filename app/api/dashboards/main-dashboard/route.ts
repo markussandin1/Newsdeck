@@ -7,12 +7,14 @@ export async function GET() {
     const dashboard = await db.getMainDashboard()
 
     // Fetch column data for all columns in the dashboard
+    // Limit to 200 most recent items per column for performance
+    const COLUMN_ITEM_LIMIT = 200
     const columnData: Record<string, NewsItem[]> = {}
 
     if (dashboard.columns) {
       for (const column of dashboard.columns) {
         try {
-          const items = await db.getColumnData(column.id) || []
+          const items = await db.getColumnData(column.id, COLUMN_ITEM_LIMIT) || []
           columnData[column.id] = items
         } catch (error) {
           console.error(`Error fetching data for column ${column.id}:`, error)
