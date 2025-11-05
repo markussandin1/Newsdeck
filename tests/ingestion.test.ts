@@ -7,9 +7,13 @@ const createMockDb = (): {
   db: IngestionDb
   setColumnDataCalls: Array<{ columnId: string; items: any[] }>
   addNewsItemsCalls: any[][]
+  getColumnDataBatchCalls: string[][]
+  setColumnDataBatchCalls: Array<Record<string, any[]>>
 } => {
   const setColumnDataCalls: Array<{ columnId: string; items: any[] }> = []
   const addNewsItemsCalls: any[][] = []
+  const getColumnDataBatchCalls: string[][] = []
+  const setColumnDataBatchCalls: Array<Record<string, any[]>> = []
 
   const db: IngestionDb = {
     getDashboards: async () => [],
@@ -20,10 +24,22 @@ const createMockDb = (): {
     addNewsItems: async (items) => {
       addNewsItemsCalls.push(items)
       return items
+    },
+    getColumnDataBatch: async (columnIds) => {
+      getColumnDataBatchCalls.push(columnIds)
+      // Return empty arrays for all requested columns
+      const result: Record<string, any[]> = {}
+      columnIds.forEach(id => {
+        result[id] = []
+      })
+      return result
+    },
+    setColumnDataBatch: async (columnData) => {
+      setColumnDataBatchCalls.push(columnData)
     }
   }
 
-  return { db, setColumnDataCalls, addNewsItemsCalls }
+  return { db, setColumnDataCalls, addNewsItemsCalls, getColumnDataBatchCalls, setColumnDataBatchCalls }
 }
 
 test('rejects payload without identifiers', async () => {
@@ -43,7 +59,7 @@ test('rejects payload without identifiers', async () => {
 })
 
 test('ingests items directly into specified column', async () => {
-  const { db, setColumnDataCalls, addNewsItemsCalls } = createMockDb()
+  const { db, setColumnDataBatchCalls, getColumnDataBatchCalls, addNewsItemsCalls } = createMockDb()
 
   const now = new Date('2024-01-01T00:00:00.000Z')
 
@@ -64,11 +80,21 @@ test('ingests items directly into specified column', async () => {
   assert.equal(result.itemsAdded, 1)
   assert.deepEqual(result.matchingColumns, ['column-123'])
   assert.equal(result.columnsUpdated, 1)
-  assert.equal(setColumnDataCalls.length, 1)
-  assert.equal(addNewsItemsCalls.length, 1)
-  assert.equal(setColumnDataCalls[0]?.columnId, 'column-123')
 
-  const storedItem = setColumnDataCalls[0]?.items[0]
+  // Verify batch operations are used (optimization)
+  assert.equal(getColumnDataBatchCalls.length, 1, 'Should use batch get')
+  assert.equal(setColumnDataBatchCalls.length, 1, 'Should use batch set')
+  assert.deepEqual(getColumnDataBatchCalls[0], ['column-123'])
+
+  assert.equal(addNewsItemsCalls.length, 1)
+
+  const batchData = setColumnDataBatchCalls[0]
+  assert.ok(batchData)
+  const storedItems = batchData['column-123']
+  assert.ok(storedItems)
+  assert.equal(storedItems.length, 1)
+
+  const storedItem = storedItems[0]
   assert.ok(storedItem)
   assert.equal(storedItem.id, 'item-1')
   assert.equal(storedItem.createdInDb, now.toISOString())

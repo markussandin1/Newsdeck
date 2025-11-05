@@ -588,6 +588,97 @@ export const persistentDb = {
     }
   },
 
+  // Batch column data operations (optimized for performance)
+  getColumnDataBatch: async (columnIds: string[]) => {
+    const pool = getPool()
+
+    try {
+      if (columnIds.length === 0) {
+        return {}
+      }
+
+      const result = await pool.query(
+        'SELECT column_id, data FROM column_data WHERE column_id = ANY($1) ORDER BY created_at DESC',
+        [columnIds]
+      )
+
+      // Group results by column_id
+      const columnData: Record<string, NewsItem[]> = {}
+
+      // Initialize empty arrays for all requested columns
+      columnIds.forEach(id => {
+        columnData[id] = []
+      })
+
+      // Populate with actual data
+      result.rows.forEach(row => {
+        const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
+        if (!columnData[row.column_id]) {
+          columnData[row.column_id] = []
+        }
+        columnData[row.column_id].push(data)
+      })
+
+      return columnData
+    } catch (error) {
+      logger.error('db.getColumnDataBatch.error', { error, columnCount: columnIds.length })
+      throw error
+    }
+  },
+
+  setColumnDataBatch: async (columnData: Record<string, NewsItem[]>) => {
+    const pool = getPool()
+    const client = await pool.connect()
+
+    try {
+      const columnIds = Object.keys(columnData)
+
+      if (columnIds.length === 0) {
+        return
+      }
+
+      await client.query('BEGIN')
+
+      // Clear existing data for all columns in one query
+      await client.query(
+        'DELETE FROM column_data WHERE column_id = ANY($1)',
+        [columnIds]
+      )
+
+      // Insert all items for all columns
+      const now = new Date().toISOString()
+
+      for (const columnId of columnIds) {
+        const items = columnData[columnId]
+
+        for (const item of items) {
+          if (!item.dbId) {
+            logger.warn('db.setColumnDataBatch.missingDbId', { columnId, itemId: item.id })
+            continue
+          }
+
+          await client.query(
+            `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
+              data = EXCLUDED.data,
+              created_at = EXCLUDED.created_at`,
+            [columnId, item.dbId, JSON.stringify(item), now]
+          )
+        }
+      }
+
+      await client.query('COMMIT')
+      logger.info('db.setColumnDataBatch.success', { columnCount: columnIds.length })
+    } catch (error) {
+      await client.query('ROLLBACK')
+      logger.error('db.setColumnDataBatch.error', { error })
+      throw error
+    } finally {
+      client.release()
+    }
+  },
+
   // Column management
   addColumnToDashboard: async (dashboardId: string, column: DashboardColumn) => {
     const dashboard = await persistentDb.getDashboard(dashboardId)
