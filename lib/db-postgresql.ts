@@ -598,7 +598,7 @@ export const persistentDb = {
       }
 
       const result = await pool.query(
-        'SELECT column_id, data FROM column_data WHERE column_id = ANY($1) ORDER BY created_at DESC',
+        'SELECT column_id, data FROM column_data WHERE column_id = ANY($1) ORDER BY column_id, created_at DESC',
         [columnIds]
       )
 

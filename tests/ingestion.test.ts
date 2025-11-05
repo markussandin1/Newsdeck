@@ -99,3 +99,89 @@ test('ingests items directly into specified column', async () => {
   assert.equal(storedItem.id, 'item-1')
   assert.equal(storedItem.createdInDb, now.toISOString())
 })
+
+test('ingests items into multiple columns via batch operations', async () => {
+  const { db, setColumnDataBatchCalls, getColumnDataBatchCalls, addNewsItemsCalls } = createMockDb()
+
+  // Override getDashboards to return dashboards with multiple matching columns
+  db.getDashboards = async () => [
+    {
+      id: 'dash-1',
+      name: 'Dashboard 1',
+      columns: [
+        {
+          id: 'col-1',
+          title: 'Column 1',
+          flowId: 'workflow-123',
+          order: 0,
+          createdAt: '2024-01-01T00:00:00.000Z'
+        },
+        {
+          id: 'col-2',
+          title: 'Column 2',
+          flowId: 'workflow-123',
+          order: 1,
+          createdAt: '2024-01-01T00:00:00.000Z'
+        },
+        {
+          id: 'col-3',
+          title: 'Column 3',
+          flowId: 'workflow-123',
+          order: 2,
+          createdAt: '2024-01-01T00:00:00.000Z'
+        }
+      ]
+    } as any
+  ]
+
+  const now = new Date('2024-01-01T00:00:00.000Z')
+
+  const result = await ingestNewsItems(
+    {
+      workflowId: 'workflow-123',
+      items: [
+        {
+          id: 'item-1',
+          title: 'Breaking news'
+        }
+      ]
+    },
+    db,
+    { now }
+  )
+
+  assert.equal(result.itemsAdded, 1)
+  assert.equal(result.columnsUpdated, 3, 'Should update all 3 matching columns')
+  assert.equal(result.matchingColumns.length, 3)
+
+  // Verify the result contains all three column IDs
+  const matchingColIds = result.matchingColumns.sort()
+  assert.deepEqual(matchingColIds, ['col-1', 'col-2', 'col-3'])
+
+  // Verify batch operations handle multiple columns efficiently
+  assert.equal(getColumnDataBatchCalls.length, 1, 'Should use single batch get for all columns')
+  assert.equal(setColumnDataBatchCalls.length, 1, 'Should use single batch set for all columns')
+
+  // Verify all column IDs were requested in batch
+  const requestedColumnIds = getColumnDataBatchCalls[0]
+  assert.ok(requestedColumnIds)
+  assert.equal(requestedColumnIds.length, 3)
+  const sortedRequested = requestedColumnIds.sort()
+  assert.deepEqual(sortedRequested, ['col-1', 'col-2', 'col-3'])
+
+  // Verify all columns were updated in batch
+  const batchData = setColumnDataBatchCalls[0]
+  assert.ok(batchData)
+  assert.equal(Object.keys(batchData).length, 3, 'Should update 3 columns')
+  assert.ok(batchData['col-1'])
+  assert.ok(batchData['col-2'])
+  assert.ok(batchData['col-3'])
+
+  // Verify each column has the item
+  assert.equal(batchData['col-1']?.length, 1)
+  assert.equal(batchData['col-2']?.length, 1)
+  assert.equal(batchData['col-3']?.length, 1)
+  assert.equal(batchData['col-1']?.[0]?.id, 'item-1')
+  assert.equal(batchData['col-2']?.[0]?.id, 'item-1')
+  assert.equal(batchData['col-3']?.[0]?.id, 'item-1')
+})
