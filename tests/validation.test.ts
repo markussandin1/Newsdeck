@@ -31,7 +31,12 @@ const createMockDb = (): {
     },
     setColumnDataBatch: async (columnData) => {
       setColumnDataBatchCalls.push(columnData)
-    }
+    },
+    cleanupOldItems: async () => ({
+      success: true,
+      removedCount: 0,
+      cutoffDate: new Date().toISOString()
+    })
   }
 
   return { db, setColumnDataCalls, setColumnDataBatchCalls, addNewsItemsCalls }
@@ -171,7 +176,7 @@ describe('NewsItem Validation', () => {
     })
   })
 
-  test('accepts newsValue above 5 without clamping', async () => {
+  test('clamps newsValue above 5 to 5', async () => {
     const { db, setColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
@@ -184,10 +189,10 @@ describe('NewsItem Validation', () => {
 
     const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
-    assert.equal(storedItem.newsValue, 10) // No clamping currently implemented
+    assert.equal(storedItem.newsValue, 5) // Clamped to maximum value
   })
 
-  test('accepts newsValue below 1 without clamping', async () => {
+  test('accepts newsValue of 0 (minimum valid value)', async () => {
     const { db, setColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
@@ -200,7 +205,23 @@ describe('NewsItem Validation', () => {
 
     const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
-    assert.equal(storedItem.newsValue, 0) // No clamping currently implemented
+    assert.equal(storedItem.newsValue, 0) // 0 is valid, no clamping needed
+  })
+
+  test('clamps negative newsValue to 0', async () => {
+    const { db, setColumnDataBatchCalls } = createMockDb()
+
+    await ingestNewsItems(
+      {
+        columnId: 'col-123',
+        items: [{ title: 'Test', newsValue: -5 }]
+      },
+      db
+    )
+
+    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    assert.ok(storedItem)
+    assert.equal(storedItem.newsValue, 0) // Clamped to minimum value
   })
 
   test('generates timestamp if not provided', async () => {
