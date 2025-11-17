@@ -3,10 +3,10 @@
  *
  * Uses PostgreSQL for rate limiting (no external dependencies).
  * Simple sliding window implementation with database cleanup.
+ * Reuses the main database connection pool from db-postgresql.ts
  */
 
-import { Pool } from 'pg'
-import { parse } from 'pg-connection-string'
+import { getPool } from './db-postgresql'
 
 // Rate limit configuration
 // Conservative limit that protects against workflow bugs while allowing normal operation
@@ -14,26 +14,9 @@ import { parse } from 'pg-connection-string'
 const RATE_LIMIT_MAX_REQUESTS = 500 // requests per window
 const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute in milliseconds
 
-// PostgreSQL connection pool for rate limiting
-let rateLimitPool: Pool | null = null
-
-// Initialize rate limiting database connection
+// Initialize rate limiting table on module load
 if (process.env.DATABASE_URL) {
-  const config = parse(process.env.DATABASE_URL)
-
-  rateLimitPool = new Pool({
-    host: config.host || undefined,
-    port: config.port ? parseInt(config.port) : undefined,
-    database: config.database || undefined,
-    user: config.user || undefined,
-    password: config.password || undefined,
-    // Small pool just for rate limiting
-    max: 5,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-  })
-
-  console.log('✅ Rate limiting enabled with PostgreSQL')
+  console.log('✅ Rate limiting enabled with PostgreSQL (shared pool)')
 
   // Create rate_limit_log table if it doesn't exist
   initRateLimitTable().catch(err => {
@@ -48,10 +31,11 @@ if (process.env.DATABASE_URL) {
  * Initialize rate limiting table
  */
 async function initRateLimitTable(): Promise<void> {
-  if (!rateLimitPool) return
+  if (!process.env.DATABASE_URL) return
 
   try {
-    await rateLimitPool.query(`
+    const pool = getPool()
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS rate_limit_log (
         identifier TEXT NOT NULL,
         timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -86,7 +70,7 @@ export async function checkRateLimit(identifier: string): Promise<RateLimitResul
   const resetTime = now + RATE_LIMIT_WINDOW_MS
 
   // If rate limiting is not configured, allow all requests (development)
-  if (!rateLimitPool) {
+  if (!process.env.DATABASE_URL) {
     return {
       success: true,
       limit: RATE_LIMIT_MAX_REQUESTS,
@@ -96,8 +80,11 @@ export async function checkRateLimit(identifier: string): Promise<RateLimitResul
   }
 
   try {
+    // Get shared database pool
+    const pool = getPool()
+
     // Start transaction for atomic check-and-insert
-    const client = await rateLimitPool.connect()
+    const client = await pool.connect()
 
     try {
       await client.query('BEGIN')

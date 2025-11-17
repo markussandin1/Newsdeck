@@ -4,9 +4,40 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 type Extra = Record<string, unknown>
 
+const serializeValue = (value: unknown): unknown => {
+  if (value instanceof Error) {
+    const errorObj: Record<string, unknown> = {
+      name: value.name,
+      message: value.message,
+      stack: value.stack
+    }
+    // Handle error.cause if it exists (ES2022+)
+    const cause = (value as Error & { cause?: unknown }).cause
+    if (cause) {
+      errorObj.cause = serializeValue(cause)
+    }
+    return errorObj
+  }
+  if (Array.isArray(value)) {
+    return value.map(serializeValue)
+  }
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(value)) {
+      result[key] = serializeValue(val)
+    }
+    return result
+  }
+  return value
+}
+
 const toExtras = (extra?: Extra | Record<string, unknown>): Extra | undefined => {
   if (!extra) return undefined
-  return { ...extra }
+  const result: Extra = {}
+  for (const [key, value] of Object.entries(extra)) {
+    result[key] = serializeValue(value)
+  }
+  return result
 }
 
 const buildPayload = (level: LogLevel, message: string, extra?: Extra) => ({

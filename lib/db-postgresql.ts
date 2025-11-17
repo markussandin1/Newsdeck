@@ -6,7 +6,7 @@ import { logger } from './logger'
 // PostgreSQL connection pool
 let pool: Pool | null = null
 
-const getPool = () => {
+export const getPool = () => {
   if (!pool) {
     const DATABASE_URL = process.env.DATABASE_URL
 
