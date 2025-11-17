@@ -851,7 +851,7 @@ export const persistentDb = {
   },
 
   // Cleanup old news items
-  cleanupOldItems: async (olderThanDays = 7) => {
+  cleanupOldItems: async (olderThanDays = 2) => {
     const pool = getPool()
     const client = await pool.connect()
 
