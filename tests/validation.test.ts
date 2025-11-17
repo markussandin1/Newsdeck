@@ -31,12 +31,7 @@ const createMockDb = (): {
     },
     setColumnDataBatch: async (columnData) => {
       setColumnDataBatchCalls.push(columnData)
-    },
-    cleanupOldItems: async () => ({
-      success: true,
-      removedCount: 0,
-      cutoffDate: new Date().toISOString()
-    })
+    }
   }
 
   return { db, setColumnDataCalls, setColumnDataBatchCalls, addNewsItemsCalls }

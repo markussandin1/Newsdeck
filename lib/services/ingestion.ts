@@ -3,11 +3,6 @@ import { v4 as uuidv4 } from 'uuid'
 import type { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 import { newsdeckPubSub } from '@/lib/pubsub'
 import { eventQueue } from '@/lib/event-queue'
-import { logger } from '@/lib/logger'
-
-// Track last cleanup time to avoid running too frequently
-let lastCleanupTime = 0
-const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 export class IngestionError extends Error {
   status: number
@@ -27,8 +22,6 @@ export interface IngestionDb {
   // Batch operations for performance optimization
   getColumnDataBatch: (columnIds: string[]) => Promise<Record<string, NewsItem[]>>
   setColumnDataBatch: (columnData: Record<string, NewsItem[]>) => Promise<void>
-  // Cleanup operation
-  cleanupOldItems: (olderThanDays?: number) => Promise<{ success: boolean; removedCount: number; cutoffDate: string }>
 }
 
 interface NormalisedPayload {
@@ -303,23 +296,6 @@ export const ingestNewsItems = async (
 
   // Also add to local event queue for immediate delivery (works in dev and as fallback)
   eventQueue.addItems(columnIdsArray, insertedItems)
-
-  // Run automatic cleanup if it's been more than 24 hours since last cleanup
-  const currentTime = Date.now()
-  if (currentTime - lastCleanupTime > CLEANUP_INTERVAL_MS) {
-    lastCleanupTime = currentTime
-    // Run cleanup in background, don't wait for it
-    db.cleanupOldItems(2).then((result) => {
-      logger.info('ingestion.autoCleanup.success', {
-        removedCount: result.removedCount,
-        cutoffDate: result.cutoffDate
-      })
-    }).catch((error) => {
-      logger.error('ingestion.autoCleanup.error', { error })
-      // Reset timer on error so we retry next time
-      lastCleanupTime = 0
-    })
-  }
 
   return {
     columnId,
