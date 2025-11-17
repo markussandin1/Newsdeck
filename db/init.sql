@@ -64,6 +64,10 @@ CREATE INDEX idx_news_items_created_in_db ON news_items(created_in_db DESC);
 CREATE INDEX idx_column_data_column_id ON column_data(column_id);
 CREATE INDEX idx_column_data_news_item_db_id ON column_data(news_item_db_id);
 
+-- Unique constraint to prevent duplicate source_ids
+CREATE UNIQUE INDEX idx_news_items_unique_source_id ON news_items(source_id)
+WHERE source_id IS NOT NULL;
+
 -- Insert empty main dashboard (columns will be created via UI)
 INSERT INTO dashboards (id, name, description, slug, columns, created_by, created_by_name, created_at)
 VALUES (

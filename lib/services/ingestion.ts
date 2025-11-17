@@ -280,7 +280,16 @@ export const ingestNewsItems = async (
   const updatedColumnData: Record<string, NewsItem[]> = {}
   for (const targetColumnId of columnIds) {
     const existingItems = existingColumnData[targetColumnId] || []
-    const combined = [...existingItems, ...insertedItems]  // Use insertedItems with correct db_id
+
+    // DEDUPLICATION: Remove existing items that have the same source_id as new items
+    // This prevents duplicate news items from appearing when the same source_id is sent multiple times
+    const newItemSourceIds = new Set(insertedItems.map(item => item.id).filter(Boolean))
+    const deduplicatedExisting = existingItems.filter(item => {
+      // Keep items that don't have a source_id, or whose source_id isn't in the new items
+      return !item.id || !newItemSourceIds.has(item.id)
+    })
+
+    const combined = [...deduplicatedExisting, ...insertedItems]  // Use insertedItems with correct db_id
     updatedColumnData[targetColumnId] = combined
     columnTotals[targetColumnId] = combined.length
     columnsUpdated += 1
