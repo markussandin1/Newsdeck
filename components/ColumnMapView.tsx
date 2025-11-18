@@ -32,8 +32,27 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
   const markersLayerRef = useRef<LayerGroup | null>(null)
   const leafletRef = useRef<typeof import('leaflet') | null>(null)
   const markersRef = useRef<Map<string, { marker: LeafletMarker; item: NewsItem }>>(new Map())
+  const infoCardTimeoutRef = useRef<number | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [showInfoCard, setShowInfoCard] = useState(false)
+  const hasUserInteractedRef = useRef(false)
+  const previousLocationRef = useRef<[number, number] | null>(null)
+
+  const clearInfoCardTimeout = () => {
+    if (infoCardTimeoutRef.current !== null) {
+      window.clearTimeout(infoCardTimeoutRef.current)
+      infoCardTimeoutRef.current = null
+    }
+  }
+
+  const scheduleInfoCard = (delay: number) => {
+    if (!hasUserInteractedRef.current) return
+    clearInfoCardTimeout()
+    infoCardTimeoutRef.current = window.setTimeout(() => {
+      setShowInfoCard(true)
+      infoCardTimeoutRef.current = null
+    }, delay)
+  }
 
   // Initialize map only once
   useEffect(() => {
@@ -122,6 +141,12 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
       markersLayerRef.current = null
       leafletRef.current = null
       setIsReady(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearInfoCardTimeout()
     }
   }, [])
 
@@ -218,10 +243,6 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     }
   }, [items, createMarkerIcon, onSelectItem, selectedItemId, isReady])
 
-  // Track if user has interacted with the map
-  const hasUserInteractedRef = useRef(false)
-  const previousLocationRef = useRef<[number, number] | null>(null)
-
   // Highlight selected item without recreating all markers
   useEffect(() => {
     if (!isReady) return
@@ -230,10 +251,11 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     const L = leafletRef.current
     if (!map || !L) return
 
-    // Track user-initiated selection from parent component
     if (userInitiatedSelection) {
       hasUserInteractedRef.current = true
     }
+
+    let targetLocation: [number, number] | null = null
 
     markersRef.current.forEach(({ marker, item }) => {
       const isSelected = item.dbId === selectedItemId
@@ -241,98 +263,89 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
       if (icon) {
         marker.setIcon(icon)
       }
-      if (isSelected && item.location?.coordinates?.length === 2) {
-        const [lat, lng] = item.location.coordinates
-        const newLocation: [number, number] = [lat, lng]
 
-        // Calculate distance from previous location if we have one
-        const previousLocation = previousLocationRef.current
-
-        if (previousLocation && hasUserInteractedRef.current) {
-          const currentZoom = map.getZoom()
-
-          // Calculate distance in kilometers using Haversine formula
-          const distance = L.latLng(previousLocation).distanceTo(L.latLng(newLocation)) / 1000 // km
-
-          // Determine intermediate zoom level based on distance
-          // Close (<50km): zoom to 9, Medium (50-200km): zoom to 7, Far (>200km): zoom to 5
-          let intermediateZoom = 9
-          if (distance > 200) {
-            intermediateZoom = 5
-          } else if (distance > 50) {
-            intermediateZoom = 7
-          } else if (distance > 10) {
-            intermediateZoom = 9
-          } else {
-            // Very close, just pan directly
-            map.flyTo(newLocation, 12, {
-              animate: true,
-              duration: 0.8,
-              easeLinearity: 0.5
-            })
-            previousLocationRef.current = newLocation
-            setTimeout(() => setShowInfoCard(true), 100)
-            return
-          }
-
-          // Only do smooth zoom-out if we're currently zoomed in enough
-          // Otherwise the animation looks weird
-          if (currentZoom >= 10) {
-            // Step 1: Zoom out from current position
-            map.setZoom(intermediateZoom, {
-              animate: true,
-              duration: 0.6
-            })
-
-            // Step 2: Pan to show both points
-            setTimeout(() => {
-              const bounds = L.latLngBounds([previousLocation, newLocation])
-              map.fitBounds(bounds.pad(0.3), {
-                animate: true,
-                duration: 0.6,
-                maxZoom: intermediateZoom
-              })
-            }, 600)
-
-            // Step 3: Zoom in on target
-            setTimeout(() => {
-              map.flyTo(newLocation, 12, {
-                animate: true,
-                duration: 1.0,
-                easeLinearity: 0.5
-              })
-            }, 1200)
-
-            setTimeout(() => setShowInfoCard(true), 2200)
-          } else {
-            // Not zoomed in enough, just fly directly
-            map.flyTo(newLocation, 12, {
-              animate: true,
-              duration: 1.0,
-              easeLinearity: 0.5
-            })
-            setTimeout(() => setShowInfoCard(true), 100)
-          }
-        } else {
-          // First time or no previous location - direct fly
-          map.flyTo(newLocation, 12, {
-            animate: true,
-            duration: 1.0,
-            easeLinearity: 0.5
-          })
-          if (hasUserInteractedRef.current) {
-            setTimeout(() => setShowInfoCard(true), 100)
-          }
-        }
-
-        previousLocationRef.current = newLocation
+      if (
+        isSelected &&
+        item.location?.coordinates?.length === 2 &&
+        typeof item.location.coordinates[0] === 'number' &&
+        typeof item.location.coordinates[1] === 'number' &&
+        !Number.isNaN(item.location.coordinates[0]) &&
+        !Number.isNaN(item.location.coordinates[1])
+      ) {
+        targetLocation = [item.location.coordinates[0], item.location.coordinates[1]]
       }
     })
 
-    // Hide info card when no item is selected
-    if (!selectedItemId) {
-      setShowInfoCard(false)
+    if (!selectedItemId || !targetLocation) {
+      if (!selectedItemId) {
+        setShowInfoCard(false)
+      }
+      clearInfoCardTimeout()
+      return
     }
+
+    const previousLocation = previousLocationRef.current
+    const currentZoom = map.getZoom()
+    const targetLatLng = L.latLng(targetLocation)
+    const previousLatLng = previousLocation ? L.latLng(previousLocation) : null
+
+    map.stop()
+
+    if (!previousLatLng || !hasUserInteractedRef.current) {
+      const focusZoom = Math.max(currentZoom, 11)
+      map.flyTo(targetLatLng, focusZoom, {
+        animate: true,
+        duration: 1.0,
+        easeLinearity: 0.5
+      })
+
+      if (hasUserInteractedRef.current) {
+        scheduleInfoCard(200)
+      }
+
+      previousLocationRef.current = targetLocation
+      return
+    }
+
+    const distanceKm = previousLatLng.distanceTo(targetLatLng) / 1000
+
+    if (distanceKm <= 8) {
+      const targetZoom = currentZoom >= 11 ? currentZoom : 11
+      map.flyTo(targetLatLng, targetZoom, {
+        animate: true,
+        duration: 0.6,
+        easeLinearity: 0.55
+      })
+      scheduleInfoCard(200)
+    } else if (distanceKm <= 60) {
+      const targetZoom = Math.min(currentZoom, 12)
+      map.flyTo(targetLatLng, Math.max(targetZoom, 10), {
+        animate: true,
+        duration: 0.85,
+        easeLinearity: 0.45
+      })
+      scheduleInfoCard(320)
+    } else if (distanceKm <= 250) {
+      const bounds = L.latLngBounds([previousLatLng, targetLatLng]).pad(0.18)
+      map.flyToBounds(bounds, {
+        animate: true,
+        duration: 1.0,
+        easeLinearity: 0.4,
+        maxZoom: Math.min(currentZoom, 8)
+      })
+      scheduleInfoCard(700)
+    } else {
+      const bounds = L.latLngBounds([previousLatLng, targetLatLng]).pad(0.28)
+      map.flyToBounds(bounds, {
+        animate: true,
+        duration: 1.2,
+        easeLinearity: 0.4,
+        maxZoom: Math.min(currentZoom, 6)
+      })
+      scheduleInfoCard(950)
+    }
+
+    previousLocationRef.current = targetLocation
   }, [selectedItemId, createMarkerIcon, isReady, userInitiatedSelection])
 
   // Get the selected item object
@@ -342,6 +355,7 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
   }, [selectedItemId, items])
 
   const handleCloseInfoCard = () => {
+    clearInfoCardTimeout()
     setShowInfoCard(false)
   }
 
