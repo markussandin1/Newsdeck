@@ -295,8 +295,8 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
       const focusZoom = Math.max(currentZoom, 11)
       map.flyTo(targetLatLng, focusZoom, {
         animate: true,
-        duration: 1.0,
-        easeLinearity: 0.5
+        duration: 1.5,
+        easeLinearity: 0.25
       })
 
       if (hasUserInteractedRef.current) {
@@ -309,40 +309,29 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
 
     const distanceKm = previousLatLng.distanceTo(targetLatLng) / 1000
 
-    if (distanceKm <= 8) {
-      const targetZoom = currentZoom >= 11 ? currentZoom : 11
+    // Nearby items (< 50km) - Smooth transition
+    if (distanceKm <= 50) {
+      // Keep current zoom if we are already zoomed in enough, otherwise ensure at least zoom 11
+      const targetZoom = Math.max(currentZoom, 11)
+      
       map.flyTo(targetLatLng, targetZoom, {
         animate: true,
-        duration: 0.6,
-        easeLinearity: 0.55
+        duration: 1.5,
+        easeLinearity: 0.25 // Higher value = flatter flight path (less zoom out)
       })
-      scheduleInfoCard(200)
-    } else if (distanceKm <= 60) {
-      const targetZoom = Math.min(currentZoom, 12)
-      map.flyTo(targetLatLng, Math.max(targetZoom, 10), {
+      scheduleInfoCard(300)
+    } 
+    // Distant items - Google Earth style (Zoom out -> Pan -> Zoom in)
+    else {
+      // Always go to a good viewing zoom level for the target
+      const targetZoom = 11
+      
+      map.flyTo(targetLatLng, targetZoom, {
         animate: true,
-        duration: 0.85,
-        easeLinearity: 0.45
+        duration: 3.0, // Longer duration for the "flight"
+        easeLinearity: 0.1 // Low value = deep parabolic flight path (significant zoom out)
       })
-      scheduleInfoCard(320)
-    } else if (distanceKm <= 250) {
-      const bounds = L.latLngBounds([previousLatLng, targetLatLng]).pad(0.18)
-      map.flyToBounds(bounds, {
-        animate: true,
-        duration: 1.0,
-        easeLinearity: 0.4,
-        maxZoom: Math.min(currentZoom, 8)
-      })
-      scheduleInfoCard(700)
-    } else {
-      const bounds = L.latLngBounds([previousLatLng, targetLatLng]).pad(0.28)
-      map.flyToBounds(bounds, {
-        animate: true,
-        duration: 1.2,
-        easeLinearity: 0.4,
-        maxZoom: Math.min(currentZoom, 6)
-      })
-      scheduleInfoCard(950)
+      scheduleInfoCard(1500) // Show card later since animation takes longer
     }
 
     previousLocationRef.current = targetLocation
