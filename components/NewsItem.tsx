@@ -17,10 +17,11 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
     if (item.isNew) {
       // Clear "new" indicator after 60 seconds to stop the pulsing animation
       // (The isNew flag is set based on createdInDb timestamp - items < 1 minute old)
+      // Use item.dbId as dependency so this only runs once per unique item
       const timer = setTimeout(() => setIsNew(false), 60000)
       return () => clearTimeout(timer)
     }
-  }, [item.isNew])
+  }, [item.dbId, item.isNew])
   const getNewsValueAccentColor = (newsValue: number) => {
     switch (newsValue) {
       case 5:
@@ -116,9 +117,8 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   if (compact) {
     return (
       <div
-        className={`relative bg-card rounded-lg border border-border p-4 cursor-pointer group smooth-transition hover:shadow-soft-lg hover:border-border/80 ${
-          isNew ? 'new-message' : ''
-        }`}
+        className={`relative bg-card rounded-lg border border-border p-4 cursor-pointer group smooth-transition hover:shadow-soft-lg hover:border-border/80 ${isNew ? 'new-message' : ''
+          }`}
         onClick={onClick}
       >
         {/* New message indicator */}
@@ -131,7 +131,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
 
         {/* Accent stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${getNewsValueAccentColor(item.newsValue)}`}></div>
-        
+
         <div className="pl-3">
           {/* Metadata header */}
           <div className="flex items-center justify-between mb-2">
@@ -159,7 +159,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
               {formatCompactTime(item.createdInDb || item.timestamp)}
             </time>
           </div>
-          
+
           {/* Category badge (if present) */}
           {item.category && (
             <div className="mb-1">
@@ -232,13 +232,13 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           </Badge>
         </div>
       </div>
-      
+
       {item.description && (
         <p className="text-muted-foreground mb-3 text-sm leading-relaxed">
           {item.description}
         </p>
       )}
-      
+
       <div className="space-y-4">
         {item.location && (
           <div>
