@@ -96,15 +96,16 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
-  const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemType | null>(null)
-  const [showCreateDashboardModal, setShowCreateDashboardModal] = useState(false)
-  const [newDashboardName, setNewDashboardName] = useState('')
-  const [newDashboardDescription, setNewDashboardDescription] = useState('')
+  const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
+  const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
-  const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
-  const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
+  const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemType | null>(null)
+  const [showCreateDashboardModal, setShowCreateDashboardModal] = useState(false)
+  const [userName, setUserName] = useState<string | null>(null)
+  const [newDashboardName, setNewDashboardName] = useState('')
+  const [newDashboardDescription, setNewDashboardDescription] = useState('')
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -113,6 +114,22 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
       setShowWorkflowInput(activeColumns.length === 0)
     }
   }, [showAddColumnModal, dashboard?.columns])
+
+  // Fetch user session
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session')
+        const session = await response.json()
+        if (session?.user) {
+          setUserName(session.user.name || session.user.email?.split('@')[0] || null)
+        }
+      } catch (error) {
+        console.error('Failed to fetch session:', error)
+      }
+    }
+    fetchSession()
+  }, [])
 
   // Simple approach: Just don't recreate columns unnecessarily
 
@@ -672,6 +689,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 </div>
 
                 <div className="flex items-center gap-3">
+                  {userName && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg">
+                      <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold">
+                        {userName.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{userName}</span>
+                    </div>
+                  )}
                   <Link
                     href={`/admin?dashboardId=${dashboard.id}`}
                     className="px-3 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 smooth-transition text-sm font-medium"
