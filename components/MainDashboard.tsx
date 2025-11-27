@@ -17,6 +17,7 @@ import { Button } from './ui/button'
 import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ColumnMapButton from './ColumnMapButton'
+import { ThemeToggle } from './theme-toggle'
 
 interface MainDashboardProps {
   dashboard: DashboardType
@@ -462,11 +463,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
     if (items.length === 0) {
       return (
-        <div className="text-center py-8 px-4 text-gray-500 text-sm">
+        <div className="text-center py-8 px-4 text-muted-foreground text-sm">
           <div className="mb-4 flex justify-center">
             <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={48} height={48} className="w-12 h-12 object-contain opacity-40" />
           </div>
-          <div className="font-medium text-gray-700 mb-3">Denna kolumn är tom</div>
+          <div className="font-medium text-foreground mb-3">Denna kolumn är tom</div>
 
           <div className="space-y-3 text-xs">
             <div className="p-3 bg-blue-50 rounded-lg text-left">
@@ -493,12 +494,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
               </Button>
             </div>
 
-            <div className="p-3 bg-gray-50 rounded-lg text-left">
-              <div className="font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <div className="p-3 bg-muted/30 rounded-lg text-left">
+              <div className="font-medium text-foreground mb-1 flex items-center gap-1">
                 <Copy className="h-3 w-3" />
                 För manuell publicering:
               </div>
-              <div className="text-gray-600 flex items-center gap-1">
+              <div className="text-muted-foreground flex items-center gap-1">
                 Använd Kolumn-ID från inställningar <Settings className="h-3 w-3 inline" />
               </div>
             </div>
@@ -540,26 +541,26 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   ColumnContent.displayName = 'ColumnContent'
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <div className="glass border-b border-slate-200 sticky top-0 z-50 safe-area-top">
+      <div className="glass border-b border-border sticky top-0 z-50 safe-area-top">
         <div className="px-4 py-4 safe-area-left safe-area-right">
           {isMobile ? (
             // Mobile Header
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setShowMobileMenu(true)}
-                className="p-2 hover:bg-slate-100 active:bg-slate-200 rounded-lg smooth-transition"
+                className="p-2 hover:bg-muted active:bg-muted/80 rounded-lg smooth-transition"
                 aria-label="Öppna meny"
               >
-                <Menu className="h-6 w-6 text-slate-700" />
+                <Menu className="h-6 w-6 text-foreground" />
               </button>
 
               <div className="flex-1 text-center px-4">
-                <h1 className="text-base font-semibold text-slate-900 truncate">
+                <h1 className="text-base font-semibold text-foreground truncate">
                   {activeColumns[activeColumnIndex]?.title || dashboard.name}
                 </h1>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted-foreground">
                   {activeColumns[activeColumnIndex]
                     ? `${memoizedColumnData[activeColumns[activeColumnIndex].id]?.length || 0} händelser`
                     : `${activeColumns.length} kolumner`
@@ -567,12 +568,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 </div>
               </div>
 
+              <ThemeToggle />
               <button
                 onClick={() => setShowDashboardDropdown(true)}
-                className="p-2 hover:bg-slate-100 active:bg-slate-200 rounded-lg smooth-transition"
+                className="p-2 hover:bg-muted active:bg-muted/80 rounded-lg smooth-transition"
                 aria-label="Fler alternativ"
               >
-                <MoreVertical className="h-6 w-6 text-slate-700" />
+                <MoreVertical className="h-6 w-6 text-foreground" />
               </button>
             </div>
           ) : (
@@ -586,19 +588,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 </Link>
                 <div className="relative" ref={dropdownRef}>
                   <button
-                    className="flex items-center gap-2 hover:bg-slate-100 rounded-lg px-3 py-2 smooth-transition"
+                    className="flex items-center gap-2 hover:bg-muted rounded-lg px-3 py-2 smooth-transition"
                     onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
                   >
                     <div>
-                      <h1 className="text-xl font-semibold text-slate-900 text-left">{dashboard.name}</h1>
-                      <div className="flex items-center gap-4 text-sm text-slate-600">
+                      <h1 className="text-xl font-semibold text-foreground text-left">{dashboard.name}</h1>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>{dashboard?.columns?.filter(col => !col.isArchived)?.length || 0} kolumner</span>
                         <span>•</span>
                         <span>{getTotalNewsCount()} händelser</span>
                       </div>
                     </div>
                     <svg
-                      className={`w-4 h-4 text-slate-400 smooth-transition ${showDashboardDropdown ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-muted-foreground smooth-transition ${showDashboardDropdown ? 'rotate-180' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -609,9 +611,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
                   {/* Dashboard Dropdown */}
                   {showDashboardDropdown && (
-                    <div className="absolute top-full left-0 mt-2 w-72 glass rounded-xl shadow-soft-lg border border-slate-200 py-2 z-50">
-                      <div className="px-4 py-2 border-b border-slate-200/50">
-                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                    <div className="absolute top-full left-0 mt-2 w-72 glass rounded-xl shadow-soft-lg border border-border py-2 z-50">
+                      <div className="px-4 py-2 border-b border-border/50">
+                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                           Dashboards
                         </div>
                       </div>
@@ -621,15 +623,15 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                           setShowCreateDashboardModal(true)
                           setShowDashboardDropdown(false)
                         }}
-                        className="w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center gap-3"
+                        className="w-full px-4 py-3 text-left hover:bg-muted smooth-transition flex items-center gap-3"
                       >
                         <div className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-md flex items-center justify-center text-sm font-bold">
                           +
                         </div>
-                        <span className="font-medium text-slate-900">Ny Dashboard</span>
+                        <span className="font-medium text-foreground">Ny Dashboard</span>
                       </button>
 
-                      <div className="border-t border-slate-200/50 mt-1 pt-1">
+                      <div className="border-t border-border/50 mt-1 pt-1">
                         {allDashboards.map((dash) => (
                           <button
                             key={dash.id}
@@ -640,15 +642,15 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
                               setShowDashboardDropdown(false)
                             }}
-                            className={`w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center justify-between ${dash.id === dashboard.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
+                            className={`w-full px-4 py-3 text-left hover:bg-muted smooth-transition flex items-center justify-between ${dash.id === dashboard.id ? 'bg-blue-50/50 border-r-2 border-blue-500' : ''
                               }`}
                           >
                             <div className="flex-1">
-                              <div className="font-medium text-slate-900">{dash.name}</div>
+                              <div className="font-medium text-foreground">{dash.name}</div>
                               {dash.description && (
-                                <div className="text-xs text-slate-500 mt-1">{dash.description}</div>
+                                <div className="text-xs text-muted-foreground mt-1">{dash.description}</div>
                               )}
-                              <div className="text-xs text-slate-400 mt-1">
+                              <div className="text-xs text-muted-foreground mt-1">
                                 {dash.columnCount ?? 0} kolumner
                               </div>
                             </div>
@@ -664,7 +666,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
               </div>
 
               <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
                   <span>{isLoading ? 'Uppdaterar...' : `Live • ${lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}`}</span>
                 </div>
@@ -689,6 +691,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   >
                     Admin
                   </Link>
+                  <ThemeToggle />
                 </div>
               </div>
             </div>
@@ -728,7 +731,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
               <motion.div
                 key={activeColumns[activeColumnIndex].id}
-                className="h-full bg-white flex flex-col"
+                className="h-full bg-background flex flex-col"
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.2}
@@ -797,7 +800,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
                 {/* Mobile Column Indicator - Dots at bottom */}
                 {activeColumns.length > 1 && (
-                  <div className="safe-area-bottom pb-4 pt-2 bg-white border-t border-gray-200">
+                  <div className="safe-area-bottom pb-4 pt-2 bg-background border-t border-border">
                     <div className="flex items-center justify-center gap-2">
                       {activeColumns.map((_, index) => (
                         <button
@@ -808,8 +811,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                         >
                           <motion.div
                             className={`rounded-full transition-all ${index === activeColumnIndex
-                                ? 'bg-blue-500 w-8 h-2'
-                                : 'bg-gray-300 w-2 h-2'
+                              ? 'bg-blue-500 w-8 h-2'
+                              : 'bg-gray-300 w-2 h-2'
                               }`}
                             layout
                           />
@@ -827,7 +830,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 <div className="mb-4 flex justify-center">
                   <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={64} height={64} className="w-16 h-16 object-contain opacity-40" />
                 </div>
-                <div className="text-gray-500 mb-4">Inga kolumner ännu</div>
+                <div className="text-muted-foreground mb-4">Inga kolumner ännu</div>
                 <button
                   onClick={() => setShowAddColumnModal(true)}
                   className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition text-sm font-medium"
@@ -853,26 +856,26 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   onDragOver={(e) => handleDragOver(e, column.id)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, column.id)}
-                  className={`flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col transition-colors ${draggedColumn === column.id ? 'opacity-50' : ''
-                    } ${dragOverColumn === column.id && draggedColumn !== column.id ? 'border-l-4 border-blue-500 bg-blue-50' : ''
+                  className={`flex-shrink-0 w-80 bg-background border-r border-border flex flex-col transition-colors ${draggedColumn === column.id ? 'opacity-50' : ''
+                    } ${dragOverColumn === column.id && draggedColumn !== column.id ? 'border-l-4 border-blue-500 bg-blue-50/50' : ''
                     }`}
                 >
                   {/* Static header with drag handle */}
-                  <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl relative">
+                  <div className="glass border-b border-border/50 p-4 rounded-t-xl relative">
                     {/* Drag handle */}
                     <div
                       draggable
                       onDragStart={(e) => handleDragStart(e, column.id)}
                       onDragEnd={handleDragEnd}
-                      className="absolute left-0 top-0 bottom-0 w-6 cursor-move hover:bg-gray-100 rounded-l-xl flex flex-col items-center justify-center gap-1 opacity-40 hover:opacity-80 transition-all"
+                      className="absolute left-0 top-0 bottom-0 w-6 cursor-move hover:bg-muted rounded-l-xl flex flex-col items-center justify-center gap-1 opacity-40 hover:opacity-80 transition-all"
                       title="Dra för att flytta kolumn"
                     >
-                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
                     </div>
                     {editingColumn === column.id ? (
                       // Edit Mode
@@ -905,7 +908,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                               type="text"
                               value={editTitle}
                               onChange={(e) => setEditTitle(e.target.value)}
-                              className="w-full px-2 py-1.5 text-sm border border-input rounded focus:ring-2 focus:ring-ring focus:border-ring bg-background"
+                              className="w-full px-2 py-1.5 text-sm border border-input rounded focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                               placeholder="t.ex. Breaking News"
                               required
                             />
@@ -918,7 +921,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                             <textarea
                               value={editDescription}
                               onChange={(e) => setEditDescription(e.target.value)}
-                              className="w-full px-2 py-1.5 text-xs border border-input rounded resize-none focus:ring-2 focus:ring-ring focus:border-ring bg-background"
+                              className="w-full px-2 py-1.5 text-xs border border-input rounded resize-none focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                               placeholder="Valfri beskrivning..."
                               rows={2}
                             />
@@ -1030,7 +1033,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                                       setTimeout(() => setShowExtractionSuccess(false), 3000)
                                     }
                                   }}
-                                  className="w-full px-2 py-1.5 text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background"
+                                  className="w-full px-2 py-1.5 text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                                   placeholder="Klistra in workflow-URL från Workflows-appen"
                                 />
                                 {showExtractionSuccess && (
@@ -1094,7 +1097,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       <div className="flex justify-between items-start ml-6">
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-800">
+                            <h3 className="font-semibold text-foreground">
                               {column.title}
                             </h3>
                             <div className="flex items-center gap-1">
@@ -1123,7 +1126,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                               </Button>
                             </div>
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             {columnItems.length} händelser
                           </div>
                         </div>
@@ -1145,12 +1148,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
         )}
         {/* Add Column Button - Desktop only */}
         {!isMobile && (
-          <div className="flex-shrink-0 w-80 bg-gray-50 border-r border-gray-200 flex items-center justify-center">
+          <div className="flex-shrink-0 w-80 bg-muted/30 border-r border-border flex items-center justify-center">
             <button
               onClick={() => setShowAddColumnModal(true)}
-              className="flex flex-col items-center text-gray-600 hover:text-gray-800 p-8"
+              className="flex flex-col items-center text-muted-foreground hover:text-foreground p-8"
             >
-              <div className="w-12 h-12 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center text-2xl mb-2">
+              <div className="w-12 h-12 border-2 border-dashed border-muted-foreground/50 rounded-lg flex items-center justify-center text-2xl mb-2">
                 +
               </div>
               <span className="text-sm">Lägg till kolumn</span>
@@ -1161,11 +1164,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
       {/* Add Column Modal */}
       {showAddColumnModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card text-card-foreground rounded-lg max-w-md w-full border border-border">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">✨ Skapa ny kolumn</h3>
+                <h3 className="text-lg font-semibold text-foreground">✨ Skapa ny kolumn</h3>
                 <button
                   onClick={() => {
                     setShowAddColumnModal(false)
@@ -1174,19 +1177,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     setNewColumnFlowId('')
                     setUrlExtracted(false)
                   }}
-                  className="text-gray-500 hover:text-gray-700 text-xl"
+                  className="text-muted-foreground hover:text-foreground text-xl"
                 >
                   ×
                 </button>
               </div>
 
               {/* Tab buttons */}
-              <div className="flex mb-4 border-b">
+              <div className="flex mb-4 border-b border-border">
                 <button
                   onClick={() => setShowArchivedColumns(false)}
                   className={`px-4 py-2 font-medium text-sm ${!showArchivedColumns
-                      ? 'border-b-2 border-blue-500 text-blue-600'
-                      : 'text-gray-600 hover:text-gray-800'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-muted-foreground hover:text-foreground'
                     }`}
                 >
                   Skapa ny
@@ -1194,8 +1197,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 <button
                   onClick={() => setShowArchivedColumns(true)}
                   className={`px-4 py-2 font-medium text-sm ${showArchivedColumns
-                      ? 'border-b-2 border-blue-500 text-blue-600'
-                      : 'text-gray-600 hover:text-gray-800'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-muted-foreground hover:text-foreground'
                     }`}
                 >
                   Återställ ({archivedColumns.length})
@@ -1213,14 +1216,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   <div className="space-y-4">
                     {/* Column Name */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Kolumnnamn *
                       </label>
                       <input
                         type="text"
                         value={newColumnTitle}
                         onChange={(e) => setNewColumnTitle(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full p-3 border border-input rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
                         placeholder="t.ex. Breaking News Stockholm"
                         required
                         autoFocus
@@ -1228,17 +1231,17 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     </div>
 
                     {/* Workflow Connection Section */}
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="p-4 bg-blue-50 border border-border rounded-lg">
                       {(dashboard?.columns?.filter(col => !col.isArchived) || []).length === 0 && (
                         <div className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full mb-2">
                           🎯 Rekommenderat för första kolumnen
                         </div>
                       )}
 
-                      <div className="font-medium text-gray-800 mb-2">
+                      <div className="font-medium text-foreground mb-2">
                         🤖 Vill du fylla denna kolumn automatiskt?
                       </div>
-                      <div className="text-sm text-gray-600 mb-3">
+                      <div className="text-sm text-muted-foreground mb-3">
                         Anslut en AI-workflow för att automatiskt ta emot nyheter - inga fler steg krävs!
                       </div>
 
@@ -1249,7 +1252,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                           onChange={(e) => setShowWorkflowInput(e.target.checked)}
                           className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
                         />
-                        <span className="text-sm font-medium text-gray-700">
+                        <span className="text-sm font-medium text-foreground">
                           Ja, anslut workflow
                         </span>
                       </label>
@@ -1259,7 +1262,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     {showWorkflowInput ? (
                       <div className="space-y-3 p-4 bg-blue-50 rounded-lg transition-all duration-200 ease-in-out">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Workflow-URL
                           </label>
                           <input
@@ -1276,11 +1279,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                                 setNewColumnFlowId(extracted)
                               }
                             }}
-                            className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full p-3 border border-border rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Klistra in URL från Workflows-appen"
                           />
                           <div className="flex items-center justify-between mt-1">
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs text-muted-foreground">
                               💡 Vi extraherar automatiskt ID:t från URL:en
                             </p>
                             {urlExtracted && (
@@ -1315,7 +1318,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                         </div>
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg flex items-center gap-2">
+                      <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg flex items-center gap-2">
                         <Info className="h-4 w-4 flex-shrink-0" />
                         <span>Inget problem! Du kan ansluta en workflow senare via inställningar <Settings className="h-3 w-3 inline" /></span>
                       </div>
@@ -1340,7 +1343,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                         setUrlExtracted(false)
                         setShowArchivedColumns(false)
                       }}
-                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                      className="px-6 py-3 border border-input text-foreground rounded-lg hover:bg-muted"
                     >
                       Avbryt
                     </button>
@@ -1350,19 +1353,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 // Restore archived columns
                 <div className="space-y-3">
                   {archivedColumns.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-muted-foreground">
                       <div className="mb-2">📦</div>
                       <div>Inga arkiverade kolumner</div>
                     </div>
                   ) : (
                     archivedColumns.map((column) => (
-                      <div key={column.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={column.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                         <div className="flex-1">
-                          <div className="font-medium text-gray-800">{column.title}</div>
+                          <div className="font-medium text-foreground">{column.title}</div>
                           {column.description && (
-                            <div className="text-sm text-gray-600 mt-1">{column.description}</div>
+                            <div className="text-sm text-muted-foreground mt-1">{column.description}</div>
                           )}
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             Arkiverad: {new Date(column.archivedAt || '').toLocaleDateString('sv-SE')}
                           </div>
                         </div>
@@ -1383,7 +1386,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                         setShowAddColumnModal(false)
                         setShowArchivedColumns(false)
                       }}
-                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                      className="px-6 py-3 border border-input text-foreground rounded-lg hover:bg-muted"
                     >
                       Stäng
                     </button>
@@ -1448,7 +1451,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
       )}
 
       {/* Real-time connection indicator */}
-      <div className="fixed bottom-4 right-4 bg-white rounded-full shadow-lg px-3 py-2 text-xs text-gray-600 border">
+      <div className="fixed bottom-4 right-4 bg-white rounded-full shadow-lg px-3 py-2 text-xs text-muted-foreground border">
         <div className="flex items-center gap-2">
           {connectionStatus === 'connected' && (
             <>
@@ -1498,18 +1501,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     <div className="flex items-center gap-2 flex-1">
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-gray-800">
+                          <h3 className="font-semibold text-foreground">
                             {column.title}
                           </h3>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           {memoizedColumnData[column.id]?.length || 0} händelser
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="p-4 text-center text-gray-500 text-sm">
+                <div className="p-4 text-center text-muted-foreground text-sm">
                   Drar kolumn...
                 </div>
               </div>
@@ -1520,18 +1523,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
       {/* Create Dashboard Modal */}
       {showCreateDashboardModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card text-card-foreground rounded-xl shadow-2xl max-w-md w-full border border-border">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-slate-900">Skapa ny dashboard</h3>
+                <h3 className="text-lg font-semibold text-foreground">Skapa ny dashboard</h3>
                 <button
                   onClick={() => {
                     setShowCreateDashboardModal(false)
                     setNewDashboardName('')
                     setNewDashboardDescription('')
                   }}
-                  className="text-slate-500 hover:text-slate-700 text-xl"
+                  className="text-muted-foreground hover:text-foreground text-xl"
                 >
                   ×
                 </button>
@@ -1545,14 +1548,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
               }}>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Dashboard namn *
                     </label>
                     <input
                       type="text"
                       value={newDashboardName}
                       onChange={(e) => setNewDashboardName(e.target.value)}
-                      className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-input rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
                       placeholder="t.ex. Nyheter Stockholm"
                       required
                       autoFocus
@@ -1560,13 +1563,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                       Beskrivning (valfritt)
                     </label>
                     <textarea
                       value={newDashboardDescription}
                       onChange={(e) => setNewDashboardDescription(e.target.value)}
-                      className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-input rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
                       placeholder="Beskriv vad denna dashboard ska innehålla..."
                       rows={3}
                     />
@@ -1588,7 +1591,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       setNewDashboardName('')
                       setNewDashboardDescription('')
                     }}
-                    className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 smooth-transition font-medium"
+                    className="px-6 py-3 border border-input text-foreground rounded-lg hover:bg-muted smooth-transition font-medium"
                   >
                     Avbryt
                   </button>
@@ -1668,8 +1671,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       setShowMobileMenu(false)
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left smooth-transition ${dash.id === dashboard.id
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'hover:bg-slate-50 text-slate-700'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'hover:bg-slate-50 text-slate-700'
                       }`}
                   >
                     <div className="flex-1">
