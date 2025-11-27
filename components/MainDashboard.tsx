@@ -296,7 +296,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description })
       })
-      
+
       const data = await response.json()
       if (data.success) {
         // Navigate to new dashboard
@@ -513,7 +513,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     return (
       <>
         {visibleItems.map((item, index) => (
-          <div key={`${columnId}-${item.id}-${index}`} className="mb-2">
+          <div key={`${columnId}-${item.dbId}`} className="mb-2">
             <NewsItem
               item={item}
               compact={true}
@@ -636,13 +636,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                             onClick={() => {
                               if (dash.slug !== dashboard.slug) {
                                 navigateToDashboard(dash.slug)
-    }
+                              }
 
                               setShowDashboardDropdown(false)
                             }}
-                            className={`w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center justify-between ${
-                              dash.id === dashboard.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
-                            }`}
+                            className={`w-full px-4 py-3 text-left hover:bg-slate-50 smooth-transition flex items-center justify-between ${dash.id === dashboard.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
+                              }`}
                           >
                             <div className="flex-1">
                               <div className="font-medium text-slate-900">{dash.name}</div>
@@ -751,76 +750,75 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 exit={{ opacity: 0, x: -50 }}
                 transition={{ duration: 0.2 }}
               >
-              {/* Pull-to-refresh indicator */}
-              <div
-                className="flex items-center justify-center transition-all duration-200 bg-blue-50"
-                style={{
-                  height: pullDistance,
-                  opacity: Math.min(pullDistance / 60, 1)
-                }}
-              >
-                {isRefreshing ? (
-                  <div className="flex items-center gap-2 text-blue-600 text-sm">
-                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <span>Uppdaterar...</span>
-                  </div>
-                ) : pullDistance > 0 ? (
-                  <div className="text-blue-600 text-sm flex items-center gap-2">
-                    <motion.div
-                      animate={{ rotate: pullDistance > 60 ? 180 : 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      ↓
-                    </motion.div>
-                    <span>{pullDistance > 60 ? 'Släpp för att uppdatera' : 'Dra för att uppdatera'}</span>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Mobile column content without header (header is in mobile header) */}
-              <div
-                ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto p-3"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                style={{
-                  transform: `translateY(${pullDistance}px)`,
-                  transition: isRefreshing || pullDistance === 0 ? 'transform 0.2s ease-out' : 'none'
-                }}
-              >
-                <ColumnContent
-                  columnId={activeColumns[activeColumnIndex].id}
-                  items={memoizedColumnData[activeColumns[activeColumnIndex].id] || []}
-                  onSelectNewsItem={setSelectedNewsItem}
-                />
-              </div>
-
-              {/* Mobile Column Indicator - Dots at bottom */}
-              {activeColumns.length > 1 && (
-                <div className="safe-area-bottom pb-4 pt-2 bg-white border-t border-gray-200">
-                  <div className="flex items-center justify-center gap-2">
-                    {activeColumns.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => goToColumn(index)}
-                        className="p-2"
-                        aria-label={`Gå till kolumn ${index + 1}`}
+                {/* Pull-to-refresh indicator */}
+                <div
+                  className="flex items-center justify-center transition-all duration-200 bg-blue-50"
+                  style={{
+                    height: pullDistance,
+                    opacity: Math.min(pullDistance / 60, 1)
+                  }}
+                >
+                  {isRefreshing ? (
+                    <div className="flex items-center gap-2 text-blue-600 text-sm">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Uppdaterar...</span>
+                    </div>
+                  ) : pullDistance > 0 ? (
+                    <div className="text-blue-600 text-sm flex items-center gap-2">
+                      <motion.div
+                        animate={{ rotate: pullDistance > 60 ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
                       >
-                        <motion.div
-                          className={`rounded-full transition-all ${
-                            index === activeColumnIndex
-                              ? 'bg-blue-500 w-8 h-2'
-                              : 'bg-gray-300 w-2 h-2'
-                          }`}
-                          layout
-                        />
-                      </button>
-                    ))}
-                  </div>
+                        ↓
+                      </motion.div>
+                      <span>{pullDistance > 60 ? 'Släpp för att uppdatera' : 'Dra för att uppdatera'}</span>
+                    </div>
+                  ) : null}
                 </div>
-              )}
-            </motion.div>
+
+                {/* Mobile column content without header (header is in mobile header) */}
+                <div
+                  ref={scrollContainerRef}
+                  className="flex-1 overflow-y-auto p-3"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  style={{
+                    transform: `translateY(${pullDistance}px)`,
+                    transition: isRefreshing || pullDistance === 0 ? 'transform 0.2s ease-out' : 'none'
+                  }}
+                >
+                  <ColumnContent
+                    columnId={activeColumns[activeColumnIndex].id}
+                    items={memoizedColumnData[activeColumns[activeColumnIndex].id] || []}
+                    onSelectNewsItem={setSelectedNewsItem}
+                  />
+                </div>
+
+                {/* Mobile Column Indicator - Dots at bottom */}
+                {activeColumns.length > 1 && (
+                  <div className="safe-area-bottom pb-4 pt-2 bg-white border-t border-gray-200">
+                    <div className="flex items-center justify-center gap-2">
+                      {activeColumns.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => goToColumn(index)}
+                          className="p-2"
+                          aria-label={`Gå till kolumn ${index + 1}`}
+                        >
+                          <motion.div
+                            className={`rounded-full transition-all ${index === activeColumnIndex
+                                ? 'bg-blue-500 w-8 h-2'
+                                : 'bg-gray-300 w-2 h-2'
+                              }`}
+                            layout
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             </div>
           ) : (
             // No columns available
@@ -855,297 +853,295 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   onDragOver={(e) => handleDragOver(e, column.id)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, column.id)}
-                  className={`flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col transition-colors ${
-                    draggedColumn === column.id ? 'opacity-50' : ''
-                  } ${
-                    dragOverColumn === column.id && draggedColumn !== column.id ? 'border-l-4 border-blue-500 bg-blue-50' : ''
-                  }`}
+                  className={`flex-shrink-0 w-80 bg-white border-r border-gray-200 flex flex-col transition-colors ${draggedColumn === column.id ? 'opacity-50' : ''
+                    } ${dragOverColumn === column.id && draggedColumn !== column.id ? 'border-l-4 border-blue-500 bg-blue-50' : ''
+                    }`}
                 >
-                {/* Static header with drag handle */}
-                <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl relative">
-                  {/* Drag handle */}
-                  <div
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, column.id)}
-                    onDragEnd={handleDragEnd}
-                    className="absolute left-0 top-0 bottom-0 w-6 cursor-move hover:bg-gray-100 rounded-l-xl flex flex-col items-center justify-center gap-1 opacity-40 hover:opacity-80 transition-all"
-                    title="Dra för att flytta kolumn"
-                  >
-                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                  </div>
-                  {editingColumn === column.id ? (
-                    // Edit Mode
-                    <div className="ml-6 space-y-3 bg-muted/50 p-3 rounded-lg border border-border">
-                      <div className="flex items-center justify-between border-b border-border pb-2">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                          <Settings className="h-4 w-4" />
-                          Inställningar
-                        </h4>
-                        <Button
-                          type="button"
-                          onClick={() => setEditingColumn(null)}
-                          variant="ghost"
-                          size="icon"
-                          title="Stäng"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <form onSubmit={(e) => {
-                        e.preventDefault()
-                        updateColumn(column.id, editTitle, editDescription, editFlowId)
-                      }} className="space-y-3">
-                        <div>
-                          <label className="block text-xs font-medium text-muted-foreground mb-1">
-                            Kolumnnamn *
-                          </label>
-                          <input
-                            type="text"
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm border border-input rounded focus:ring-2 focus:ring-ring focus:border-ring bg-background"
-                            placeholder="t.ex. Breaking News"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-muted-foreground mb-1">
-                            Beskrivning
-                          </label>
-                          <textarea
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                            className="w-full px-2 py-1.5 text-xs border border-input rounded resize-none focus:ring-2 focus:ring-ring focus:border-ring bg-background"
-                            placeholder="Valfri beskrivning..."
-                            rows={2}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
-                            <Copy className="h-3 w-3" />
-                            Kolumn-ID
-                          </label>
-                          <div className="flex gap-1">
-                            <input
-                              type="text"
-                              value={column.id}
-                              readOnly
-                              className="flex-1 px-2 py-1.5 text-xs bg-muted border border-input rounded font-mono text-muted-foreground"
-                            />
-                            <Button
-                              type="button"
-                              onClick={() => copyToClipboard(column.id, column.id, column.title)}
-                              size="sm"
-                              title="Kopiera kolumn-ID"
-                            >
-                              {copiedId === column.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                            </Button>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            Skicka data direkt hit med Kolumn-ID.
-                          </p>
-                        </div>
-
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1">
-                              <Link2 className="h-3 w-3" />
-                              Anslut till Workflow
-                            </label>
-                            <Button
-                              type="button"
-                              onClick={() => setShowWorkflowHelp(!showWorkflowHelp)}
-                              variant="link"
-                              size="sm"
-                              className="h-auto p-0 text-xs"
-                            >
-                              <Info className="h-3 w-3 mr-1" />
-                              Hur gör jag?
-                            </Button>
-                          </div>
-
-                          {/* Expandable help */}
-                          {showWorkflowHelp && (
-                            <div className="mb-2 p-2 bg-blue-50 rounded-md text-[10px] text-blue-800 space-y-1">
-                              <div className="font-medium flex items-center gap-1">
-                                <Info className="h-3 w-3" />
-                                Så här ansluter du en workflow:
-                              </div>
-                              <ol className="list-decimal list-inside space-y-0.5 ml-1">
-                                <li>
-                                  Öppna Workflows{' '}
-                                  <a
-                                    href="https://newsdeck-389280113319.europe-west1.run.app/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:underline font-medium"
-                                  >
-                                    → Öppna här
-                                  </a>
-                                </li>
-                                <li>Välj det workflow du vill ansluta, se till att ditt workflow har noden &quot;PostToNewsdeck&quot; i slutet av flödet.</li>
-                                <li>Kopiera workflow-URL:en från adressfältet</li>
-                                <li>Klistra in här nedanför</li>
-                              </ol>
-                              <div className="text-blue-600 mt-1">Vi extraherar automatiskt ID:t från URLen.</div>
-                            </div>
-                          )}
-
-                          {/* Connection status indicator */}
-                          {editFlowId ? (
-                            <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-md mb-2">
-                              <div className="flex items-center gap-2 text-xs">
-                                <CheckCircle className="h-4 w-4 text-emerald-600" />
-                                <span className="text-emerald-600 font-medium">Ansluten</span>
-                                <Button
-                                  type="button"
-                                  onClick={() => setEditFlowId('')}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="ml-auto h-auto p-1 text-xs hover:text-destructive"
-                                >
-                                  <Trash2 className="h-3 w-3 mr-1" />
-                                  Koppla från
-                                </Button>
-                              </div>
-                              <div className="text-[10px] text-emerald-700 mt-1">
-                                Workflow-ID: <code className="bg-white px-1 rounded">{editFlowId}</code>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              <input
-                                type="text"
-                                value={editFlowId}
-                                onChange={(e) => setEditFlowId(e.target.value)}
-                                onBlur={(e) => {
-                                  const extracted = extractWorkflowId(e.target.value)
-                                  setEditFlowId(extracted)
-                                  if (extracted && extracted !== e.target.value) {
-                                    setShowExtractionSuccess(true)
-                                    setTimeout(() => setShowExtractionSuccess(false), 3000)
-                                  }
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background"
-                                placeholder="Klistra in workflow-URL från Workflows-appen"
-                              />
-                              {showExtractionSuccess && (
-                                <div className="text-[10px] text-success flex items-center gap-1">
-                                  <Check className="h-3 w-3" />
-                                  Workflow-ID extraherat från URL
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2">
-                                <p className="text-[10px] text-muted-foreground flex-1">
-                                  Fyll denna kolumn automatiskt med nyheter från en AI-workflow
-                                </p>
-                                <Button
-                                  asChild
-                                  variant="link"
-                                  size="sm"
-                                  className="h-auto p-0 text-[10px] whitespace-nowrap"
-                                >
-                                  <a
-                                    href="https://workflows-lab-iap.bnu.bn.nr/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    Öppna Workflows →
-                                  </a>
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex gap-2 pt-2 border-t border-border">
-                          <Button
-                            type="submit"
-                            className="flex-1"
-                            size="sm"
-                          >
-                            <Save className="h-3 w-3 mr-1" />
-                            Spara ändringar
-                          </Button>
+                  {/* Static header with drag handle */}
+                  <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl relative">
+                    {/* Drag handle */}
+                    <div
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, column.id)}
+                      onDragEnd={handleDragEnd}
+                      className="absolute left-0 top-0 bottom-0 w-6 cursor-move hover:bg-gray-100 rounded-l-xl flex flex-col items-center justify-center gap-1 opacity-40 hover:opacity-80 transition-all"
+                      title="Dra för att flytta kolumn"
+                    >
+                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                      <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
+                    </div>
+                    {editingColumn === column.id ? (
+                      // Edit Mode
+                      <div className="ml-6 space-y-3 bg-muted/50 p-3 rounded-lg border border-border">
+                        <div className="flex items-center justify-between border-b border-border pb-2">
+                          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <Settings className="h-4 w-4" />
+                            Inställningar
+                          </h4>
                           <Button
                             type="button"
-                            onClick={() => {
-                              if (confirm(`Är du säker på att du vill arkivera "${column.title}"?`)) {
-                                removeColumn(column.id)
-                                setEditingColumn(null)
-                              }
-                            }}
-                            variant="destructive"
-                            size="sm"
-                            title="Arkivera kolumn"
+                            onClick={() => setEditingColumn(null)}
+                            variant="ghost"
+                            size="icon"
+                            title="Stäng"
                           >
-                            <Archive className="h-3 w-3 mr-1" />
-                            Arkivera
+                            <X className="h-4 w-4" />
                           </Button>
                         </div>
-                      </form>
-                    </div>
-                  ) : (
-                    // View Mode
-                    <div className="flex justify-between items-start ml-6">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-gray-800">
-                            {column.title}
-                          </h3>
-                          <div className="flex items-center gap-1">
-                            {effectiveDashboardSlug && (
-                              <ColumnMapButton
-                                dashboardSlug={effectiveDashboardSlug}
-                                columnId={column.id}
-                                columnTitle={column.title}
+
+                        <form onSubmit={(e) => {
+                          e.preventDefault()
+                          updateColumn(column.id, editTitle, editDescription, editFlowId)
+                        }} className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">
+                              Kolumnnamn *
+                            </label>
+                            <input
+                              type="text"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              className="w-full px-2 py-1.5 text-sm border border-input rounded focus:ring-2 focus:ring-ring focus:border-ring bg-background"
+                              placeholder="t.ex. Breaking News"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">
+                              Beskrivning
+                            </label>
+                            <textarea
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs border border-input rounded resize-none focus:ring-2 focus:ring-ring focus:border-ring bg-background"
+                              placeholder="Valfri beskrivning..."
+                              rows={2}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                              <Copy className="h-3 w-3" />
+                              Kolumn-ID
+                            </label>
+                            <div className="flex gap-1">
+                              <input
+                                type="text"
+                                value={column.id}
+                                readOnly
+                                className="flex-1 px-2 py-1.5 text-xs bg-muted border border-input rounded font-mono text-muted-foreground"
                               />
+                              <Button
+                                type="button"
+                                onClick={() => copyToClipboard(column.id, column.id, column.title)}
+                                size="sm"
+                                title="Kopiera kolumn-ID"
+                              >
+                                {copiedId === column.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                              </Button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Skicka data direkt hit med Kolumn-ID.
+                            </p>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                <Link2 className="h-3 w-3" />
+                                Anslut till Workflow
+                              </label>
+                              <Button
+                                type="button"
+                                onClick={() => setShowWorkflowHelp(!showWorkflowHelp)}
+                                variant="link"
+                                size="sm"
+                                className="h-auto p-0 text-xs"
+                              >
+                                <Info className="h-3 w-3 mr-1" />
+                                Hur gör jag?
+                              </Button>
+                            </div>
+
+                            {/* Expandable help */}
+                            {showWorkflowHelp && (
+                              <div className="mb-2 p-2 bg-blue-50 rounded-md text-[10px] text-blue-800 space-y-1">
+                                <div className="font-medium flex items-center gap-1">
+                                  <Info className="h-3 w-3" />
+                                  Så här ansluter du en workflow:
+                                </div>
+                                <ol className="list-decimal list-inside space-y-0.5 ml-1">
+                                  <li>
+                                    Öppna Workflows{' '}
+                                    <a
+                                      href="https://newsdeck-389280113319.europe-west1.run.app/"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:underline font-medium"
+                                    >
+                                      → Öppna här
+                                    </a>
+                                  </li>
+                                  <li>Välj det workflow du vill ansluta, se till att ditt workflow har noden &quot;PostToNewsdeck&quot; i slutet av flödet.</li>
+                                  <li>Kopiera workflow-URL:en från adressfältet</li>
+                                  <li>Klistra in här nedanför</li>
+                                </ol>
+                                <div className="text-blue-600 mt-1">Vi extraherar automatiskt ID:t från URLen.</div>
+                              </div>
                             )}
+
+                            {/* Connection status indicator */}
+                            {editFlowId ? (
+                              <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-md mb-2">
+                                <div className="flex items-center gap-2 text-xs">
+                                  <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                  <span className="text-emerald-600 font-medium">Ansluten</span>
+                                  <Button
+                                    type="button"
+                                    onClick={() => setEditFlowId('')}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="ml-auto h-auto p-1 text-xs hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Koppla från
+                                  </Button>
+                                </div>
+                                <div className="text-[10px] text-emerald-700 mt-1">
+                                  Workflow-ID: <code className="bg-white px-1 rounded">{editFlowId}</code>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                <input
+                                  type="text"
+                                  value={editFlowId}
+                                  onChange={(e) => setEditFlowId(e.target.value)}
+                                  onBlur={(e) => {
+                                    const extracted = extractWorkflowId(e.target.value)
+                                    setEditFlowId(extracted)
+                                    if (extracted && extracted !== e.target.value) {
+                                      setShowExtractionSuccess(true)
+                                      setTimeout(() => setShowExtractionSuccess(false), 3000)
+                                    }
+                                  }}
+                                  className="w-full px-2 py-1.5 text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background"
+                                  placeholder="Klistra in workflow-URL från Workflows-appen"
+                                />
+                                {showExtractionSuccess && (
+                                  <div className="text-[10px] text-success flex items-center gap-1">
+                                    <Check className="h-3 w-3" />
+                                    Workflow-ID extraherat från URL
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[10px] text-muted-foreground flex-1">
+                                    Fyll denna kolumn automatiskt med nyheter från en AI-workflow
+                                  </p>
+                                  <Button
+                                    asChild
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto p-0 text-[10px] whitespace-nowrap"
+                                  >
+                                    <a
+                                      href="https://workflows-lab-iap.bnu.bn.nr/"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      Öppna Workflows →
+                                    </a>
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2 pt-2 border-t border-border">
                             <Button
-                              onClick={() => toggleMute(column.id)}
-                              variant="ghost"
-                              size="icon"
-                              title={mutedColumns.has(column.id) ? "Ljud av - Klicka för att aktivera" : "Ljud på - Klicka för att stänga av"}
+                              type="submit"
+                              className="flex-1"
+                              size="sm"
                             >
-                              {mutedColumns.has(column.id) ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                              <Save className="h-3 w-3 mr-1" />
+                              Spara ändringar
                             </Button>
                             <Button
-                              onClick={() => startEditing(column)}
-                              variant="ghost"
-                              size="icon"
-                              title="Inställningar"
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Är du säker på att du vill arkivera "${column.title}"?`)) {
+                                  removeColumn(column.id)
+                                  setEditingColumn(null)
+                                }
+                              }}
+                              variant="destructive"
+                              size="sm"
+                              title="Arkivera kolumn"
                             >
-                              <Settings className="h-4 w-4" />
+                              <Archive className="h-3 w-3 mr-1" />
+                              Arkivera
                             </Button>
                           </div>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {columnItems.length} händelser
+                        </form>
+                      </div>
+                    ) : (
+                      // View Mode
+                      <div className="flex justify-between items-start ml-6">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-gray-800">
+                              {column.title}
+                            </h3>
+                            <div className="flex items-center gap-1">
+                              {effectiveDashboardSlug && (
+                                <ColumnMapButton
+                                  dashboardSlug={effectiveDashboardSlug}
+                                  columnId={column.id}
+                                  columnTitle={column.title}
+                                />
+                              )}
+                              <Button
+                                onClick={() => toggleMute(column.id)}
+                                variant="ghost"
+                                size="icon"
+                                title={mutedColumns.has(column.id) ? "Ljud av - Klicka för att aktivera" : "Ljud på - Klicka för att stänga av"}
+                              >
+                                {mutedColumns.has(column.id) ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                              </Button>
+                              <Button
+                                onClick={() => startEditing(column)}
+                                variant="ghost"
+                                size="icon"
+                                title="Inställningar"
+                              >
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {columnItems.length} händelser
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                {/* Static scrollable area */}
-                <div className="flex-1 overflow-y-auto p-2">
-                  <ColumnContent
-                    columnId={column.id}
-                    items={columnItems}
-                    onSelectNewsItem={setSelectedNewsItem}
-                  />
+                  {/* Static scrollable area */}
+                  <div className="flex-1 overflow-y-auto p-2">
+                    <ColumnContent
+                      columnId={column.id}
+                      items={columnItems}
+                      onSelectNewsItem={setSelectedNewsItem}
+                    />
+                  </div>
                 </div>
-              </div>
-            )
-          })
+              )
+            })
         )}
         {/* Add Column Button - Desktop only */}
         {!isMobile && (
@@ -1183,26 +1179,24 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   ×
                 </button>
               </div>
-              
+
               {/* Tab buttons */}
               <div className="flex mb-4 border-b">
                 <button
                   onClick={() => setShowArchivedColumns(false)}
-                  className={`px-4 py-2 font-medium text-sm ${
-                    !showArchivedColumns 
-                      ? 'border-b-2 border-blue-500 text-blue-600' 
+                  className={`px-4 py-2 font-medium text-sm ${!showArchivedColumns
+                      ? 'border-b-2 border-blue-500 text-blue-600'
                       : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                    }`}
                 >
                   Skapa ny
                 </button>
                 <button
                   onClick={() => setShowArchivedColumns(true)}
-                  className={`px-4 py-2 font-medium text-sm ${
-                    showArchivedColumns 
-                      ? 'border-b-2 border-blue-500 text-blue-600' 
+                  className={`px-4 py-2 font-medium text-sm ${showArchivedColumns
+                      ? 'border-b-2 border-blue-500 text-blue-600'
                       : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                    }`}
                 >
                   Återställ ({archivedColumns.length})
                 </button>
@@ -1381,7 +1375,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       </div>
                     ))
                   )}
-                  
+
                   <div className="flex justify-end pt-4 mt-6 border-t">
                     <button
                       type="button"
@@ -1416,7 +1410,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
           </div>
         </div>
       )}
-      
+
       {/* Audio Prompt */}
       {showAudioPrompt && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-amber-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md">
@@ -1478,7 +1472,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
       </div>
 
       {/* News Item Modal */}
-      <NewsItemModal 
+      <NewsItemModal
         item={selectedNewsItem}
         onClose={() => setSelectedNewsItem(null)}
       />
@@ -1673,11 +1667,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       }
                       setShowMobileMenu(false)
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left smooth-transition ${
-                      dash.id === dashboard.id
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left smooth-transition ${dash.id === dashboard.id
                         ? 'bg-blue-50 text-blue-700'
                         : 'hover:bg-slate-50 text-slate-700'
-                    }`}
+                      }`}
                   >
                     <div className="flex-1">
                       <div className="font-medium">{dash.name}</div>
