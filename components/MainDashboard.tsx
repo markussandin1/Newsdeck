@@ -861,7 +861,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     }`}
                 >
                   {/* Static header with drag handle */}
-                  <div className="glass border-b border-border/50 p-4 rounded-t-xl relative">
+                  <div className="glass border-b border-border bg-muted/20 p-4 rounded-t-xl relative">
                     {/* Drag handle */}
                     <div
                       draggable
