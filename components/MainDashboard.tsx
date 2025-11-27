@@ -699,9 +699,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   )}
                   <Link
                     href={`/admin?dashboardId=${dashboard.id}`}
-                    className="px-3 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 smooth-transition text-sm font-medium"
+                    className="p-2 hover:bg-muted rounded-lg smooth-transition"
+                    title="Inställningar"
                   >
-                    Admin
+                    <Settings className="h-5 w-5 text-foreground" />
                   </Link>
                   <ThemeToggle />
                 </div>
@@ -1751,7 +1752,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center">
                     <Settings className="h-4 w-4" />
                   </div>
-                  <span className="font-medium">Admin</span>
+                  <span className="font-medium">Inställningar</span>
                 </Link>
               </div>
 
