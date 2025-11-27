@@ -211,7 +211,7 @@
 
 /* Glass-morphism utilities */
 .glass {
-  @apply bg-white/80 backdrop-blur-md border border-white/20;
+  @apply bg-background/80 backdrop-blur-md border border-border/20;
 }
 
 /* Gradient backgrounds */
