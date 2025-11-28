@@ -46,7 +46,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return false
       }
 
-      const allowedDomains = ["bonniernews.se", "expressen.se", "di.se", "dn.se"]
+      const allowedDomains = ["bonniernews.se", "expressen.se", "di.se", "dn.se", "sydsvenskan.se"]
       const allowedDomainSet = new Set(allowedDomains)
 
       const normalize = (value: string | undefined | null) =>
