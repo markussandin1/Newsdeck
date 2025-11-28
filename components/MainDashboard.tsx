@@ -704,10 +704,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
               <div className="flex items-center gap-6">
                 {/* Weather Ticker - Desktop (centered) */}
-                <div className="hidden lg:flex flex-1 justify-center">
-                  <div className="max-w-xl overflow-hidden">
-                    <WeatherTicker cities={weatherData} />
-                  </div>
+                <div className="hidden lg:flex flex-1 justify-center overflow-hidden max-w-2xl">
+                  <WeatherTicker cities={weatherData} />
                 </div>
 
                 <div className="flex items-center gap-3">

@@ -67,7 +67,7 @@
 
   @keyframes weather-scroll {
     0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    100% { transform: translateX(-33.33%); }
   }
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
@@ -313,7 +313,7 @@
 
 /* Weather ticker animation */
 .weather-ticker-animate {
-  animation: weather-scroll 60s linear infinite;
+  animation: weather-scroll 70s linear infinite;
 }
 
 .weather-ticker-animate:hover {
