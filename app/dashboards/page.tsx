@@ -6,6 +6,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Dashboard } from '@/lib/types'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { WeatherTicker } from '@/components/WeatherTicker'
+import { useWeather } from '@/lib/hooks/useWeather'
 
 type DashboardWithStats = Dashboard & {
   columnCount?: number
@@ -22,6 +24,9 @@ export default function DashboardsPage() {
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const [creatingDashboard, setCreatingDashboard] = useState(false)
+
+  // Weather data for header ticker
+  const { weather: weatherData } = useWeather()
 
   const fetchDashboards = async (mine: boolean) => {
     setLoading(true)
@@ -124,7 +129,34 @@ export default function DashboardsPage() {
                 <p className="text-sm text-muted-foreground">Hantera och utforska dashboards</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+
+            {/* Weather Ticker - Centered */}
+            <div className="flex-1 flex justify-center mx-8">
+              <div className="max-w-xl overflow-hidden">
+                <WeatherTicker cities={weatherData} />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Date and Time */}
+              <div className="flex flex-col items-end">
+                <span className="text-xs text-muted-foreground capitalize">
+                  {new Date().toLocaleDateString('sv-SE', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    timeZone: 'Europe/Stockholm'
+                  })}
+                </span>
+                <span className="text-lg font-semibold text-foreground tabular-nums">
+                  {new Date().toLocaleTimeString('sv-SE', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'Europe/Stockholm'
+                  })}
+                </span>
+              </div>
+
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition font-medium"

@@ -65,10 +65,16 @@
     100% { background-position: 1000px 0; }
   }
 
+  @keyframes weather-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-pulse-subtle: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-shimmer: shimmer 2s linear infinite;
+  --animate-weather-scroll: weather-scroll 30s linear infinite;
 }
 
 /*
@@ -303,4 +309,13 @@
   * {
     -webkit-overflow-scrolling: touch;
   }
+}
+
+/* Weather ticker animation */
+.weather-ticker-animate {
+  animation: weather-scroll 60s linear infinite;
+}
+
+.weather-ticker-animate:hover {
+  animation-play-state: paused;
 }

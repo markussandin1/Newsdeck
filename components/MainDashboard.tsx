@@ -18,6 +18,8 @@ import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCirc
 import { motion, AnimatePresence } from 'framer-motion'
 import ColumnMapButton from './ColumnMapButton'
 import { ThemeToggle } from './theme-toggle'
+import { WeatherTicker } from './WeatherTicker'
+import { useWeather } from '@/lib/hooks/useWeather'
 
 interface MainDashboardProps {
   dashboard: DashboardType
@@ -82,6 +84,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     columns: dashboard?.columns || [],
     onRefresh: fetchColumnData,
   })
+
+  // Weather data for header ticker
+  const { weather: weatherData } = useWeather()
 
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
@@ -564,35 +569,50 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
         <div className="px-4 py-4 safe-area-left safe-area-right">
           {isMobile ? (
             // Mobile Header
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setShowMobileMenu(true)}
-                className="p-2 hover:bg-muted active:bg-muted/80 rounded-lg smooth-transition"
-                aria-label="Öppna meny"
-              >
-                <Menu className="h-6 w-6 text-foreground" />
-              </button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowMobileMenu(true)}
+                  className="p-2 hover:bg-muted active:bg-muted/80 rounded-lg smooth-transition"
+                  aria-label="Öppna meny"
+                >
+                  <Menu className="h-6 w-6 text-foreground" />
+                </button>
 
-              <div className="flex-1 text-center px-4">
-                <h1 className="text-base font-semibold text-foreground truncate">
-                  {activeColumns[activeColumnIndex]?.title || dashboard.name}
-                </h1>
-                <div className="text-xs text-muted-foreground">
-                  {activeColumns[activeColumnIndex]
-                    ? `${memoizedColumnData[activeColumns[activeColumnIndex].id]?.length || 0} händelser`
-                    : `${activeColumns.length} kolumner`
-                  }
+                <div className="flex-1 text-center px-4">
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {lastUpdate.toLocaleDateString('sv-SE', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                      timeZone: 'Europe/Stockholm'
+                    })} • {lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
+                  </div>
+                  <h1 className="text-base font-semibold text-foreground truncate">
+                    {activeColumns[activeColumnIndex]?.title || dashboard.name}
+                  </h1>
+                  <div className="text-xs text-muted-foreground">
+                    {activeColumns[activeColumnIndex]
+                      ? `${memoizedColumnData[activeColumns[activeColumnIndex].id]?.length || 0} händelser`
+                      : `${activeColumns.length} kolumner`
+                    }
+                  </div>
                 </div>
+
+                <ThemeToggle />
+                <button
+                  onClick={() => setShowDashboardDropdown(true)}
+                  className="p-2 hover:bg-muted active:bg-muted/80 rounded-lg smooth-transition"
+                  aria-label="Fler alternativ"
+                >
+                  <MoreVertical className="h-6 w-6 text-foreground" />
+                </button>
               </div>
 
-              <ThemeToggle />
-              <button
-                onClick={() => setShowDashboardDropdown(true)}
-                className="p-2 hover:bg-muted active:bg-muted/80 rounded-lg smooth-transition"
-                aria-label="Fler alternativ"
-              >
-                <MoreVertical className="h-6 w-6 text-foreground" />
-              </button>
+              {/* Weather Ticker - Mobile */}
+              <div className="lg:hidden flex justify-center">
+                <WeatherTicker cities={weatherData} className="max-w-[280px]" />
+              </div>
             </div>
           ) : (
             // Desktop Header
@@ -683,9 +703,28 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
               </div>
 
               <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {/* Weather Ticker - Desktop (centered) */}
+                <div className="hidden lg:flex flex-1 justify-center">
+                  <div className="max-w-xl overflow-hidden">
+                    <WeatherTicker cities={weatherData} />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                  <span>{isLoading ? 'Uppdaterar...' : `Live • ${lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}`}</span>
+                  <div className="flex flex-col items-end">
+                    <span className="text-xs text-muted-foreground capitalize">
+                      {lastUpdate.toLocaleDateString('sv-SE', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        timeZone: 'Europe/Stockholm'
+                      })}
+                    </span>
+                    <span className="text-lg font-semibold text-foreground tabular-nums">
+                      {isLoading ? 'Uppdaterar...' : lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3">
