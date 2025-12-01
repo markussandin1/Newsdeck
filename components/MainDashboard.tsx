@@ -14,7 +14,7 @@ import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
-import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ColumnMapButton from './ColumnMapButton'
 import { ThemeToggle } from './theme-toggle'
@@ -112,6 +112,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [userName, setUserName] = useState<string | null>(null)
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -159,6 +160,82 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
     return result
   }, [columnData])
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+
+  const filteredColumnData = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return memoizedColumnData
+    }
+
+    const matchesQuery = (item: NewsItemType) => {
+      const locationText = item.location
+        ? [
+            item.location.country,
+            item.location.county,
+            item.location.municipality,
+            item.location.area,
+            item.location.street,
+            item.location.name,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+        : ''
+
+      const searchableText = [
+        item.title,
+        item.description,
+        item.source,
+        item.category,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      const combined = `${searchableText} ${locationText}`.trim()
+      if (!combined) {
+        return false
+      }
+
+      return combined.includes(normalizedSearchQuery)
+    }
+
+    const filtered: ColumnData = {}
+    Object.entries(memoizedColumnData).forEach(([columnId, items]) => {
+      filtered[columnId] = items.filter(matchesQuery)
+    })
+
+    return filtered
+  }, [memoizedColumnData, normalizedSearchQuery])
+
+  const hasActiveSearch = normalizedSearchQuery.length > 0
+  const showSearchNoResults = hasActiveSearch && Object.values(filteredColumnData).every(items => items.length === 0)
+
+  const SearchInput = () => (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        placeholder="Filtrera händelser..."
+        aria-label="Filtrera händelser"
+        autoComplete="off"
+        className="w-full pl-10 pr-10 py-2 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+      {searchQuery && (
+        <button
+          type="button"
+          onClick={() => setSearchQuery('')}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground"
+          aria-label="Rensa sökfilter"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
 
   const getTotalNewsCount = () => {
     return Object.values(columnData).reduce((total, items) => total + items.length, 0)
@@ -444,11 +521,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const ColumnContent = ({
     columnId,
     items,
-    onSelectNewsItem
+    onSelectNewsItem,
+    hasFilterActive,
   }: {
     columnId: string
     items: NewsItemType[]
     onSelectNewsItem: (item: NewsItemType) => void
+    hasFilterActive: boolean
   }) => {
     const [displayCount, setDisplayCount] = useState(25)
     const loadMoreRef = useRef<HTMLDivElement>(null)
@@ -485,6 +564,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     }, [displayCount, items.length])
 
     if (items.length === 0) {
+      if (hasFilterActive) {
+        return (
+          <div className="text-center py-8 px-4 text-muted-foreground text-sm">
+            <div className="mb-2 text-2xl">🔍</div>
+            <div>Inga händelser matchar sökningen.</div>
+          </div>
+        )
+      }
       return (
         <div className="text-center py-8 px-4 text-muted-foreground text-sm">
           <div className="mb-4 flex justify-center">
@@ -592,12 +679,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   <h1 className="text-base font-semibold text-foreground truncate">
                     {activeColumns[activeColumnIndex]?.title || dashboard.name}
                   </h1>
-                  <div className="text-xs text-muted-foreground">
-                    {activeColumns[activeColumnIndex]
-                      ? `${memoizedColumnData[activeColumns[activeColumnIndex].id]?.length || 0} händelser`
+                    <div className="text-xs text-muted-foreground">
+                      {activeColumns[activeColumnIndex]
+                      ? `${filteredColumnData[activeColumns[activeColumnIndex].id]?.length || 0} händelser`
                       : `${activeColumns.length} kolumner`
-                    }
-                  </div>
+                      }
+                    </div>
                 </div>
 
                 <ThemeToggle />
@@ -630,8 +717,33 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             getTotalNewsCount={getTotalNewsCount}
             navigateToDashboard={navigateToDashboard}
           />
+
+          <div className="mt-3">
+            <SearchInput />
+          </div>
+          {hasActiveSearch && !showSearchNoResults && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Visar händelser som matchar <span className="font-medium text-foreground">{searchQuery}</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {showSearchNoResults && (
+        <div className="bg-amber-50 border-y border-amber-200 text-amber-800 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            Inga händelser matchar "{searchQuery}".
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="inline-flex items-center gap-2 text-sm font-medium text-amber-900 hover:underline"
+          >
+            <X className="h-4 w-4" />
+            Rensa sökning
+          </button>
+        </div>
+      )}
 
       {/* TweetDeck-style Columns / Mobile Single Column View */}
       <div className={isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "flex overflow-x-auto h-[calc(100vh-100px)]"}>
@@ -727,8 +839,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 >
                   <ColumnContent
                     columnId={activeColumns[activeColumnIndex].id}
-                    items={memoizedColumnData[activeColumns[activeColumnIndex].id] || []}
+                    items={filteredColumnData[activeColumns[activeColumnIndex].id] || []}
                     onSelectNewsItem={setSelectedNewsItem}
+                    hasFilterActive={hasActiveSearch}
                   />
                 </div>
 
@@ -780,7 +893,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             .filter(col => !col.isArchived)
             .sort((a, b) => a.order - b.order)
             .map((column) => {
-              const columnItems = memoizedColumnData[column.id] || []
+              const columnItems = filteredColumnData[column.id] || []
 
               // Use a very stable column container that never changes
               return (
@@ -1074,6 +1187,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       columnId={column.id}
                       items={columnItems}
                       onSelectNewsItem={setSelectedNewsItem}
+                      hasFilterActive={hasActiveSearch}
                     />
                   </div>
                 </div>
@@ -1440,7 +1554,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                           </h3>
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {memoizedColumnData[column.id]?.length || 0} händelser
+                          {filteredColumnData[column.id]?.length || 0} händelser
                         </div>
                       </div>
                     </div>
@@ -1724,7 +1838,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   {activeColumns[activeColumnIndex]?.title}
                 </h3>
                 <p className="text-xs text-slate-500 text-center mt-1">
-                  {memoizedColumnData[activeColumns[activeColumnIndex]?.id]?.length || 0} händelser
+                  {filteredColumnData[activeColumns[activeColumnIndex]?.id]?.length || 0} händelser
                 </p>
               </div>
 
