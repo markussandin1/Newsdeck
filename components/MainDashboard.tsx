@@ -22,6 +22,38 @@ import { WeatherTicker } from './WeatherTicker'
 import { useWeather } from '@/lib/hooks/useWeather'
 import { DashboardHeader } from './DashboardHeader'
 
+interface DashboardSearchInputProps {
+  value: string
+  onChange: (value: string) => void
+}
+
+function DashboardSearchInput({ value, onChange }: DashboardSearchInputProps) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <input
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Filtrera händelser..."
+        aria-label="Filtrera händelser"
+        autoComplete="off"
+        className="w-full pl-10 pr-10 py-2 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground"
+          aria-label="Rensa sökfilter"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
+}
+
 interface MainDashboardProps {
   dashboard: DashboardType
   onDashboardUpdate: (dashboard: DashboardType) => void
@@ -209,31 +241,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
   const hasActiveSearch = normalizedSearchQuery.length > 0
   const showSearchNoResults = hasActiveSearch && Object.values(filteredColumnData).every(items => items.length === 0)
-
-  const SearchInput = () => (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <input
-        type="text"
-        value={searchQuery}
-        onChange={(event) => setSearchQuery(event.target.value)}
-        placeholder="Filtrera händelser..."
-        aria-label="Filtrera händelser"
-        autoComplete="off"
-        className="w-full pl-10 pr-10 py-2 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      />
-      {searchQuery && (
-        <button
-          type="button"
-          onClick={() => setSearchQuery('')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground"
-          aria-label="Rensa sökfilter"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      )}
-    </div>
-  )
 
   const getTotalNewsCount = () => {
     return Object.values(columnData).reduce((total, items) => total + items.length, 0)
@@ -717,7 +724,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
           />
 
           <div className="mt-3">
-            <SearchInput />
+            <DashboardSearchInput value={searchQuery} onChange={setSearchQuery} />
           </div>
           {hasActiveSearch && !showSearchNoResults && (
             <div className="mt-2 text-xs text-muted-foreground">
