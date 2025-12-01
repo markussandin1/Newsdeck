@@ -20,6 +20,7 @@ import ColumnMapButton from './ColumnMapButton'
 import { ThemeToggle } from './theme-toggle'
 import { WeatherTicker } from './WeatherTicker'
 import { useWeather } from '@/lib/hooks/useWeather'
+import { DashboardHeader } from './DashboardHeader'
 
 interface MainDashboardProps {
   dashboard: DashboardType
@@ -614,138 +615,21 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 <WeatherTicker cities={weatherData} className="max-w-[280px]" />
               </div>
             </div>
-          ) : (
-            // Desktop Header
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <Link href="/dashboards">
-                  <div className="w-16 h-16 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
-                    <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={64} height={64} className="w-16 h-16 object-contain" />
-                  </div>
-                </Link>
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    className="flex items-center gap-2 hover:bg-muted rounded-lg px-3 py-2 smooth-transition"
-                    onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
-                  >
-                    <div>
-                      <h1 className="text-xl font-semibold text-foreground text-left">{dashboard.name}</h1>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>{dashboard?.columns?.filter(col => !col.isArchived)?.length || 0} kolumner</span>
-                        <span>•</span>
-                        <span>{getTotalNewsCount()} händelser</span>
-                      </div>
-                    </div>
-                    <svg
-                      className={`w-4 h-4 text-muted-foreground smooth-transition ${showDashboardDropdown ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+          ) : null}
 
-                  {/* Dashboard Dropdown */}
-                  {showDashboardDropdown && (
-                    <div className="absolute top-full left-0 mt-2 w-72 glass rounded-xl shadow-soft-lg border border-border py-2 z-50">
-                      <div className="px-4 py-2 border-b border-border/50">
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          Dashboards
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          setShowCreateDashboardModal(true)
-                          setShowDashboardDropdown(false)
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-muted smooth-transition flex items-center gap-3"
-                      >
-                        <div className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-md flex items-center justify-center text-sm font-bold">
-                          +
-                        </div>
-                        <span className="font-medium text-foreground">Ny Dashboard</span>
-                      </button>
-
-                      <div className="border-t border-border/50 mt-1 pt-1">
-                        {allDashboards.map((dash) => (
-                          <button
-                            key={dash.id}
-                            onClick={() => {
-                              if (dash.slug !== dashboard.slug) {
-                                navigateToDashboard(dash.slug)
-                              }
-
-                              setShowDashboardDropdown(false)
-                            }}
-                            className={`w-full px-4 py-3 text-left hover:bg-muted smooth-transition flex items-center justify-between ${dash.id === dashboard.id ? 'bg-blue-50/50 border-r-2 border-blue-500' : ''
-                              }`}
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium text-foreground">{dash.name}</div>
-                              {dash.description && (
-                                <div className="text-xs text-muted-foreground mt-1">{dash.description}</div>
-                              )}
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {dash.columnCount ?? 0} kolumner
-                              </div>
-                            </div>
-                            {dash.id === dashboard.id && (
-                              <div className="text-blue-500 text-sm">✓</div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-6">
-                {/* Weather Ticker - Desktop */}
-                <div className="hidden lg:flex justify-start overflow-hidden max-w-3xl">
-                  <WeatherTicker cities={weatherData} />
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-xs text-muted-foreground capitalize">
-                      {lastUpdate.toLocaleDateString('sv-SE', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        timeZone: 'Europe/Stockholm'
-                      })}
-                    </span>
-                    <span className="text-lg font-semibold text-foreground tabular-nums">
-                      {isLoading ? 'Uppdaterar...' : lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {userName && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg">
-                      <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold">
-                        {userName.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-sm font-medium text-foreground">{userName}</span>
-                    </div>
-                  )}
-                  <Link
-                    href={`/admin?dashboardId=${dashboard.id}`}
-                    className="p-2 hover:bg-muted rounded-lg smooth-transition"
-                    title="Inställningar"
-                  >
-                    <Settings className="h-5 w-5 text-foreground" />
-                  </Link>
-                  <ThemeToggle />
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Desktop Header - New Design */}
+          <DashboardHeader
+            dashboard={dashboard}
+            userName={userName}
+            connectionStatus={connectionStatus}
+            weatherData={weatherData}
+            allDashboards={allDashboards}
+            showDashboardDropdown={showDashboardDropdown}
+            setShowDashboardDropdown={setShowDashboardDropdown}
+            setShowCreateDashboardModal={setShowCreateDashboardModal}
+            getTotalNewsCount={getTotalNewsCount}
+            navigateToDashboard={navigateToDashboard}
+          />
         </div>
       </div>
 

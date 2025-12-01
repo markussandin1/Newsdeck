@@ -70,11 +70,35 @@
     100% { transform: translateX(-33.33%); }
   }
 
+  @keyframes menuSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes statusPulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.15);
+    }
+  }
+
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-pulse-subtle: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-shimmer: shimmer 2s linear infinite;
-  --animate-weather-scroll: weather-scroll 30s linear infinite;
+  --animate-weather-scroll: weather-scroll 70s linear infinite;
+  --animate-menu-slide-down: menuSlideDown 0.12s ease-out;
+  --animate-status-pulse: statusPulse 2s ease-in-out infinite;
 }
 
 /*
@@ -84,6 +108,11 @@
 
 @layer base {
   :root {
+    /* Typography - Editorial Sharp */
+    --font-display: var(--font-display);    /* Outfit */
+    --font-body: var(--font-body);          /* DM Sans */
+    --font-mono: var(--font-mono);          /* JetBrains Mono */
+
     /* Base colors */
     --background: 200 50% 98%;          /* #F5FAFC - Very light cool blue-gray */
     --foreground: 204 63% 17%;          /* #0D2E47 - Deep navy (text) */
@@ -151,6 +180,19 @@
 
     --info: 193 100% 40%;                       /* Cyan */
     --info-foreground: 0 0% 100%;
+
+    /* Ambient context colors (for weather strip, etc) */
+    --ambient-weather-bg: rgba(205, 33%, 91%, 0.4);
+    --ambient-weather-border: rgba(204, 63%, 17%, 0.08);
+
+    /* Live status indicators */
+    --status-live: 160 84% 39%;        /* #10b981 - Emerald */
+    --status-updating: 38 92% 50%;     /* #f59e0b - Amber */
+    --status-error: 348 77% 50%;       /* #ef4444 - Red */
+
+    /* Interactive states */
+    --hover-lift: rgba(193, 100%, 40%, 0.08);    /* Cyan tint */
+    --active-press: rgba(204, 63%, 17%, 0.12);   /* Navy tint */
   }
 
   .dark {
