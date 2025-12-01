@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import type { Map as LeafletMapInstance, LayerGroup, Marker as LeafletMarker } from 'leaflet'
 import type { NewsItem } from '@/lib/types'
 import { getCategoryIcon } from '@/lib/categories'
@@ -38,21 +38,21 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
   const hasUserInteractedRef = useRef(false)
   const previousLocationRef = useRef<[number, number] | null>(null)
 
-  const clearInfoCardTimeout = () => {
+  const clearInfoCardTimeout = useCallback(() => {
     if (infoCardTimeoutRef.current !== null) {
       window.clearTimeout(infoCardTimeoutRef.current)
       infoCardTimeoutRef.current = null
     }
-  }
+  }, [])
 
-  const scheduleInfoCard = (delay: number) => {
+  const scheduleInfoCard = useCallback((delay: number) => {
     if (!hasUserInteractedRef.current) return
     clearInfoCardTimeout()
     infoCardTimeoutRef.current = window.setTimeout(() => {
       setShowInfoCard(true)
       infoCardTimeoutRef.current = null
     }, delay)
-  }
+  }, [clearInfoCardTimeout])
 
   // Initialize map only once
   useEffect(() => {
@@ -148,7 +148,7 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     return () => {
       clearInfoCardTimeout()
     }
-  }, [])
+  }, [clearInfoCardTimeout])
 
   const createMarkerIcon = useMemo(() => {
     return (item: NewsItem, isSelected: boolean) => {
@@ -335,7 +335,7 @@ export default function ColumnMapView({ items, selectedItemId, onSelectItem, emp
     }
 
     previousLocationRef.current = targetLocation
-  }, [selectedItemId, createMarkerIcon, isReady, userInitiatedSelection])
+  }, [selectedItemId, createMarkerIcon, isReady, userInitiatedSelection, scheduleInfoCard, clearInfoCardTimeout])
 
   // Get the selected item object
   const selectedItem = useMemo(() => {

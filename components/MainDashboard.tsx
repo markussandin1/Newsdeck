@@ -39,7 +39,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     archivedColumns,
     allDashboards,
     lastUpdate,
-    isLoading,
     fetchColumnData,
     loadArchivedColumns,
     updateColumnData,
@@ -71,7 +70,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     pullDistance,
     isRefreshing,
     scrollContainerRef,
-    dropdownRef,
     activeColumns,
     setShowMobileMenu,
     setShowDashboardDropdown,
@@ -623,7 +621,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
     return (
       <>
-        {visibleItems.map((item, index) => (
+        {visibleItems.map((item) => (
           <div key={`${columnId}-${item.dbId}`} className="mb-2">
             <NewsItem
               item={item}
@@ -732,7 +730,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
       {showSearchNoResults && (
         <div className="bg-amber-50 border-y border-amber-200 text-amber-800 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            Inga händelser matchar "{searchQuery}".
+            Inga händelser matchar &quot;{searchQuery}&quot;.
           </div>
           <button
             type="button"

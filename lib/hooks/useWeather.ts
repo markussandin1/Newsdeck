@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { WeatherData } from '@/types/weather';
 
 interface UseWeatherReturn {
@@ -23,7 +23,7 @@ export function useWeather(): UseWeatherReturn {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   // Load cached weather from localStorage
-  const loadCachedWeather = (): WeatherData[] | null => {
+  const loadCachedWeather = useCallback((): WeatherData[] | null => {
     if (typeof window === 'undefined') return null;
 
     try {
@@ -45,10 +45,10 @@ export function useWeather(): UseWeatherReturn {
       console.error('Error loading cached weather:', err);
       return null;
     }
-  };
+  }, []);
 
   // Save weather to localStorage
-  const cacheWeather = (weatherData: WeatherData[]) => {
+  const cacheWeather = useCallback((weatherData: WeatherData[]) => {
     if (typeof window === 'undefined') return;
 
     try {
@@ -60,9 +60,9 @@ export function useWeather(): UseWeatherReturn {
     } catch (err) {
       console.error('Error caching weather:', err);
     }
-  };
+  }, []);
 
-  const fetchWeather = async (silent = false) => {
+  const fetchWeather = useCallback(async (silent = false) => {
     try {
       if (!silent) {
         setLoading(true);
@@ -95,7 +95,7 @@ export function useWeather(): UseWeatherReturn {
         setLoading(false);
       }
     }
-  };
+  }, [cacheWeather]);
 
   useEffect(() => {
     // Try to load cached weather first for instant display
@@ -122,7 +122,7 @@ export function useWeather(): UseWeatherReturn {
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [fetchWeather, loadCachedWeather]);
 
   return {
     weather,
