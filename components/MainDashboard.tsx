@@ -38,7 +38,7 @@ function DashboardSearchInput({ value, onChange }: DashboardSearchInputProps) {
         placeholder="Filtrera händelser..."
         aria-label="Filtrera händelser"
         autoComplete="off"
-        className="w-full pl-10 pr-10 py-2 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="w-full pl-10 pr-10 py-2 rounded-lg border border-input bg-background font-body text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
       {value && (
         <button
@@ -681,7 +681,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       timeZone: 'Europe/Stockholm'
                     })} • {lastUpdate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })}
                   </div>
-                  <h1 className="text-base font-semibold text-foreground truncate">
+                  <h1 className="text-base font-display font-semibold text-foreground truncate">
                     {activeColumns[activeColumnIndex]?.title || dashboard.name}
                   </h1>
                     <div className="text-xs text-muted-foreground">
@@ -960,7 +960,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                               type="text"
                               value={editTitle}
                               onChange={(e) => setEditTitle(e.target.value)}
-                              className="w-full px-2 py-1.5 text-sm border border-input rounded focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                              className="w-full px-2 py-1.5 font-body text-sm border border-input rounded focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                               placeholder="t.ex. Breaking News"
                               required
                             />
@@ -973,7 +973,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                             <textarea
                               value={editDescription}
                               onChange={(e) => setEditDescription(e.target.value)}
-                              className="w-full px-2 py-1.5 text-xs border border-input rounded resize-none focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                              className="w-full px-2 py-1.5 font-body text-xs border border-input rounded resize-none focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                               placeholder="Valfri beskrivning..."
                               rows={2}
                             />
@@ -1085,7 +1085,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                                       setTimeout(() => setShowExtractionSuccess(false), 3000)
                                     }
                                   }}
-                                  className="w-full px-2 py-1.5 text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                                  className="w-full px-2 py-1.5 font-body text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                                   placeholder="Klistra in workflow-URL från Workflows-appen"
                                 />
                                 {showExtractionSuccess && (
@@ -1149,7 +1149,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       <div className="flex justify-between items-start ml-6">
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-foreground">
+                            <h3 className="font-display font-semibold text-foreground">
                               {column.title}
                             </h3>
                             <div className="flex items-center gap-1">
@@ -1221,7 +1221,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
           <div className="bg-card text-card-foreground rounded-lg max-w-md w-full border border-border">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-foreground">✨ Skapa ny kolumn</h3>
+                <h3 className="text-lg font-display font-semibold text-foreground">✨ Skapa ny kolumn</h3>
                 <button
                   onClick={() => {
                     setShowAddColumnModal(false)
@@ -1276,7 +1276,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                         type="text"
                         value={newColumnTitle}
                         onChange={(e) => setNewColumnTitle(e.target.value)}
-                        className="w-full p-3 border border-input rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
+                        className="w-full p-3 border border-input rounded-lg font-body focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
                         placeholder="t.ex. Breaking News Stockholm"
                         required
                         autoFocus
@@ -1291,7 +1291,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                         </div>
                       )}
 
-                      <div className="font-medium text-foreground mb-2">
+                      <div className="font-display font-medium text-foreground mb-2">
                         🤖 Vill du fylla denna kolumn automatiskt?
                       </div>
                       <div className="text-sm text-muted-foreground mb-3">
@@ -1332,7 +1332,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                                 setNewColumnFlowId(extracted)
                               }
                             }}
-                            className="w-full p-3 border border-border rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full p-3 border border-border rounded-lg font-body font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Klistra in URL från Workflows-appen"
                           />
                           <div className="flex items-center justify-between mt-1">
@@ -1580,7 +1580,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
           <div className="bg-card text-card-foreground rounded-xl shadow-2xl max-w-md w-full border border-border">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-foreground">Skapa ny dashboard</h3>
+                <h3 className="text-lg font-display font-semibold text-foreground">Skapa ny dashboard</h3>
                 <button
                   onClick={() => {
                     setShowCreateDashboardModal(false)
@@ -1608,7 +1608,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                       type="text"
                       value={newDashboardName}
                       onChange={(e) => setNewDashboardName(e.target.value)}
-                      className="w-full p-3 border border-input rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
+                      className="w-full p-3 border border-input rounded-lg font-body focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
                       placeholder="t.ex. Nyheter Stockholm"
                       required
                       autoFocus
@@ -1622,7 +1622,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     <textarea
                       value={newDashboardDescription}
                       onChange={(e) => setNewDashboardDescription(e.target.value)}
-                      className="w-full p-3 border border-input rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
+                      className="w-full p-3 border border-input rounded-lg font-body focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
                       placeholder="Beskriv vad denna dashboard ska innehålla..."
                       rows={3}
                     />

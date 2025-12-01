@@ -141,13 +141,13 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
                   href={sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-medium text-primary uppercase tracking-wide hover:underline flex items-center gap-1"
+                  className="text-xs font-body font-medium text-primary uppercase tracking-wide hover:underline flex items-center gap-1"
                 >
                   {displaySource}
                   <ExternalLink className="h-3 w-3" />
                 </a>
               ) : (
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <span className="text-xs font-body font-medium text-muted-foreground uppercase tracking-wide">
                   {displaySource}
                 </span>
               )}
@@ -170,13 +170,13 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
           )}
 
           {/* Title */}
-          <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary smooth-transition text-sm leading-tight">
+          <h3 className="font-display font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary smooth-transition text-sm leading-tight">
             {item.title}
           </h3>
 
           {/* Description */}
           {item.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
+            <p className="text-sm font-body text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
               {item.description}
             </p>
           )}
@@ -205,22 +205,22 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
     <div className={`rounded-lg p-4 shadow-sm ${getNewsValueStyle(item.newsValue)}`}>
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
-          <h3 className="font-bold text-foreground text-lg leading-tight mb-1">
+          <h3 className="font-display font-bold text-foreground text-lg leading-tight mb-1">
             {item.title}
           </h3>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <div className="flex items-center gap-2 text-sm font-body text-muted-foreground mb-2">
             {sourceUrl ? (
               <a
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-primary hover:underline flex items-center gap-1"
+                className="font-body font-medium text-primary hover:underline flex items-center gap-1"
               >
                 {displaySource}
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             ) : (
-              <span className="font-medium">{displaySource}</span>
+              <span className="font-body font-medium">{displaySource}</span>
             )}
             <span>•</span>
             <span>{formatTime(item.createdInDb || item.timestamp)}</span>
@@ -234,7 +234,7 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
       </div>
 
       {item.description && (
-        <p className="text-muted-foreground mb-3 text-sm leading-relaxed">
+        <p className="font-body text-muted-foreground mb-3 text-sm leading-relaxed">
           {item.description}
         </p>
       )}

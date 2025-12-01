@@ -67,21 +67,23 @@ export function DashboardHeader({
     <div className="glass border-b border-border sticky top-0 z-50 hidden lg:block">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between gap-6">
-          {/* Zone 1: Brand Anchor */}
-          <Link href="/dashboards" className="shrink-0">
-            <div className="w-12 h-12 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
-              <Image
-                src="/newsdeck-icon.svg"
-                alt="Newsdeck logo"
-                width={48}
-                height={48}
-                className="w-12 h-12 object-contain"
-              />
-            </div>
-          </Link>
+          {/* Zone 1 + 2: Tightly Grouped Left Side */}
+          <div className="flex items-center gap-2">
+            {/* Zone 1: Brand Anchor */}
+            <Link href="/dashboards" className="shrink-0">
+              <div className="w-12 h-12 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
+                <Image
+                  src="/newsdeck-icon.svg"
+                  alt="Newsdeck logo"
+                  width={48}
+                  height={48}
+                  className="w-12 h-12 object-contain"
+                />
+              </div>
+            </Link>
 
-          {/* Zone 2: Dashboard Context */}
-          <div className="relative" ref={dropdownRef}>
+            {/* Zone 2: Dashboard Context */}
+            <div className="relative" ref={dropdownRef}>
             <button
               className="flex items-center gap-3 hover:bg-muted/50 rounded-lg px-4 py-2 smooth-transition"
               onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
@@ -161,6 +163,7 @@ export function DashboardHeader({
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           {/* Zone 3: Ambient Weather Strip */}
@@ -170,7 +173,7 @@ export function DashboardHeader({
 
           {/* Zone 4: User Controls */}
           <div className="flex items-center gap-4 shrink-0">
-            <time className="text-lg font-mono tabular-nums text-foreground">
+            <time className="text-lg font-display font-semibold tabular-nums text-foreground">
               {lastUpdate.toLocaleTimeString('sv-SE', {
                 hour: '2-digit',
                 minute: '2-digit',

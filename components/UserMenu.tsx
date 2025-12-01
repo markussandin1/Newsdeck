@@ -67,7 +67,7 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout }: UserMen
         <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center text-sm font-semibold text-primary-foreground">
           {userName.charAt(0).toUpperCase()}
         </div>
-        <span className="text-sm font-medium text-foreground hidden md:block">
+        <span className="text-sm font-body font-medium text-foreground hidden md:block">
           {userName}
         </span>
         <ChevronDown
@@ -89,9 +89,9 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout }: UserMen
           >
             {/* User Info Section */}
             <div className="px-4 py-3 border-b border-border/50">
-              <div className="font-medium text-foreground">{userName}</div>
+              <div className="font-body font-medium text-foreground">{userName}</div>
               {userEmail && (
-                <div className="text-xs text-muted-foreground mt-0.5">{userEmail}</div>
+                <div className="text-xs font-body text-muted-foreground mt-0.5">{userEmail}</div>
               )}
             </div>
 
@@ -106,7 +106,7 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout }: UserMen
                 }}
               >
                 <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">Profil</span>
+                <span className="text-sm font-body text-foreground">Profil</span>
               </button>
 
               {/* Dashboard Settings */}
@@ -116,13 +116,13 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout }: UserMen
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors"
               >
                 <Settings className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">Dashboard-inställningar</span>
+                <span className="text-sm font-body text-foreground">Dashboard-inställningar</span>
               </Link>
 
               {/* Theme Toggle (inline) */}
               <div className="px-4 py-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">Tema</span>
+                  <span className="text-sm font-body font-medium text-foreground">Tema</span>
                   <div className="flex gap-1 bg-background/50 rounded-full p-1">
                     <button
                       onClick={() => setTheme('light')}
@@ -158,7 +158,7 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout }: UserMen
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left text-destructive"
               >
                 <LogOut className="h-4 w-4" />
-                <span className="text-sm">Logga ut</span>
+                <span className="text-sm font-body">Logga ut</span>
               </button>
             </div>
           </motion.div>

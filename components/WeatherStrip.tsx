@@ -51,14 +51,7 @@ export function WeatherStrip({ cities, className = '' }: WeatherStripProps) {
   }
 
   return (
-    <div
-      className={`overflow-hidden rounded-lg border ${className}`}
-      style={{
-        backgroundColor: 'var(--ambient-weather-bg)',
-        borderColor: 'var(--ambient-weather-border)',
-        backdropFilter: 'blur(8px)',
-      }}
-    >
+    <div className={`overflow-hidden ${className}`}>
       <div className="flex weather-ticker-animate">
         {/* Render cities three times for seamless infinite loop */}
         {[...cities, ...cities, ...cities].map((cityData, i) => (

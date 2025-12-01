@@ -178,7 +178,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
     <div>
       <div className="flex items-center gap-2 mb-2">
         <Paperclip className="h-5 w-5 text-muted-foreground" />
-        <h3 className="text-lg font-semibold text-foreground">Extra data</h3>
+        <h3 className="text-lg font-display font-semibold text-foreground">Extra data</h3>
       </div>
       <div className="bg-muted/50 rounded-lg p-4 space-y-2">
         {(Object.entries(item.extra) as Array<[string, unknown]>).map(([key, value]) => (
@@ -215,7 +215,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
         <div className="p-6 border-b border-border">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-foreground leading-tight mb-3">
+              <h2 className="text-2xl font-display font-bold text-foreground leading-tight mb-3">
                 {item.title}
               </h2>
           <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
@@ -264,8 +264,8 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
         <div className="p-6 space-y-6">
           {item.description && (
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Beskrivning</h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <h3 className="text-lg font-display font-semibold text-foreground mb-2">Beskrivning</h3>
+              <p className="font-body text-muted-foreground leading-relaxed">
                 {item.description}
               </p>
             </div>
@@ -288,7 +288,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold text-foreground">Plats</h3>
+                <h3 className="text-lg font-display font-semibold text-foreground">Plats</h3>
               </div>
               <div className="bg-muted/50 rounded-lg p-3 space-y-3">
                 {locationEntries.length > 0 && (
@@ -380,7 +380,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Settings className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-semibold text-foreground">Rådata</h3>
+                <h3 className="text-lg font-display font-semibold text-foreground">Rådata</h3>
               </div>
               <div className="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto">
                 <pre className="text-sm whitespace-pre-wrap">
@@ -394,7 +394,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
           <div className="border-t border-border pt-4">
             <div className="flex items-center gap-2 mb-2">
               <Settings className="h-5 w-5 text-muted-foreground" />
-              <h3 className="text-lg font-semibold text-foreground">Teknisk information</h3>
+              <h3 className="text-lg font-display font-semibold text-foreground">Teknisk information</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>

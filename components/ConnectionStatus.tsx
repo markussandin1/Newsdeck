@@ -39,7 +39,7 @@ export function ConnectionStatus({ status }: ConnectionStatusProps) {
           />
         )}
       </div>
-      <span className="text-xs font-medium text-muted-foreground">
+      <span className="text-xs font-body font-medium text-muted-foreground">
         {config.label}
       </span>
     </div>

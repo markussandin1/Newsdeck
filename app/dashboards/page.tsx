@@ -125,7 +125,7 @@ export default function DashboardsPage() {
                 </div>
               </Link>
               <div>
-                <h1 className="text-2xl font-semibold text-foreground">Dashboards</h1>
+                <h1 className="text-2xl font-display font-semibold text-foreground">Dashboards</h1>
                 <p className="text-sm text-muted-foreground">Hantera och utforska dashboards</p>
               </div>
             </div>
@@ -238,7 +238,7 @@ export default function DashboardsPage() {
               <div key={dashboard.id} className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-foreground mb-1">
+                    <h3 className="text-lg font-display font-semibold text-foreground mb-1">
                       {dashboard.name}
                     </h3>
                     {dashboard.description && (
@@ -298,7 +298,7 @@ export default function DashboardsPage() {
           <div className="bg-card rounded-xl shadow-2xl max-w-md w-full border border-border">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-foreground">Skapa ny dashboard</h3>
+                <h3 className="text-lg font-display font-semibold text-foreground">Skapa ny dashboard</h3>
                 <button
                   onClick={() => {
                     setShowCreateModal(false)
@@ -320,7 +320,7 @@ export default function DashboardsPage() {
                     type="text"
                     value={newDashboardName}
                     onChange={(e) => setNewDashboardName(e.target.value)}
-                    className="w-full p-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                    className="w-full p-3 border border-input rounded-lg font-body focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                     placeholder="t.ex. Breaking News"
                     autoFocus
                   />
@@ -333,7 +333,7 @@ export default function DashboardsPage() {
                   <textarea
                     value={newDashboardDescription}
                     onChange={(e) => setNewDashboardDescription(e.target.value)}
-                    className="w-full p-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                    className="w-full p-3 border border-input rounded-lg font-body focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                     placeholder="Beskriv vad denna dashboard ska innehålla..."
                     rows={3}
                   />
