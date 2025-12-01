@@ -6,10 +6,12 @@ const createMockDb = (): {
   db: IngestionDb
   setColumnDataCalls: Array<{ columnId: string; items: any[] }>
   setColumnDataBatchCalls: Array<Record<string, any[]>>
+  appendColumnDataBatchCalls: Array<Record<string, any[]>>
   addNewsItemsCalls: any[][]
 } => {
   const setColumnDataCalls: Array<{ columnId: string; items: any[] }> = []
   const setColumnDataBatchCalls: Array<Record<string, any[]>> = []
+  const appendColumnDataBatchCalls: Array<Record<string, any[]>> = []
   const addNewsItemsCalls: any[][] = []
 
   const db: IngestionDb = {
@@ -31,10 +33,13 @@ const createMockDb = (): {
     },
     setColumnDataBatch: async (columnData) => {
       setColumnDataBatchCalls.push(columnData)
+    },
+    appendColumnDataBatch: async (columnData) => {
+      appendColumnDataBatchCalls.push(columnData)
     }
   }
 
-  return { db, setColumnDataCalls, setColumnDataBatchCalls, addNewsItemsCalls }
+  return { db, setColumnDataCalls, setColumnDataBatchCalls, appendColumnDataBatchCalls, addNewsItemsCalls }
 }
 
 // Helper to get stored item from batch calls
@@ -92,7 +97,7 @@ describe('NewsItem Validation', () => {
   })
 
   test('generates dbId for items', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -102,7 +107,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const batchData = setColumnDataBatchCalls[0]
+    const batchData = appendColumnDataBatchCalls[0]
     assert.ok(batchData)
     const storedItem = batchData['col-123']?.[0]
     assert.ok(storedItem)
@@ -111,7 +116,7 @@ describe('NewsItem Validation', () => {
   })
 
   test('sets createdInDb timestamp', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
     const now = new Date('2025-10-21T12:00:00Z')
 
     await ingestNewsItems(
@@ -123,13 +128,13 @@ describe('NewsItem Validation', () => {
       { now }
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.equal(storedItem.createdInDb, now.toISOString())
   })
 
   test('defaults newsValue to 3 if not provided', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -139,13 +144,13 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.equal(storedItem.newsValue, 3) // Default is 3, not 1
   })
 
   test('accepts valid newsValue range (1-5)', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -161,7 +166,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const batchData = setColumnDataBatchCalls[0]
+    const batchData = appendColumnDataBatchCalls[0]
     assert.ok(batchData)
     const items = batchData['col-123']
     assert.ok(items)
@@ -172,7 +177,7 @@ describe('NewsItem Validation', () => {
   })
 
   test('clamps newsValue above 5 to 5', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -182,13 +187,13 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.equal(storedItem.newsValue, 5) // Clamped to maximum value
   })
 
   test('accepts newsValue of 0 (minimum valid value)', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -198,13 +203,13 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.equal(storedItem.newsValue, 0) // 0 is valid, no clamping needed
   })
 
   test('clamps negative newsValue to 0', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -214,13 +219,13 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.equal(storedItem.newsValue, 0) // Clamped to minimum value
   })
 
   test('generates timestamp if not provided', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -230,7 +235,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.ok(storedItem.timestamp) // Timestamp should be generated
     assert.ok(typeof storedItem.timestamp === 'string')
@@ -238,7 +243,7 @@ describe('NewsItem Validation', () => {
   })
 
   test('preserves provided timestamp', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
     const customTimestamp = '2025-10-20T10:30:00Z'
 
     await ingestNewsItems(
@@ -249,13 +254,13 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.equal(storedItem.timestamp, customTimestamp)
   })
 
   test('normalizes URL and url fields', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -268,7 +273,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const batchData = setColumnDataBatchCalls[0]
+    const batchData = appendColumnDataBatchCalls[0]
     assert.ok(batchData)
     const items = batchData['col-123']
     assert.ok(items)
@@ -277,7 +282,7 @@ describe('NewsItem Validation', () => {
   })
 
   test('preserves whitespace in string fields', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -293,7 +298,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     // Whitespace is currently NOT trimmed automatically
     assert.equal(storedItem.title, '  Test Title  ')
@@ -302,7 +307,7 @@ describe('NewsItem Validation', () => {
   })
 
   test('handles location data', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -321,7 +326,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.ok(storedItem.location)
     assert.equal(storedItem.location.municipality, 'Stockholm')
@@ -330,7 +335,7 @@ describe('NewsItem Validation', () => {
   })
 
   test('stores fields from item.extra in extra object', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -348,7 +353,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.ok(storedItem.extra)
     assert.equal(storedItem.extra.customField1, 'value1')
@@ -356,7 +361,7 @@ describe('NewsItem Validation', () => {
   })
 
   test('stores unknown top-level fields in raw object', async () => {
-    const { db, setColumnDataBatchCalls } = createMockDb()
+    const { db, appendColumnDataBatchCalls } = createMockDb()
 
     await ingestNewsItems(
       {
@@ -372,7 +377,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(setColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
     assert.ok(storedItem)
     assert.ok(storedItem.raw)
     assert.equal(storedItem.raw.customField1, 'value1')

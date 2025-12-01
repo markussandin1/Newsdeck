@@ -9,11 +9,13 @@ const createMockDb = (): {
   addNewsItemsCalls: any[][]
   getColumnDataBatchCalls: string[][]
   setColumnDataBatchCalls: Array<Record<string, any[]>>
+  appendColumnDataBatchCalls: Array<Record<string, any[]>>
 } => {
   const setColumnDataCalls: Array<{ columnId: string; items: any[] }> = []
   const addNewsItemsCalls: any[][] = []
   const getColumnDataBatchCalls: string[][] = []
   const setColumnDataBatchCalls: Array<Record<string, any[]>> = []
+  const appendColumnDataBatchCalls: Array<Record<string, any[]>> = []
 
   const db: IngestionDb = {
     getDashboards: async () => [],
@@ -36,10 +38,13 @@ const createMockDb = (): {
     },
     setColumnDataBatch: async (columnData) => {
       setColumnDataBatchCalls.push(columnData)
+    },
+    appendColumnDataBatch: async (columnData) => {
+      appendColumnDataBatchCalls.push(columnData)
     }
   }
 
-  return { db, setColumnDataCalls, addNewsItemsCalls, getColumnDataBatchCalls, setColumnDataBatchCalls }
+  return { db, setColumnDataCalls, addNewsItemsCalls, getColumnDataBatchCalls, setColumnDataBatchCalls, appendColumnDataBatchCalls }
 }
 
 test('rejects payload without identifiers', async () => {
@@ -59,7 +64,7 @@ test('rejects payload without identifiers', async () => {
 })
 
 test('ingests items directly into specified column', async () => {
-  const { db, setColumnDataBatchCalls, getColumnDataBatchCalls, addNewsItemsCalls } = createMockDb()
+  const { db, appendColumnDataBatchCalls, addNewsItemsCalls } = createMockDb()
 
   const now = new Date('2024-01-01T00:00:00.000Z')
 
@@ -81,14 +86,12 @@ test('ingests items directly into specified column', async () => {
   assert.deepEqual(result.matchingColumns, ['column-123'])
   assert.equal(result.columnsUpdated, 1)
 
-  // Verify batch operations are used (optimization)
-  assert.equal(getColumnDataBatchCalls.length, 1, 'Should use batch get')
-  assert.equal(setColumnDataBatchCalls.length, 1, 'Should use batch set')
-  assert.deepEqual(getColumnDataBatchCalls[0], ['column-123'])
+  // Verify batch append operations are used (optimization)
+  assert.equal(appendColumnDataBatchCalls.length, 1, 'Should use batch append')
 
   assert.equal(addNewsItemsCalls.length, 1)
 
-  const batchData = setColumnDataBatchCalls[0]
+  const batchData = appendColumnDataBatchCalls[0]
   assert.ok(batchData)
   const storedItems = batchData['column-123']
   assert.ok(storedItems)
@@ -101,7 +104,7 @@ test('ingests items directly into specified column', async () => {
 })
 
 test('ingests items into multiple columns via batch operations', async () => {
-  const { db, setColumnDataBatchCalls, getColumnDataBatchCalls, addNewsItemsCalls } = createMockDb()
+  const { db, appendColumnDataBatchCalls, addNewsItemsCalls } = createMockDb()
 
   // Override getDashboards to return dashboards with multiple matching columns
   db.getDashboards = async () => [
@@ -158,19 +161,11 @@ test('ingests items into multiple columns via batch operations', async () => {
   const matchingColIds = result.matchingColumns.sort()
   assert.deepEqual(matchingColIds, ['col-1', 'col-2', 'col-3'])
 
-  // Verify batch operations handle multiple columns efficiently
-  assert.equal(getColumnDataBatchCalls.length, 1, 'Should use single batch get for all columns')
-  assert.equal(setColumnDataBatchCalls.length, 1, 'Should use single batch set for all columns')
-
-  // Verify all column IDs were requested in batch
-  const requestedColumnIds = getColumnDataBatchCalls[0]
-  assert.ok(requestedColumnIds)
-  assert.equal(requestedColumnIds.length, 3)
-  const sortedRequested = requestedColumnIds.sort()
-  assert.deepEqual(sortedRequested, ['col-1', 'col-2', 'col-3'])
+  // Verify batch append operations handle multiple columns efficiently
+  assert.equal(appendColumnDataBatchCalls.length, 1, 'Should use single batch append for all columns')
 
   // Verify all columns were updated in batch
-  const batchData = setColumnDataBatchCalls[0]
+  const batchData = appendColumnDataBatchCalls[0]
   assert.ok(batchData)
   assert.equal(Object.keys(batchData).length, 3, 'Should update 3 columns')
   assert.ok(batchData['col-1'])
