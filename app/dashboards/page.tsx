@@ -130,8 +130,8 @@ export default function DashboardsPage() {
               </div>
             </div>
 
-            {/* Weather Ticker - Centered */}
-            <div className="flex-1 flex justify-center overflow-hidden max-w-2xl mx-8">
+            {/* Weather Ticker */}
+            <div className="flex justify-start overflow-hidden max-w-3xl">
               <WeatherTicker cities={weatherData} />
             </div>
 

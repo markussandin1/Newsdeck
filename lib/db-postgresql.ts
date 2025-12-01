@@ -572,15 +572,20 @@ export const persistentDb = {
 
     try {
       const query = limit
-        ? 'SELECT data FROM column_data WHERE column_id = $1 ORDER BY created_at DESC LIMIT $2'
-        : 'SELECT data FROM column_data WHERE column_id = $1 ORDER BY created_at DESC'
+        ? 'SELECT data, news_item_db_id FROM column_data WHERE column_id = $1 ORDER BY created_at DESC LIMIT $2'
+        : 'SELECT data, news_item_db_id FROM column_data WHERE column_id = $1 ORDER BY created_at DESC'
 
       const params = limit ? [columnId, limit] : [columnId]
       const result = await pool.query(query, params)
 
       return result.rows.map(row => {
         const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
-        return data
+        // CRITICAL FIX: Ensure dbId is always set from the foreign key
+        // This prevents items from being lost during re-ingestion
+        return {
+          ...data,
+          dbId: row.news_item_db_id
+        }
       })
     } catch (error) {
       logger.error('db.getColumnData.error', { error, columnId })
@@ -598,7 +603,7 @@ export const persistentDb = {
       }
 
       const result = await pool.query(
-        'SELECT column_id, data FROM column_data WHERE column_id = ANY($1) ORDER BY column_id, created_at DESC',
+        'SELECT column_id, data, news_item_db_id FROM column_data WHERE column_id = ANY($1) ORDER BY column_id, created_at DESC',
         [columnIds]
       )
 
@@ -616,7 +621,12 @@ export const persistentDb = {
         if (!columnData[row.column_id]) {
           columnData[row.column_id] = []
         }
-        columnData[row.column_id].push(data)
+        // CRITICAL FIX: Ensure dbId is always set from the foreign key
+        // This prevents items from being lost during re-ingestion
+        columnData[row.column_id].push({
+          ...data,
+          dbId: row.news_item_db_id
+        })
       })
 
       return columnData
