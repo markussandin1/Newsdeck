@@ -689,6 +689,59 @@ export const persistentDb = {
     }
   },
 
+  appendColumnDataBatch: async (columnData: Record<string, NewsItem[]>) => {
+    const pool = await getPool()
+    const client = await pool.connect()
+
+    try {
+      const columnIds = Object.keys(columnData)
+
+      if (columnIds.length === 0) {
+        return
+      }
+
+      await client.query('BEGIN')
+
+      const now = new Date().toISOString()
+      let totalInserted = 0
+
+      for (const columnId of columnIds) {
+        const items = columnData[columnId]
+
+        for (const item of items) {
+          if (!item.dbId) {
+            logger.warn('db.appendColumnDataBatch.missingDbId', { columnId, itemId: item.id })
+            continue
+          }
+
+          // INSERT ONLY - Do not delete existing data
+          // ON CONFLICT DO NOTHING ensures we don't duplicate if the item is already there
+          // (though typically we want to update if it exists, but for "append" logic, 
+          // we usually assume new items. However, to be safe and support updates, 
+          // let's use ON CONFLICT UPDATE)
+          await client.query(
+            `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
+              data = EXCLUDED.data,
+              created_at = EXCLUDED.created_at`,
+            [columnId, item.dbId, JSON.stringify(item), now]
+          )
+          totalInserted++
+        }
+      }
+
+      await client.query('COMMIT')
+      logger.info('db.appendColumnDataBatch.success', { columnCount: columnIds.length, totalInserted })
+    } catch (error) {
+      await client.query('ROLLBACK')
+      logger.error('db.appendColumnDataBatch.error', { error })
+      throw error
+    } finally {
+      client.release()
+    }
+  },
+
   // Column management
   addColumnToDashboard: async (dashboardId: string, column: DashboardColumn) => {
     const dashboard = await persistentDb.getDashboard(dashboardId)

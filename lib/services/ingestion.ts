@@ -22,6 +22,7 @@ export interface IngestionDb {
   // Batch operations for performance optimization
   getColumnDataBatch: (columnIds: string[]) => Promise<Record<string, NewsItem[]>>
   setColumnDataBatch: (columnData: Record<string, NewsItem[]>) => Promise<void>
+  appendColumnDataBatch: (columnData: Record<string, NewsItem[]>) => Promise<void>
 }
 
 interface NormalisedPayload {
@@ -273,29 +274,18 @@ export const ingestNewsItems = async (
   let columnsUpdated = 0
   const columnTotals: Record<string, number> = {}
 
-  // OPTIMIZED: Use batch queries instead of N+1 loop (90% faster)
+  // OPTIMIZED: Use batch append instead of read-modify-write (Fixes Race Condition)
   const columnIds = Array.from(matchingColumns)
-  const existingColumnData = await db.getColumnDataBatch(columnIds)
 
   const updatedColumnData: Record<string, NewsItem[]> = {}
   for (const targetColumnId of columnIds) {
-    const existingItems = existingColumnData[targetColumnId] || []
-
-    // DEDUPLICATION: Remove existing items that have the same source_id as new items
-    // This prevents duplicate news items from appearing when the same source_id is sent multiple times
-    const newItemSourceIds = new Set(insertedItems.map(item => item.id).filter(Boolean))
-    const deduplicatedExisting = existingItems.filter(item => {
-      // Keep items that don't have a source_id, or whose source_id isn't in the new items
-      return !item.id || !newItemSourceIds.has(item.id)
-    })
-
-    const combined = [...deduplicatedExisting, ...insertedItems]  // Use insertedItems with correct db_id
-    updatedColumnData[targetColumnId] = combined
-    columnTotals[targetColumnId] = combined.length
+    // We only send the NEW items to be appended/upserted
+    updatedColumnData[targetColumnId] = insertedItems
+    columnTotals[targetColumnId] = insertedItems.length // This is just the count of added items now
     columnsUpdated += 1
   }
 
-  await db.setColumnDataBatch(updatedColumnData)
+  await db.appendColumnDataBatch(updatedColumnData)
 
   // Publish to Pub/Sub for real-time updates (async, don't wait)
   const columnIdsArray = Array.from(matchingColumns)
