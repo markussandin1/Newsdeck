@@ -5,8 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Dashboard as DashboardType } from '@/lib/types';
 import { ConnectionStatus } from './ConnectionStatus';
-import { WeatherStrip } from './WeatherStrip';
+import { WeatherCycle } from './WeatherCycle';
+import { WeatherWarningBadge } from './WeatherWarningBadge';
+import { WeatherWarningModal } from './WeatherWarningModal';
+import { EnhancedDateTime } from './EnhancedDateTime';
 import { UserMenu } from './UserMenu';
+import { useWeather } from '@/lib/hooks/useWeather';
+import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings';
 
 interface DashboardHeaderProps {
   dashboard: DashboardType;
@@ -32,15 +37,9 @@ export function DashboardHeader({
   navigateToDashboard,
 }: DashboardHeaderProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [lastUpdate, setLastUpdate] = useState(new Date());
-
-  // Update time every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastUpdate(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const { weather } = useWeather();
+  const { warnings } = useWeatherWarnings();
+  const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
 
   // Click outside to close dashboard dropdown
   useEffect(() => {
@@ -163,20 +162,35 @@ export function DashboardHeader({
             </div>
           </div>
 
-          {/* Zone 3: Ambient Weather Strip */}
-          <div className="hidden xl:flex justify-center overflow-hidden max-w-lg flex-1">
-            <WeatherStrip />
+          {/* Zone 3: Consolidated Weather & DateTime */}
+          <div className="hidden xl:flex items-center gap-3 shrink-0">
+            <WeatherCycle cities={weather} className="w-[120px]" />
+            {warnings.length > 0 && (
+              <>
+                <div className="h-6 w-px bg-border/30" />
+                <WeatherWarningBadge
+                  warnings={warnings}
+                  onClick={() => setIsWarningsModalOpen(true)}
+                />
+              </>
+            )}
+            <div className="h-6 w-px bg-border/30 ml-1" />
+            <EnhancedDateTime />
+          </div>
+
+          {/* Compact weather for large screens (no warnings) */}
+          <div className="hidden lg:flex xl:hidden items-center gap-3 shrink-0">
+            <WeatherCycle cities={weather} className="w-[120px]" />
+            <div className="h-6 w-px bg-border/30" />
+            <EnhancedDateTime showDate={false} />
           </div>
 
           {/* Zone 4: User Controls */}
           <div className="flex items-center gap-4 shrink-0">
-            <time className="text-lg font-display font-semibold tabular-nums text-foreground">
-              {lastUpdate.toLocaleTimeString('sv-SE', {
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'Europe/Stockholm',
-              })}
-            </time>
+            {/* Time only on mobile/tablet */}
+            <div className="flex lg:hidden">
+              <EnhancedDateTime showDate={false} />
+            </div>
             {userName && (
               <UserMenu
                 userName={userName}
@@ -187,6 +201,14 @@ export function DashboardHeader({
           </div>
         </div>
       </div>
+
+      {/* Weather Warnings Modal */}
+      {isWarningsModalOpen && (
+        <WeatherWarningModal
+          warnings={warnings}
+          onClose={() => setIsWarningsModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

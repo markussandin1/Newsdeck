@@ -5,8 +5,13 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Dashboard } from '@/lib/types'
-import { WeatherStrip } from '@/components/WeatherStrip'
+import { WeatherCycle } from '@/components/WeatherCycle'
+import { WeatherWarningBadge } from '@/components/WeatherWarningBadge'
+import { WeatherWarningModal } from '@/components/WeatherWarningModal'
+import { EnhancedDateTime } from '@/components/EnhancedDateTime'
 import { UserMenu } from '@/components/UserMenu'
+import { useWeather } from '@/lib/hooks/useWeather'
+import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings'
 
 type DashboardWithStats = Dashboard & {
   columnCount?: number
@@ -23,15 +28,9 @@ export default function DashboardsPage() {
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const [creatingDashboard, setCreatingDashboard] = useState(false)
-  const [currentTime, setCurrentTime] = useState(new Date())
-
-  // Update time every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [])
+  const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false)
+  const { weather } = useWeather()
+  const { warnings } = useWeatherWarnings()
 
   const fetchDashboards = async (mine: boolean) => {
     setLoading(true)
@@ -153,26 +152,41 @@ export default function DashboardsPage() {
               </div>
             </div>
 
-            {/* Zone 3: Ambient Weather Strip */}
-            <div className="hidden xl:flex justify-center overflow-hidden max-w-lg flex-1">
-              <WeatherStrip />
+            {/* Zone 3: Consolidated Weather & DateTime */}
+            <div className="hidden xl:flex items-center gap-3 shrink-0">
+              <WeatherCycle cities={weather} className="w-[120px]" />
+              {warnings.length > 0 && (
+                <>
+                  <div className="h-6 w-px bg-border/30" />
+                  <WeatherWarningBadge
+                    warnings={warnings}
+                    onClick={() => setIsWarningsModalOpen(true)}
+                  />
+                </>
+              )}
+              <div className="h-6 w-px bg-border/30 ml-1" />
+              <EnhancedDateTime />
+            </div>
+
+            {/* Compact weather for large screens (no warnings) */}
+            <div className="hidden lg:flex xl:hidden items-center gap-3 shrink-0">
+              <WeatherCycle cities={weather} className="w-[120px]" />
+              <div className="h-6 w-px bg-border/30" />
+              <EnhancedDateTime showDate={false} />
             </div>
 
             {/* Zone 4: User Controls */}
             <div className="flex items-center gap-4 shrink-0">
+              {/* Time only on mobile/tablet */}
+              <div className="flex lg:hidden">
+                <EnhancedDateTime showDate={false} />
+              </div>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition font-medium text-sm"
               >
                 + Ny dashboard
               </button>
-              <time className="text-lg font-display font-semibold tabular-nums text-foreground">
-                {currentTime.toLocaleTimeString('sv-SE', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  timeZone: 'Europe/Stockholm',
-                })}
-              </time>
               <UserMenu
                 userName="User"
                 dashboardId=""
@@ -307,6 +321,14 @@ export default function DashboardsPage() {
           </div>
         )}
       </div>
+
+      {/* Weather Warnings Modal */}
+      {isWarningsModalOpen && (
+        <WeatherWarningModal
+          warnings={warnings}
+          onClose={() => setIsWarningsModalOpen(false)}
+        />
+      )}
 
       {/* Create Dashboard Modal */}
       {showCreateModal && (
