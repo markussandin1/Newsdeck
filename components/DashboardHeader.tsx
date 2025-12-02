@@ -163,19 +163,15 @@ export function DashboardHeader({
           </div>
 
           {/* Zone 3: Consolidated Weather & DateTime */}
-          <div className="hidden xl:flex items-center gap-4 shrink-0">
-            <WeatherCycle cities={weather} className="w-[140px]" />
+          <div className="hidden xl:flex items-center gap-3 shrink-0">
             {warnings.length > 0 && (
-              <>
-                <div className="h-8 w-px bg-border/20" />
-                <WeatherWarningBadge
-                  warnings={warnings}
-                  onClick={() => setIsWarningsModalOpen(true)}
-                />
-              </>
+              <WeatherWarningBadge
+                warnings={warnings}
+                onClick={() => setIsWarningsModalOpen(true)}
+              />
             )}
-            <div className="h-8 w-px bg-border/20" />
-            <EnhancedDateTime className="min-w-[70px]" />
+            <WeatherCycle cities={weather} className="w-[140px]" />
+            <EnhancedDateTime />
           </div>
 
           {/* Compact weather for large screens (no warnings) */}

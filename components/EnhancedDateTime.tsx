@@ -49,19 +49,16 @@ export function EnhancedDateTime({ className = '', showDate = true }: EnhancedDa
   }
 
   return (
-    <div className={`flex flex-col items-end justify-center ${className}`}>
+    <div className={`flex items-center gap-2 ${className}`}>
       <time
         dateTime={isoDateTime}
-        className="text-xs text-muted-foreground uppercase tracking-wide leading-tight"
+        className="text-sm text-muted-foreground lowercase"
       >
-        {dayOfWeek}
-      </time>
-      <time dateTime={isoDateTime} className="text-sm font-medium text-foreground leading-tight">
-        {date}
+        {dayOfWeek}. {date}
       </time>
       <time
         dateTime={isoDateTime}
-        className="text-lg font-display font-semibold tabular-nums text-foreground leading-tight"
+        className="text-xl font-display font-semibold tabular-nums text-foreground"
       >
         {time}
       </time>
