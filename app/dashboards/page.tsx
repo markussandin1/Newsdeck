@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Dashboard } from '@/lib/types'
-import { ThemeToggle } from '@/components/theme-toggle'
 import { WeatherStrip } from '@/components/WeatherStrip'
+import { UserMenu } from '@/components/UserMenu'
 
 type DashboardWithStats = Dashboard & {
   columnCount?: number
@@ -23,6 +23,15 @@ export default function DashboardsPage() {
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const [creatingDashboard, setCreatingDashboard] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  // Update time every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const fetchDashboards = async (mine: boolean) => {
     setLoading(true)
@@ -108,56 +117,67 @@ export default function DashboardsPage() {
     }
   }
 
+  const handleLogout = () => {
+    window.location.href = '/api/auth/signout'
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="glass border-b border-border sticky top-0 z-50">
+      {/* Header - Matches DashboardHeader design */}
+      <div className="glass border-b border-border sticky top-0 z-50 hidden lg:block">
         <div className="px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <Link href="/">
-                <div className="w-16 h-16 flex items-center justify-center cursor-pointer">
-                  <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={64} height={64} className="w-16 h-16 object-contain" />
+          <div className="flex items-center justify-between gap-6">
+            {/* Zone 1 + 2: Tightly Grouped Left Side */}
+            <div className="flex items-center gap-2">
+              {/* Zone 1: Brand Anchor */}
+              <Link href="/dashboards" className="shrink-0">
+                <div className="w-12 h-12 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
+                  <Image
+                    src="/newsdeck-icon.svg"
+                    alt="Newsdeck logo"
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 object-contain"
+                  />
                 </div>
               </Link>
-              <div>
-                <h1 className="text-2xl font-display font-semibold text-foreground">Dashboards</h1>
-                <p className="text-sm text-muted-foreground">Hantera och utforska dashboards</p>
+
+              {/* Zone 2: Page Context */}
+              <div className="px-4 py-2">
+                <h1 className="text-xl font-display font-semibold text-foreground">
+                  Dashboards
+                </h1>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                  <span>{dashboards.length} dashboards</span>
+                </div>
               </div>
             </div>
 
-            {/* Weather Ticker */}
-            <div className="flex justify-start overflow-hidden max-w-3xl">
+            {/* Zone 3: Ambient Weather Strip */}
+            <div className="hidden xl:flex justify-center overflow-hidden max-w-lg flex-1">
               <WeatherStrip />
             </div>
 
-            <div className="flex items-center gap-4">
-              {/* Date and Time */}
-              <div className="flex flex-col items-end">
-                <span className="text-xs text-muted-foreground capitalize">
-                  {new Date().toLocaleDateString('sv-SE', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    timeZone: 'Europe/Stockholm'
-                  })}
-                </span>
-                <span className="text-lg font-semibold text-foreground tabular-nums">
-                  {new Date().toLocaleTimeString('sv-SE', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'Europe/Stockholm'
-                  })}
-                </span>
-              </div>
-
+            {/* Zone 4: User Controls */}
+            <div className="flex items-center gap-4 shrink-0">
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition font-medium"
+                className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition font-medium text-sm"
               >
-                + Skapa ny dashboard
+                + Ny dashboard
               </button>
-              <ThemeToggle />
+              <time className="text-lg font-display font-semibold tabular-nums text-foreground">
+                {currentTime.toLocaleTimeString('sv-SE', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  timeZone: 'Europe/Stockholm',
+                })}
+              </time>
+              <UserMenu
+                userName="User"
+                dashboardId=""
+                onLogout={handleLogout}
+              />
             </div>
           </div>
         </div>
