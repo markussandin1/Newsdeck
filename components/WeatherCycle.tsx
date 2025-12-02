@@ -55,14 +55,14 @@ export function WeatherCycle({
 
       // After fade completes, update indices and reset
       setTimeout(() => {
-        setCurrentIndex(nextIndex);
-        setNextIndex((nextIndex + 1) % cities.length);
+        setCurrentIndex((prev) => (prev + 1) % cities.length);
+        setNextIndex((prev) => (prev + 1) % cities.length);
         setIsTransitioning(false);
       }, fadeDuration);
     }, displayDuration);
 
     return () => clearInterval(interval);
-  }, [cities.length, displayDuration, fadeDuration, isPaused, nextIndex]);
+  }, [cities.length, displayDuration, fadeDuration, isPaused]);
 
   if (!currentCity) return null;
 
