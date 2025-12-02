@@ -40,11 +40,12 @@ export function WeatherCycle({
   className = '',
 }: WeatherCycleProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [nextIndex, setNextIndex] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
   const currentCity = cities[currentIndex] || cities[0];
-  const IconComponent = currentCity ? iconMap[currentCity.icon] || Cloud : Cloud;
+  const nextCity = cities[nextIndex] || cities[0];
 
   useEffect(() => {
     if (cities.length <= 1 || isPaused) return;
@@ -52,17 +53,21 @@ export function WeatherCycle({
     const interval = setInterval(() => {
       setIsTransitioning(true);
 
-      // After half the fade duration, change the city
+      // After fade completes, update indices and reset
       setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % cities.length);
+        setCurrentIndex(nextIndex);
+        setNextIndex((nextIndex + 1) % cities.length);
         setIsTransitioning(false);
-      }, fadeDuration / 2);
+      }, fadeDuration);
     }, displayDuration);
 
     return () => clearInterval(interval);
-  }, [cities.length, displayDuration, fadeDuration, isPaused]);
+  }, [cities.length, displayDuration, fadeDuration, isPaused, nextIndex]);
 
   if (!currentCity) return null;
+
+  const CurrentIcon = currentCity ? iconMap[currentCity.icon] || Cloud : Cloud;
+  const NextIcon = nextCity ? iconMap[nextCity.icon] || Cloud : Cloud;
 
   return (
     <div
@@ -76,17 +81,33 @@ export function WeatherCycle({
       aria-live="polite"
       aria-label={`Väder: ${currentCity.city}, ${currentCity.temperature} grader`}
     >
+      {/* Current city - fades out */}
       <div
-        className={`flex items-center gap-2 transition-opacity duration-[800ms] ease-in-out ${
+        className={`absolute inset-0 flex items-center gap-2 transition-opacity duration-[800ms] ease-in-out ${
           isTransitioning ? 'opacity-0' : 'opacity-100'
         }`}
       >
-        <IconComponent className="h-5 w-5 text-primary-light shrink-0" />
+        <CurrentIcon className="h-5 w-5 text-primary-light shrink-0" />
         <span className="text-sm font-medium text-foreground whitespace-nowrap">
           {currentCity.city}
         </span>
         <span className="text-sm text-muted-foreground whitespace-nowrap">
           {currentCity.temperature}°
+        </span>
+      </div>
+
+      {/* Next city - fades in */}
+      <div
+        className={`absolute inset-0 flex items-center gap-2 transition-opacity duration-[800ms] ease-in-out ${
+          isTransitioning ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        <NextIcon className="h-5 w-5 text-primary-light shrink-0" />
+        <span className="text-sm font-medium text-foreground whitespace-nowrap">
+          {nextCity.city}
+        </span>
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {nextCity.temperature}°
         </span>
       </div>
     </div>
