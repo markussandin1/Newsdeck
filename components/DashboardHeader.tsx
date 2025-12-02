@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Dashboard as DashboardType } from '@/lib/types';
-import type { WeatherData } from '@/types/weather';
 import { ConnectionStatus } from './ConnectionStatus';
 import { WeatherStrip } from './WeatherStrip';
 import { UserMenu } from './UserMenu';
@@ -13,7 +12,6 @@ interface DashboardHeaderProps {
   dashboard: DashboardType;
   userName: string | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected';
-  weatherData: WeatherData[];
   allDashboards: DashboardType[];
   showDashboardDropdown: boolean;
   setShowDashboardDropdown: (show: boolean) => void;
@@ -26,7 +24,6 @@ export function DashboardHeader({
   dashboard,
   userName,
   connectionStatus,
-  weatherData,
   allDashboards,
   showDashboardDropdown,
   setShowDashboardDropdown,
@@ -168,7 +165,7 @@ export function DashboardHeader({
 
           {/* Zone 3: Ambient Weather Strip */}
           <div className="hidden xl:flex justify-center overflow-hidden max-w-lg flex-1">
-            <WeatherStrip cities={weatherData} />
+            <WeatherStrip />
           </div>
 
           {/* Zone 4: User Controls */}

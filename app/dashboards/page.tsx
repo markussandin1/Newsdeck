@@ -6,8 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Dashboard } from '@/lib/types'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { WeatherTicker } from '@/components/WeatherTicker'
-import { useWeather } from '@/lib/hooks/useWeather'
+import { WeatherStrip } from '@/components/WeatherStrip'
 
 type DashboardWithStats = Dashboard & {
   columnCount?: number
@@ -24,9 +23,6 @@ export default function DashboardsPage() {
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const [creatingDashboard, setCreatingDashboard] = useState(false)
-
-  // Weather data for header ticker
-  const { weather: weatherData } = useWeather()
 
   const fetchDashboards = async (mine: boolean) => {
     setLoading(true)
@@ -132,7 +128,7 @@ export default function DashboardsPage() {
 
             {/* Weather Ticker */}
             <div className="flex justify-start overflow-hidden max-w-3xl">
-              <WeatherTicker cities={weatherData} />
+              <WeatherStrip />
             </div>
 
             <div className="flex items-center gap-4">

@@ -17,6 +17,15 @@ const config: Config = {
         // Make DM Sans the default sans font
         sans: ['var(--font-body)', 'ui-sans-serif', 'system-ui'],
       },
+      animation: {
+        'pulse-slow': 'pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        'pulse-slow': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '.5' },
+        }
+      }
     },
   },
   plugins: [require('@tailwindcss/forms')],

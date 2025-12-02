@@ -11,16 +11,15 @@ import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardPolling } from '@/lib/dashboard/hooks/useDashboardPolling'
 import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
 import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
+import { ThemeToggle } from './theme-toggle'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
 import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ColumnMapButton from './ColumnMapButton'
-import { ThemeToggle } from './theme-toggle'
-import { WeatherTicker } from './WeatherTicker'
-import { useWeather } from '@/lib/hooks/useWeather'
 import { DashboardHeader } from './DashboardHeader'
+import { WeatherStrip } from './WeatherStrip'
 
 interface DashboardSearchInputProps {
   value: string
@@ -115,9 +114,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     columns: dashboard?.columns || [],
     onRefresh: fetchColumnData,
   })
-
-  // Weather data for header ticker
-  const { weather: weatherData } = useWeather()
 
   const [showAddColumnModal, setShowAddColumnModal] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
@@ -704,7 +700,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
               {/* Weather Ticker - Mobile */}
               <div className="lg:hidden flex justify-center">
-                <WeatherTicker cities={weatherData} className="max-w-[280px]" />
+                <WeatherStrip className="max-w-[280px]" />
               </div>
             </div>
           ) : null}
@@ -714,7 +710,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             dashboard={dashboard}
             userName={userName}
             connectionStatus={connectionStatus}
-            weatherData={weatherData}
             allDashboards={allDashboards}
             showDashboardDropdown={showDashboardDropdown}
             setShowDashboardDropdown={setShowDashboardDropdown}
