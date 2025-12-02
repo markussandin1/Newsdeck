@@ -35,14 +35,7 @@ export function WeatherWarningBadge({ warnings, onClick }: WeatherWarningBadgePr
       title={`${warningCount} vädervarning${warningCount > 1 ? 'ar' : ''} - klicka för detaljer`}
       aria-label={`${warningCount} vädervarning${warningCount > 1 ? 'ar' : ''}`}
     >
-      <div className="relative">
-        <SMHIWarningIcon severity={severity} size={20} />
-        {warningCount > 1 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-            {warningCount}
-          </span>
-        )}
-      </div>
+      <SMHIWarningIcon severity={severity} size={20} />
     </button>
   );
 }
