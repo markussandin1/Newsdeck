@@ -211,13 +211,13 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
         </div>
 
         {/* Filter Section */}
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
           {/* Severity Filter Chips */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground shrink-0">
-              Varningsnivå:
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">
+              Nivå:
             </span>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               {severityLevels.map(level => (
                 <button
                   key={level.value}
@@ -236,33 +236,31 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
             </div>
           </div>
 
-          {/* Warning Type Dropdown - only show if multiple types exist */}
-          {uniqueWarningTypes.length > 1 && (
-            <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor="warning-type-select" className="text-sm font-medium text-muted-foreground shrink-0">
-                Varningstyp:
-              </label>
-              <select
-                id="warning-type-select"
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className={cn(
-                  "px-3 py-2 rounded-lg border-2 border-border bg-white",
-                  "text-sm font-medium text-foreground",
-                  "focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-light",
-                  "hover:bg-muted/30 transition-colors",
-                  "min-w-[200px]"
-                )}
-              >
-                <option value="all">Alla varningar</option>
-                {uniqueWarningTypes.map(type => (
-                  <option key={type} value={type}>
-                    {type} ({typeWarningCounts[type]})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Warning Type Dropdown */}
+          <div className="flex items-center gap-3">
+            <label htmlFor="warning-type-select" className="text-sm font-medium text-muted-foreground">
+              Typ:
+            </label>
+            <select
+              id="warning-type-select"
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className={cn(
+                "px-3 py-2 rounded-lg border-2 border-border bg-white",
+                "text-sm font-medium text-foreground",
+                "focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-light",
+                "hover:bg-muted/30 transition-colors",
+                "min-w-[200px]"
+              )}
+            >
+              <option value="all">Alla varningar</option>
+              {uniqueWarningTypes.map(type => (
+                <option key={type} value={type}>
+                  {type} ({typeWarningCounts[type]})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Day Timeline Filter */}
