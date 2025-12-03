@@ -210,91 +210,94 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
           </button>
         </div>
 
-        {/* Filter Section */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-          {/* Severity Filter Chips */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">
-              Nivå:
-            </span>
-            <div className="flex gap-2">
-              {severityLevels.map(level => (
-                <button
-                  key={level.value}
-                  onClick={() => toggleSeverity(level.value)}
+        {/* Two-column layout with filters in left column */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
+          {/* Left column: Filters + Warnings list */}
+          <div className="flex flex-col">
+            {/* Filter Section */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4">
+              {/* Severity Filter Chips */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Nivå:
+                </span>
+                <div className="flex gap-2">
+                  {severityLevels.map(level => (
+                    <button
+                      key={level.value}
+                      onClick={() => toggleSeverity(level.value)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 flex items-center gap-2",
+                        selectedSeverities.has(level.value)
+                          ? `${level.bgActive} ${level.borderActive} ${level.textActive}`
+                          : "bg-white border-border text-muted-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      <SMHIWarningIcon severity={level.severity} size={16} />
+                      {level.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Warning Type Dropdown */}
+              <div className="flex items-center gap-3">
+                <label htmlFor="warning-type-select" className="text-sm font-medium text-muted-foreground">
+                  Typ:
+                </label>
+                <select
+                  id="warning-type-select"
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
                   className={cn(
-                    "px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 flex items-center gap-2",
-                    selectedSeverities.has(level.value)
-                      ? `${level.bgActive} ${level.borderActive} ${level.textActive}`
-                      : "bg-white border-border text-muted-foreground hover:bg-muted/50"
+                    "px-3 py-2 rounded-lg border-2 border-border bg-white",
+                    "text-sm font-medium text-foreground",
+                    "focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-light",
+                    "hover:bg-muted/30 transition-colors",
+                    "min-w-[200px]"
                   )}
                 >
-                  <SMHIWarningIcon severity={level.severity} size={16} />
-                  {level.label}
-                </button>
-              ))}
+                  <option value="all">Alla varningar</option>
+                  {uniqueWarningTypes.map(type => (
+                    <option key={type} value={type}>
+                      {type} ({typeWarningCounts[type]})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
 
-          {/* Warning Type Dropdown */}
-          <div className="flex items-center gap-3">
-            <label htmlFor="warning-type-select" className="text-sm font-medium text-muted-foreground">
-              Typ:
-            </label>
-            <select
-              id="warning-type-select"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className={cn(
-                "px-3 py-2 rounded-lg border-2 border-border bg-white",
-                "text-sm font-medium text-foreground",
-                "focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-light",
-                "hover:bg-muted/30 transition-colors",
-                "min-w-[200px]"
-              )}
-            >
-              <option value="all">Alla varningar</option>
-              {uniqueWarningTypes.map(type => (
-                <option key={type} value={type}>
-                  {type} ({typeWarningCounts[type]})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Day Timeline Filter */}
-        <div className="mt-4 border-b border-border pb-4">
-          <div className="flex gap-2 overflow-x-auto scrollbar-thin">
-            {dayTabs.map((day) => (
-              <button
-                key={day.date}
-                onClick={() => setSelectedDay(day.date)}
-                className={cn(
-                  "flex-shrink-0 px-4 py-2 rounded-lg transition-colors text-sm font-medium",
-                  selectedDay === day.date
-                    ? "bg-primary-light/10 text-primary-light border-2 border-primary-light"
-                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                )}
-              >
-                <div className="text-center">
-                  <div className="font-semibold">{day.label}</div>
-                  {day.warningIcons.length > 0 && (
-                    <div className="flex gap-1 mt-1 justify-center">
-                      {day.warningIcons.map((severity, i) => (
-                        <SMHIWarningIcon key={i} severity={severity} size={16} />
-                      ))}
+            {/* Day Timeline Filter */}
+            <div className="border-b border-border pb-4 mb-4">
+              <div className="flex gap-2 overflow-x-auto scrollbar-thin">
+                {dayTabs.map((day) => (
+                  <button
+                    key={day.date}
+                    onClick={() => setSelectedDay(day.date)}
+                    className={cn(
+                      "flex-shrink-0 px-4 py-2 rounded-lg transition-colors text-sm font-medium",
+                      selectedDay === day.date
+                        ? "bg-primary-light/10 text-primary-light border-2 border-primary-light"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    <div className="text-center">
+                      <div className="font-semibold">{day.label}</div>
+                      {day.warningIcons.length > 0 && (
+                        <div className="flex gap-1 mt-1 justify-center">
+                          {day.warningIcons.map((severity, i) => (
+                            <SMHIWarningIcon key={i} severity={severity} size={16} />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
-          {/* Left column: Warnings list */}
-          <div className="overflow-y-auto max-h-[calc(80vh-220px)]">
+            {/* Warnings list */}
+            <div className="overflow-y-auto flex-1">
             {filteredWarnings.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
@@ -343,10 +346,11 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
                 ))}
               </div>
             )}
+            </div>
           </div>
 
           {/* Right column: Map placeholder */}
-          <div className="hidden md:block sticky top-0 h-[calc(80vh-220px)]">
+          <div className="hidden md:block h-[calc(80vh-120px)]">
             <div className="h-full rounded-lg border-2 border-dashed border-border bg-muted/10 flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Karta kommer här</p>
             </div>
