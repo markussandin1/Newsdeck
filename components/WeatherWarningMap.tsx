@@ -10,6 +10,7 @@ interface WeatherWarningMapProps {
   selectedWarning?: WeatherWarning | null;
   height?: string;
   onMarkerClick?: (warning: WeatherWarning) => void;
+  resetToSweden?: boolean; // When true, reset map to default Sweden view
 }
 
 // Approximate coordinates for Swedish regions/cities
@@ -65,7 +66,8 @@ export function WeatherWarningMap({
   warnings,
   selectedWarning,
   height = '100%',
-  onMarkerClick
+  onMarkerClick,
+  resetToSweden = false
 }: WeatherWarningMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMapInstance | null>(null);
@@ -99,10 +101,16 @@ export function WeatherWarningMap({
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
       });
 
+      // Check if container already has leaflet initialized (defensive check)
+      const container = containerRef.current!;
+      if ((container as any)._leaflet_id) {
+        return;
+      }
+
       // Initialize map centered on Sweden
-      const map = L.map(containerRef.current!, {
+      const map = L.map(container, {
         center: [62, 15], // Center of Sweden
-        zoom: 5,
+        zoom: 4,
         minZoom: 4,
         maxZoom: 12,
         zoomControl: true
@@ -198,89 +206,17 @@ export function WeatherWarningMap({
     addPolygons();
   }, [warnings, selectedWarning, isReady, onMarkerClick]);
 
-  // Add markers for warnings
+
+  // Reset to Sweden view when requested
   useEffect(() => {
-    if (!isReady || !mapInstanceRef.current) return;
+    if (!isReady || !mapInstanceRef.current || !resetToSweden) return;
 
-    const addMarkers = async () => {
-      const map = mapInstanceRef.current!;
-      const L = (await import('leaflet')).default;
-
-      // Clear existing markers
-      if (markersLayerRef.current) {
-        markersLayerRef.current.clearLayers();
-      } else {
-        markersLayerRef.current = L.layerGroup().addTo(map);
-      }
-
-      const layer = markersLayerRef.current;
-      const bounds: [number, number][] = [];
-
-      // Create severity-colored divIcons
-      const createMarkerIcon = (severity: string, isSelected: boolean) => {
-        const colors: Record<string, string> = {
-          'Moderate': '#facc15',
-          'Severe': '#f97316',
-          'Extreme': '#ef4444'
-        };
-        const color = colors[severity] || '#facc15';
-        const size = isSelected ? 16 : 12;
-        const ringColor = isSelected ? '#3b82f6' : '#ffffff';
-
-        return L.divIcon({
-          className: 'weather-marker',
-          html: `<div style="
-            width: ${size}px;
-            height: ${size}px;
-            background-color: ${color};
-            border: 2px solid ${ringColor};
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          "></div>`,
-          iconSize: [size, size],
-          iconAnchor: [size / 2, size / 2]
-        });
-      };
-
-      // Add markers for each warning
-      warnings.forEach(warning => {
-        const location = getWarningLocation(warning);
-        if (!location) return;
-
-        const [lat, lng] = location;
-        const isSelected = warning.id === selectedWarning?.id;
-
-        const marker = L.marker([lat, lng], {
-          icon: createMarkerIcon(warning.severity, isSelected)
-        });
-
-        // Tooltip on hover
-        marker.bindTooltip(warning.headline, {
-          direction: 'top',
-          offset: [0, -8],
-          opacity: 0.95
-        });
-
-        // Click handler
-        if (onMarkerClick) {
-          marker.on('click', () => {
-            onMarkerClick(warning);
-          });
-        }
-
-        marker.addTo(layer);
-        bounds.push([lat, lng]);
-      });
-
-      // Fit map to show all markers
-      if (bounds.length > 0) {
-        const mapBounds = L.latLngBounds(bounds);
-        map.fitBounds(mapBounds.pad(0.1), { maxZoom: 7 });
-      }
-    };
-
-    addMarkers();
-  }, [warnings, selectedWarning, isReady, onMarkerClick]);
+    const map = mapInstanceRef.current;
+    map.flyTo([62, 15], 4, {
+      animate: true,
+      duration: 1.5
+    });
+  }, [resetToSweden, isReady]);
 
   // Fly to selected warning
   useEffect(() => {

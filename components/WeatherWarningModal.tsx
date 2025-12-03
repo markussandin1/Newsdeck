@@ -271,7 +271,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
         {/* Two-column layout with filters in left column */}
         <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
           {/* Left column: Filters + Warnings list */}
-          <div className="flex flex-col">
+          <div className="flex flex-col max-h-[calc(80vh-140px)]">
             {/* Filter Section */}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4" role="group" aria-label="Varningsfilter">
               {/* Severity Filter Chips */}
@@ -377,30 +377,30 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
                 </button>
 
                 {/* Title with icon */}
-                <div className="flex items-start gap-4 mb-6">
-                  <SMHIWarningIcon severity={selectedWarning.severity as SMHISeverity} size={48} />
+                <div className="flex items-start gap-4 mb-4">
+                  <SMHIWarningIcon severity={selectedWarning.severity as SMHISeverity} size={40} />
                   <div>
-                    <h2 className="text-2xl font-bold font-display text-foreground leading-tight">
+                    <h2 className="text-lg font-bold font-display text-foreground leading-tight">
                       {selectedWarning.headline}
                     </h2>
-                    <p className="text-base text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {selectedWarning.areas.join(', ')}
                     </p>
                   </div>
                 </div>
 
                 {/* Description section */}
-                <section className="mb-6">
-                  <p className="text-base text-foreground whitespace-pre-wrap leading-relaxed">
+                <section className="mb-4">
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                     {selectedWarning.description}
                   </p>
                 </section>
 
                 {/* Instruction section (if available) */}
                 {selectedWarning.instruction && (
-                  <section className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r">
-                    <h3 className="text-lg font-bold font-display text-foreground mb-3 flex items-center gap-2">
-                      <Info className="w-5 h-5" />
+                  <section className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded-r">
+                    <h3 className="text-base font-bold font-display text-foreground mb-2 flex items-center gap-2">
+                      <Info className="w-4 h-4" />
                       Vad ska jag tänka på?
                     </h3>
                     <div className="text-sm text-foreground space-y-2">
@@ -413,9 +413,9 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
 
                 {/* Time section */}
                 {(selectedWarning.approximateStart || selectedWarning.approximateEnd) && (
-                  <section className="mb-6 p-4 bg-muted/30 rounded-lg">
-                    <h3 className="text-lg font-bold font-display text-foreground mb-2 flex items-center gap-2">
-                      <Clock className="w-5 h-5" />
+                  <section className="mb-4 p-3 bg-muted/30 rounded-lg">
+                    <h3 className="text-base font-bold font-display text-foreground mb-2 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
                       När?
                     </h3>
                     <p className="text-sm text-foreground">
@@ -425,9 +425,9 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
                 )}
 
                 {/* Location section */}
-                <section className="mb-6 p-4 bg-muted/30 rounded-lg">
-                  <h3 className="text-lg font-bold font-display text-foreground mb-2 flex items-center gap-2">
-                    <MapPin className="w-5 h-5" />
+                <section className="mb-4 p-3 bg-muted/30 rounded-lg">
+                  <h3 className="text-base font-bold font-display text-foreground mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
                     Var?
                   </h3>
                   <p className="text-sm text-foreground">
@@ -509,11 +509,16 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
           </div>
 
           {/* Right column: Map */}
-          <div className="hidden md:block h-[calc(80vh-120px)]">
+          <div className="hidden md:block h-[calc(80vh-140px)]">
             <WeatherWarningMap
               warnings={filteredWarnings}
               selectedWarning={selectedWarning}
               height="100%"
+              resetToSweden={viewMode === 'list'}
+              onMarkerClick={(warning) => {
+                setSelectedWarning(warning);
+                setViewMode('detail');
+              }}
             />
           </div>
         </div>
