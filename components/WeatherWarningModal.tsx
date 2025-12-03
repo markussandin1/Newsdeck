@@ -45,19 +45,25 @@ function generateDayTabs(warnings: WeatherWarning[]): DayTab[] {
   const days: DayTab[] = [];
 
   for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(date.getDate() + i);
-    const dateStr = date.toISOString().split('T')[0];
+    const dayStart = new Date(today);
+    dayStart.setDate(dayStart.getDate() + i);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const dateStr = dayStart.toISOString().split('T')[0];
 
     // Get warnings active on this day
     const dayWarnings = warnings.filter(w => {
-      const startDate = w.approximateStart ? new Date(w.approximateStart) : new Date();
-      const endDate = w.approximateEnd ? new Date(w.approximateEnd) : new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+      if (!w.approximateStart && !w.approximateEnd) {
+        return true;
+      }
 
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
+      const startDate = w.approximateStart ? new Date(w.approximateStart) : new Date(0);
+      const endDate = w.approximateEnd ? new Date(w.approximateEnd) : new Date(8640000000000000);
 
-      return date >= startDate && date <= endDate;
+      return startDate <= dayEnd && endDate >= dayStart;
     });
 
     // Extract unique severities
@@ -67,7 +73,7 @@ function generateDayTabs(warnings: WeatherWarning[]): DayTab[] {
 
     days.push({
       date: dateStr,
-      label: getDayLabel(date, i),
+      label: getDayLabel(dayStart, i),
       warningIcons: ordered,
       warningCount: dayWarnings.length
     });
@@ -77,17 +83,23 @@ function generateDayTabs(warnings: WeatherWarning[]): DayTab[] {
 }
 
 function filterWarningsByDay(warnings: WeatherWarning[], selectedDay: string): WeatherWarning[] {
-  const dayDate = new Date(selectedDay);
-  dayDate.setHours(0, 0, 0, 0);
+  const selectedDayStart = new Date(selectedDay);
+  selectedDayStart.setHours(0, 0, 0, 0);
+
+  const selectedDayEnd = new Date(selectedDay);
+  selectedDayEnd.setHours(23, 59, 59, 999);
 
   return warnings.filter(w => {
-    const startDate = w.approximateStart ? new Date(w.approximateStart) : new Date();
-    const endDate = w.approximateEnd ? new Date(w.approximateEnd) : new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+    if (!w.approximateStart && !w.approximateEnd) {
+      // If no dates, show on all days
+      return true;
+    }
 
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+    const startDate = w.approximateStart ? new Date(w.approximateStart) : new Date(0);
+    const endDate = w.approximateEnd ? new Date(w.approximateEnd) : new Date(8640000000000000);
 
-    return dayDate >= startDate && dayDate <= endDate;
+    // Warning is active on selected day if its period overlaps with that day
+    return startDate <= selectedDayEnd && endDate >= selectedDayStart;
   });
 }
 
@@ -121,9 +133,7 @@ const severityLevels = [
 export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string>(getTodayDateStr());
-  const [selectedSeverities, setSelectedSeverities] = useState<Set<string>>(
-    new Set(['Moderate', 'Severe', 'Extreme'])
-  );
+  const [selectedSeverities, setSelectedSeverities] = useState<Set<string>>(new Set());
   const [selectedType, setSelectedType] = useState<string>('all');
 
   const toggleSeverity = (severity: string) => {
@@ -134,8 +144,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
       } else {
         next.add(severity);
       }
-      // Prevent deselecting all (keep at least one active)
-      return next.size === 0 ? prev : next;
+      return next;
     });
   };
 
@@ -156,7 +165,8 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
   const dayTabs = useMemo(() => generateDayTabs(warnings), [warnings]);
   const filteredWarnings = useMemo(() => {
     return filterWarningsByDay(warnings, selectedDay).filter(w => {
-      const matchesSeverity = selectedSeverities.has(w.severity);
+      // If no severities selected, show all. If some selected, filter by them.
+      const matchesSeverity = selectedSeverities.size === 0 || selectedSeverities.has(w.severity);
       const matchesType = selectedType === 'all' || w.event === selectedType;
       return matchesSeverity && matchesType;
     });

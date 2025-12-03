@@ -76,6 +76,9 @@ function normalizeWarningArea(raw: SMHIWarning, area: SMHIWarningAreaDetail): We
     language: 'sv',
     web: undefined,
     instruction,
+    approximateStart: area.approximateStart,
+    approximateEnd: area.approximateEnd,
+    event: raw.event?.sv || raw.event?.en,
   };
 }
 
