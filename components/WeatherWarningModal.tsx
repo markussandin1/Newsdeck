@@ -91,12 +91,59 @@ function filterWarningsByDay(warnings: WeatherWarning[], selectedDay: string): W
   });
 }
 
+const severityLevels = [
+  {
+    value: 'Moderate',
+    severity: 'Moderate' as SMHISeverity,
+    label: 'Gul',
+    bgActive: 'bg-yellow-50',
+    borderActive: 'border-yellow-400',
+    textActive: 'text-yellow-700'
+  },
+  {
+    value: 'Severe',
+    severity: 'Severe' as SMHISeverity,
+    label: 'Orange',
+    bgActive: 'bg-orange-50',
+    borderActive: 'border-orange-500',
+    textActive: 'text-orange-700'
+  },
+  {
+    value: 'Extreme',
+    severity: 'Extreme' as SMHISeverity,
+    label: 'Röd',
+    bgActive: 'bg-red-50',
+    borderActive: 'border-red-500',
+    textActive: 'text-red-700'
+  }
+];
+
 export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string>(getTodayDateStr());
+  const [selectedSeverities, setSelectedSeverities] = useState<Set<string>>(
+    new Set(['Moderate', 'Severe', 'Extreme'])
+  );
+
+  const toggleSeverity = (severity: string) => {
+    setSelectedSeverities(prev => {
+      const next = new Set(prev);
+      if (next.has(severity)) {
+        next.delete(severity);
+      } else {
+        next.add(severity);
+      }
+      // Prevent deselecting all (keep at least one active)
+      return next.size === 0 ? prev : next;
+    });
+  };
 
   const dayTabs = useMemo(() => generateDayTabs(warnings), [warnings]);
-  const filteredWarnings = useMemo(() => filterWarningsByDay(warnings, selectedDay), [warnings, selectedDay]);
+  const filteredWarnings = useMemo(() => {
+    return filterWarningsByDay(warnings, selectedDay).filter(w =>
+      selectedSeverities.has(w.severity)
+    );
+  }, [warnings, selectedDay, selectedSeverities]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -130,6 +177,30 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
           </button>
         </div>
 
+        {/* Severity Filter Chips */}
+        <div className="mt-4 flex items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground">
+            Visa varningsnivå:
+          </span>
+          <div className="flex gap-2">
+            {severityLevels.map(level => (
+              <button
+                key={level.value}
+                onClick={() => toggleSeverity(level.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 flex items-center gap-2",
+                  selectedSeverities.has(level.value)
+                    ? `${level.bgActive} ${level.borderActive} ${level.textActive}`
+                    : "bg-white border-border text-muted-foreground hover:bg-muted/50"
+                )}
+              >
+                <SMHIWarningIcon severity={level.severity} size={16} />
+                {level.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Day Timeline Filter */}
         <div className="mt-4 border-b border-border pb-4">
           <div className="flex gap-2 overflow-x-auto scrollbar-thin">
@@ -161,8 +232,24 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
           {/* Left column: Warnings list */}
-          <div className="overflow-y-auto max-h-[calc(80vh-120px)] space-y-6">
-            {filteredWarnings.map((warning) => (
+          <div className="overflow-y-auto max-h-[calc(80vh-120px)]">
+            {filteredWarnings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-lg font-semibold text-foreground">
+                  Inga varningar för valda filter
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Prova att ändra varningsnivå eller dag
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {filteredWarnings.map((warning) => (
               <div key={warning.id} className="border-b border-border pb-4 last:border-b-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
@@ -191,7 +278,9 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
                   </a>
                 )}
               </div>
-            ))}
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right column: Map placeholder */}
