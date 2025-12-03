@@ -124,6 +124,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
   const [selectedSeverities, setSelectedSeverities] = useState<Set<string>>(
     new Set(['Moderate', 'Severe', 'Extreme'])
   );
+  const [selectedType, setSelectedType] = useState<string>('all');
 
   const toggleSeverity = (severity: string) => {
     setSelectedSeverities(prev => {
@@ -138,12 +139,28 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
     });
   };
 
+  const uniqueWarningTypes = useMemo(() => {
+    const types = warnings
+      .map(w => w.event)
+      .filter(Boolean) as string[];
+    return Array.from(new Set(types)).sort();
+  }, [warnings]);
+
+  const typeWarningCounts = useMemo(() => {
+    return uniqueWarningTypes.reduce((acc, type) => {
+      acc[type] = warnings.filter(w => w.event === type).length;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [warnings, uniqueWarningTypes]);
+
   const dayTabs = useMemo(() => generateDayTabs(warnings), [warnings]);
   const filteredWarnings = useMemo(() => {
-    return filterWarningsByDay(warnings, selectedDay).filter(w =>
-      selectedSeverities.has(w.severity)
-    );
-  }, [warnings, selectedDay, selectedSeverities]);
+    return filterWarningsByDay(warnings, selectedDay).filter(w => {
+      const matchesSeverity = selectedSeverities.has(w.severity);
+      const matchesType = selectedType === 'all' || w.event === selectedType;
+      return matchesSeverity && matchesType;
+    });
+  }, [warnings, selectedDay, selectedSeverities, selectedType]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -200,6 +217,34 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
             ))}
           </div>
         </div>
+
+        {/* Warning Type Dropdown */}
+        {uniqueWarningTypes.length > 0 && (
+          <div className="mt-3 flex items-center gap-3">
+            <label htmlFor="warning-type-select" className="text-sm font-medium text-muted-foreground">
+              Visa varningstyp:
+            </label>
+            <select
+              id="warning-type-select"
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className={cn(
+                "px-3 py-2 rounded-lg border-2 border-border bg-white",
+                "text-sm font-medium text-foreground",
+                "focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-light",
+                "hover:bg-muted/30 transition-colors",
+                "min-w-[200px]"
+              )}
+            >
+              <option value="all">Alla varningar</option>
+              {uniqueWarningTypes.map(type => (
+                <option key={type} value={type}>
+                  {type} ({typeWarningCounts[type]})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Day Timeline Filter */}
         <div className="mt-4 border-b border-border pb-4">
