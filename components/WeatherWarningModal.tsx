@@ -217,6 +217,23 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
     setIsMounted(true);
   }, []);
 
+  // Escape key handling
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (viewMode === 'detail') {
+          setViewMode('list');
+          setSelectedWarning(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [viewMode, onClose]);
+
   if (!isMounted || warnings.length === 0) {
     return null;
   }
@@ -232,9 +249,12 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
       <div
         className="relative w-full max-w-6xl max-h-[80vh] rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="modal-title"
+        aria-describedby="modal-description"
       >
         <div className="flex items-center justify-between pb-4 border-b border-border">
-          <h2 className="text-xl font-semibold font-display">Aktuella vädervarningar</h2>
+          <h2 id="modal-title" className="text-xl font-semibold font-display">Aktuella vädervarningar</h2>
           <button
             type="button"
             onClick={onClose}
@@ -244,23 +264,29 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
             <X size={24} />
           </button>
         </div>
+        <p id="modal-description" className="sr-only">
+          {filteredWarnings.length} aktiva vädervarningar. Använd filter för att sortera.
+        </p>
 
         {/* Two-column layout with filters in left column */}
         <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
           {/* Left column: Filters + Warnings list */}
           <div className="flex flex-col">
             {/* Filter Section */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4" role="group" aria-label="Varningsfilter">
               {/* Severity Filter Chips */}
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-muted-foreground">
                   Nivå:
                 </span>
-                <div className="flex gap-2">
+                <div className="flex gap-2" role="group" aria-label="Filtrera efter varningsnivå">
                   {severityLevels.map(level => (
                     <button
                       key={level.value}
                       onClick={() => toggleSeverity(level.value)}
+                      role="checkbox"
+                      aria-checked={selectedSeverities.has(level.value)}
+                      aria-label={`Filtrera ${level.label} varningar`}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 flex items-center gap-2",
                         selectedSeverities.has(level.value)
@@ -304,11 +330,14 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
 
             {/* Day Timeline Filter */}
             <div className="border-b border-border pb-4 mb-4">
-              <div className="flex gap-2 overflow-x-auto scrollbar-thin">
+              <div className="flex gap-2 overflow-x-auto scrollbar-thin" role="tablist" aria-label="Filtrera efter dag">
                 {dayTabs.map((day) => (
                   <button
                     key={day.date}
                     onClick={() => setSelectedDay(day.date)}
+                    role="tab"
+                    aria-selected={selectedDay === day.date}
+                    aria-label={`Varningar för ${day.label}, ${day.warningCount} aktiva`}
                     className={cn(
                       "flex-shrink-0 px-4 py-2 rounded-lg transition-colors text-sm font-medium",
                       selectedDay === day.date
@@ -332,7 +361,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
             </div>
 
             {/* Warnings list or detail view */}
-            <div className="overflow-y-auto flex-1">
+            <div className="overflow-y-auto flex-1" role="region" aria-live="polite" aria-atomic="false">
             {viewMode === 'detail' && selectedWarning ? (
               <div>
                 {/* Back button */}
