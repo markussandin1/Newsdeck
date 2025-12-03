@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { WeatherWarning } from '@/types/weather';
-import { ChevronRight, Clock, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Clock, Info, MapPin, X } from 'lucide-react';
 import { SMHIWarningIcon, type SMHISeverity } from './SMHIWarningIcon';
 import { cn } from '@/lib/utils';
 
@@ -173,6 +173,8 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
   const [selectedDay, setSelectedDay] = useState<string>(getTodayDateStr());
   const [selectedSeverities, setSelectedSeverities] = useState<Set<string>>(new Set());
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
+  const [selectedWarning, setSelectedWarning] = useState<WeatherWarning | null>(null);
 
   const toggleSeverity = (severity: string) => {
     setSelectedSeverities(prev => {
@@ -328,9 +330,82 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
               </div>
             </div>
 
-            {/* Warnings list */}
+            {/* Warnings list or detail view */}
             <div className="overflow-y-auto flex-1">
-            {filteredWarnings.length === 0 ? (
+            {viewMode === 'detail' && selectedWarning ? (
+              <div>
+                {/* Back button */}
+                <button
+                  onClick={() => {
+                    setViewMode('list');
+                    setSelectedWarning(null);
+                  }}
+                  className="flex items-center gap-2 text-primary-light hover:text-primary mb-4 transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                  <span className="text-sm font-medium">Tillbaka till listan</span>
+                </button>
+
+                {/* Title with icon */}
+                <div className="flex items-start gap-4 mb-6">
+                  <SMHIWarningIcon severity={selectedWarning.severity as SMHISeverity} size={48} />
+                  <div>
+                    <h2 className="text-2xl font-bold font-display text-foreground leading-tight">
+                      {selectedWarning.headline}
+                    </h2>
+                    <p className="text-base text-muted-foreground mt-1">
+                      {selectedWarning.areas.join(', ')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Description section */}
+                <section className="mb-6">
+                  <p className="text-base text-foreground whitespace-pre-wrap leading-relaxed">
+                    {selectedWarning.description}
+                  </p>
+                </section>
+
+                {/* Instruction section (if available) */}
+                {selectedWarning.instruction && (
+                  <section className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r">
+                    <h3 className="text-lg font-bold font-display text-foreground mb-3 flex items-center gap-2">
+                      <Info className="w-5 h-5" />
+                      Vad ska jag tänka på?
+                    </h3>
+                    <div className="text-sm text-foreground space-y-2">
+                      {selectedWarning.instruction.split('\n').map((line, i) => (
+                        <p key={i}>{line}</p>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Time section */}
+                {(selectedWarning.approximateStart || selectedWarning.approximateEnd) && (
+                  <section className="mb-6 p-4 bg-muted/30 rounded-lg">
+                    <h3 className="text-lg font-bold font-display text-foreground mb-2 flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      När?
+                    </h3>
+                    <p className="text-sm text-foreground">
+                      {formatTimeRange(selectedWarning.approximateStart, selectedWarning.approximateEnd)}
+                    </p>
+                  </section>
+                )}
+
+                {/* Location section */}
+                <section className="mb-6 p-4 bg-muted/30 rounded-lg">
+                  <h3 className="text-lg font-bold font-display text-foreground mb-2 flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Var?
+                  </h3>
+                  <p className="text-sm text-foreground">
+                    {selectedWarning.areas.join(', ') || 'Hela landet'}
+                  </p>
+                </section>
+              </div>
+            ) : filteredWarnings.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
                   <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -349,6 +424,10 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
                 {filteredWarnings.map((warning) => (
                   <button
                     key={warning.id}
+                    onClick={() => {
+                      setSelectedWarning(warning);
+                      setViewMode('detail');
+                    }}
                     className={cn(
                       "w-full text-left rounded-lg border-2 transition-all p-4 bg-white",
                       "hover:shadow-md hover:border-primary-light/50",
