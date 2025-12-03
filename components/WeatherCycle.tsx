@@ -16,8 +16,6 @@ import type { WeatherData } from '@/types/weather';
 
 interface WeatherCycleProps {
   cities: WeatherData[];
-  displayDuration?: number;
-  fadeDuration?: number;
   className?: string;
 }
 
@@ -33,45 +31,29 @@ const iconMap: Record<string, LucideIcon> = {
   CloudSnow,
 };
 
-export function WeatherCycle({
-  cities,
-  displayDuration = 5000,
-  fadeDuration = 800,
-  className = '',
-}: WeatherCycleProps) {
+export function WeatherCycle({ cities, className = '' }: WeatherCycleProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [nextIndex, setNextIndex] = useState(1);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
-  const currentCity = cities[currentIndex] || cities[0];
-  const nextCity = cities[nextIndex] || cities[0];
-
+  // Simple timer: increment index every 5 seconds
   useEffect(() => {
     if (cities.length <= 1 || isPaused) return;
 
-    const interval = setInterval(() => {
-      setIsTransitioning(true);
+    const timer = setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % cities.length);
+    }, 5000);
 
-      // After fade completes, update indices and reset
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % cities.length);
-        setNextIndex((prev) => (prev + 1) % cities.length);
-        setIsTransitioning(false);
-      }, fadeDuration);
-    }, displayDuration);
+    return () => clearTimeout(timer);
+  }, [currentIndex, cities.length, isPaused]);
 
-    return () => clearInterval(interval);
-  }, [cities.length, displayDuration, fadeDuration, isPaused]);
+  const city = cities[currentIndex];
+  if (!city) return null;
 
-  if (!currentCity) return null;
-
-  const CurrentIcon = currentCity ? iconMap[currentCity.icon] || Cloud : Cloud;
-  const NextIcon = nextCity ? iconMap[nextCity.icon] || Cloud : Cloud;
+  const Icon = iconMap[city.icon] || Cloud;
 
   return (
     <div
-      className={`relative h-10 overflow-hidden ${className}`}
+      className={`flex items-center gap-2 transition-opacity duration-500 ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
@@ -79,37 +61,15 @@ export function WeatherCycle({
       tabIndex={0}
       role="status"
       aria-live="polite"
-      aria-label={`Väder: ${currentCity.city}, ${currentCity.temperature} grader`}
+      aria-label={`Väder: ${city.city}, ${city.temperature} grader`}
     >
-      {/* Current city - fades out */}
-      <div
-        className={`absolute inset-0 flex items-center gap-2 transition-opacity duration-[800ms] ease-in-out ${
-          isTransitioning ? 'opacity-0' : 'opacity-100'
-        }`}
-      >
-        <CurrentIcon className="h-5 w-5 text-primary-light shrink-0" />
-        <span className="text-sm font-medium text-foreground whitespace-nowrap">
-          {currentCity.city}
-        </span>
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {currentCity.temperature}°
-        </span>
-      </div>
-
-      {/* Next city - fades in */}
-      <div
-        className={`absolute inset-0 flex items-center gap-2 transition-opacity duration-[800ms] ease-in-out ${
-          isTransitioning ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        <NextIcon className="h-5 w-5 text-primary-light shrink-0" />
-        <span className="text-sm font-medium text-foreground whitespace-nowrap">
-          {nextCity.city}
-        </span>
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {nextCity.temperature}°
-        </span>
-      </div>
+      <Icon className="h-5 w-5 text-primary-light shrink-0" />
+      <span className="text-sm font-medium text-foreground whitespace-nowrap">
+        {city.city}
+      </span>
+      <span className="text-sm text-muted-foreground whitespace-nowrap">
+        {city.temperature}°
+      </span>
     </div>
   );
 }

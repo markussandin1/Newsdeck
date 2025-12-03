@@ -1,18 +1,102 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { WeatherWarning } from '@/types/weather';
 import { ExternalLink, X } from 'lucide-react';
 import { SMHIWarningIcon, type SMHISeverity } from './SMHIWarningIcon';
+import { cn } from '@/lib/utils';
 
 interface WeatherWarningModalProps {
   warnings: WeatherWarning[];
   onClose: () => void;
 }
 
+interface DayTab {
+  date: string; // YYYY-MM-DD
+  label: string; // "Idag", "Imorgon", "Onsdag"
+  warningIcons: SMHISeverity[]; // Unique severities on this day
+  warningCount: number;
+}
+
+function getTodayDateStr(): string {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+}
+
+function getDayLabel(date: Date, offset: number): string {
+  if (offset === 0) return 'Idag';
+  if (offset === 1) return 'Imorgon';
+  const weekdays = ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag'];
+  return weekdays[date.getDay()];
+}
+
+function orderSeverities(severities: string[]): SMHISeverity[] {
+  const order: Record<string, number> = { 'Extreme': 0, 'Severe': 1, 'Moderate': 2, 'Minor': 3 };
+  return severities
+    .filter(s => ['Extreme', 'Severe', 'Moderate', 'Minor'].includes(s))
+    .sort((a, b) => order[a] - order[b])
+    .slice(0, 3) as SMHISeverity[];
+}
+
+function generateDayTabs(warnings: WeatherWarning[]): DayTab[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days: DayTab[] = [];
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() + i);
+    const dateStr = date.toISOString().split('T')[0];
+
+    // Get warnings active on this day
+    const dayWarnings = warnings.filter(w => {
+      const startDate = w.approximateStart ? new Date(w.approximateStart) : new Date();
+      const endDate = w.approximateEnd ? new Date(w.approximateEnd) : new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      return date >= startDate && date <= endDate;
+    });
+
+    // Extract unique severities
+    const severitySet = new Set(dayWarnings.map(w => w.severity));
+    const severities = Array.from(severitySet);
+    const ordered = orderSeverities(severities);
+
+    days.push({
+      date: dateStr,
+      label: getDayLabel(date, i),
+      warningIcons: ordered,
+      warningCount: dayWarnings.length
+    });
+  }
+
+  return days;
+}
+
+function filterWarningsByDay(warnings: WeatherWarning[], selectedDay: string): WeatherWarning[] {
+  const dayDate = new Date(selectedDay);
+  dayDate.setHours(0, 0, 0, 0);
+
+  return warnings.filter(w => {
+    const startDate = w.approximateStart ? new Date(w.approximateStart) : new Date();
+    const endDate = w.approximateEnd ? new Date(w.approximateEnd) : new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    return dayDate >= startDate && dayDate <= endDate;
+  });
+}
+
 export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string>(getTodayDateStr());
+
+  const dayTabs = useMemo(() => generateDayTabs(warnings), [warnings]);
+  const filteredWarnings = useMemo(() => filterWarningsByDay(warnings, selectedDay), [warnings, selectedDay]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -46,10 +130,39 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
           </button>
         </div>
 
+        {/* Day Timeline Filter */}
+        <div className="mt-4 border-b border-border pb-4">
+          <div className="flex gap-2 overflow-x-auto scrollbar-thin">
+            {dayTabs.map((day) => (
+              <button
+                key={day.date}
+                onClick={() => setSelectedDay(day.date)}
+                className={cn(
+                  "flex-shrink-0 px-4 py-2 rounded-lg transition-colors text-sm font-medium",
+                  selectedDay === day.date
+                    ? "bg-primary-light/10 text-primary-light border-2 border-primary-light"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <div className="text-center">
+                  <div className="font-semibold">{day.label}</div>
+                  {day.warningIcons.length > 0 && (
+                    <div className="flex gap-1 mt-1 justify-center">
+                      {day.warningIcons.map((severity, i) => (
+                        <SMHIWarningIcon key={i} severity={severity} size={16} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
           {/* Left column: Warnings list */}
           <div className="overflow-y-auto max-h-[calc(80vh-120px)] space-y-6">
-            {warnings.map((warning) => (
+            {filteredWarnings.map((warning) => (
               <div key={warning.id} className="border-b border-border pb-4 last:border-b-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">

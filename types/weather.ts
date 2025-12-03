@@ -101,4 +101,7 @@ export interface WeatherWarning {
   language: string;
   web?: string;
   instruction?: string;
+  approximateStart?: string; // ISO 8601 timestamp
+  approximateEnd?: string; // ISO 8601 timestamp
+  event?: string; // Warning type (e.g., "Plötslig ishalka", "Kuling")
 }

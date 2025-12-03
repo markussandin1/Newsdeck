@@ -153,22 +153,20 @@ export default function DashboardsPage() {
             </div>
 
             {/* Zone 3: Consolidated Weather & DateTime */}
-            <div className="hidden xl:flex items-center gap-3 shrink-0">
+            <div className="hidden lg:flex items-center gap-3 shrink-0">
               {warnings.length > 0 && (
                 <WeatherWarningBadge
                   warnings={warnings}
                   onClick={() => setIsWarningsModalOpen(true)}
                 />
               )}
-              <WeatherCycle cities={weather} className="w-[140px]" />
-              <EnhancedDateTime />
-            </div>
-
-            {/* Compact weather for large screens (no warnings) */}
-            <div className="hidden lg:flex xl:hidden items-center gap-3 shrink-0">
-              <WeatherCycle cities={weather} className="w-[120px]" />
-              <div className="h-6 w-px bg-border/30" />
-              <EnhancedDateTime showDate={false} />
+              <WeatherCycle cities={weather} className="w-[120px] xl:w-[140px]" />
+              <div className="hidden xl:block">
+                <EnhancedDateTime />
+              </div>
+              <div className="xl:hidden">
+                <EnhancedDateTime showDate={false} />
+              </div>
             </div>
 
             {/* Zone 4: User Controls */}
