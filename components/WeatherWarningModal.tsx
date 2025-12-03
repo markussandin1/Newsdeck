@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import type { WeatherWarning } from '@/types/weather';
 import { ArrowLeft, ChevronRight, Clock, Info, MapPin, X } from 'lucide-react';
 import { SMHIWarningIcon, type SMHISeverity } from './SMHIWarningIcon';
+import { WeatherWarningMap } from './WeatherWarningMap';
 import { cn } from '@/lib/utils';
 
 interface WeatherWarningModalProps {
@@ -478,11 +479,13 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
             </div>
           </div>
 
-          {/* Right column: Map placeholder */}
+          {/* Right column: Map */}
           <div className="hidden md:block h-[calc(80vh-120px)]">
-            <div className="h-full rounded-lg border-2 border-dashed border-border bg-muted/10 flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">Karta kommer här</p>
-            </div>
+            <WeatherWarningMap
+              warnings={filteredWarnings}
+              selectedWarning={selectedWarning}
+              height="100%"
+            />
           </div>
         </div>
       </div>
