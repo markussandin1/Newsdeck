@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { WeatherWarning } from '@/types/weather';
 import type { Map as LeafletMapInstance, LayerGroup } from 'leaflet';
-import type { SMHISeverity } from './SMHIWarningIcon';
 
 interface WeatherWarningMapProps {
   warnings: WeatherWarning[];
@@ -71,7 +70,6 @@ export function WeatherWarningMap({
 }: WeatherWarningMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMapInstance | null>(null);
-  const markersLayerRef = useRef<LayerGroup | null>(null);
   const polygonsLayerRef = useRef<LayerGroup | null>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -93,7 +91,7 @@ export function WeatherWarningMap({
       const { default: L } = await import('leaflet');
 
       // Fix default icons
-      const defaultIconPrototype = L.Icon.Default.prototype as any;
+      const defaultIconPrototype = L.Icon.Default.prototype as unknown as { _getIconUrl?: string };
       delete defaultIconPrototype._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -103,7 +101,7 @@ export function WeatherWarningMap({
 
       // Check if container already has leaflet initialized (defensive check)
       const container = containerRef.current!;
-      if ((container as any)._leaflet_id) {
+      if ('_leaflet_id' in container) {
         return;
       }
 
@@ -168,6 +166,7 @@ export function WeatherWarningMap({
 
         try {
           // GeoJSON uses [lng, lat] but Leaflet uses [lat, lng]
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const swapCoordinates = (coords: any): any => {
             if (typeof coords[0] === 'number') {
               return [coords[1], coords[0]];
@@ -229,6 +228,8 @@ export function WeatherWarningMap({
       // If warning has geometry, fit bounds to polygon
       if (selectedWarning.geometry) {
         try {
+          // GeoJSON uses [lng, lat] but Leaflet uses [lat, lng]
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const swapCoordinates = (coords: any): any => {
             if (typeof coords[0] === 'number') {
               return [coords[1], coords[0]];
