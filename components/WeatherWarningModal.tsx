@@ -294,7 +294,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
           {/* Left column: Warnings list */}
-          <div className="overflow-y-auto max-h-[calc(80vh-280px)]">
+          <div className="overflow-y-auto max-h-[calc(80vh-220px)]">
             {filteredWarnings.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
@@ -346,7 +346,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
           </div>
 
           {/* Right column: Map placeholder */}
-          <div className="hidden md:block sticky top-0 h-[calc(80vh-280px)]">
+          <div className="hidden md:block sticky top-0 h-[calc(80vh-220px)]">
             <div className="h-full rounded-lg border-2 border-dashed border-border bg-muted/10 flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Karta kommer här</p>
             </div>
