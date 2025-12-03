@@ -32,7 +32,8 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function WeatherCycle({ cities, className = '' }: WeatherCycleProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  // Start from random city on mount
+  const [currentIndex, setCurrentIndex] = useState(() => Math.floor(Math.random() * 100));
   const [isPaused, setIsPaused] = useState(false);
 
   // Simple timer: increment index every 5 seconds
@@ -40,13 +41,14 @@ export function WeatherCycle({ cities, className = '' }: WeatherCycleProps) {
     if (cities.length <= 1 || isPaused) return;
 
     const timer = setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % cities.length);
+      setCurrentIndex((prev) => prev + 1);
     }, 5000);
 
     return () => clearTimeout(timer);
   }, [currentIndex, cities.length, isPaused]);
 
-  const city = cities[currentIndex];
+  // Use modulo to wrap around city array
+  const city = cities[currentIndex % cities.length];
   if (!city) return null;
 
   const Icon = iconMap[city.icon] || Cloud;

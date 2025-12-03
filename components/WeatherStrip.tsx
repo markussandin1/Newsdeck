@@ -55,13 +55,20 @@ export function WeatherStrip({ className = '' }: { className?: string }) {
 
   const hasWarnings = !warningsError && warnings.length > 0;
 
+  // Rotate cities array to start from a random city
+  const rotatedCities = React.useMemo(() => {
+    if (weather.length === 0) return [];
+    const startIndex = Math.floor(Math.random() * weather.length);
+    return [...weather.slice(startIndex), ...weather.slice(0, startIndex)];
+  }, [weather]);
+
   // Calculate animation duration based on content width
   useEffect(() => {
-    if (!contentRef.current || weather.length === 0) return;
+    if (!contentRef.current || rotatedCities.length === 0) return;
 
     // Measure the width of one set of cities (not all 3 repetitions)
     const children = Array.from(contentRef.current.children);
-    const oneSetWidth = children.slice(0, weather.length).reduce((sum, child) => {
+    const oneSetWidth = children.slice(0, rotatedCities.length).reduce((sum, child) => {
       return sum + (child as HTMLElement).offsetWidth;
     }, 0);
 
@@ -71,13 +78,11 @@ export function WeatherStrip({ className = '' }: { className?: string }) {
     const duration = Math.max(oneSetWidth / pixelsPerSecond, 20); // Minimum 20s
 
     setAnimationDuration(duration);
-  }, [weather]);
+  }, [rotatedCities]);
 
   if (isLoadingWeather) {
     return <div className={`h-8 ${className}`} />; // Placeholder for height
   }
-  
-  const cities = weather;
 
   return (
     <>
@@ -98,7 +103,7 @@ export function WeatherStrip({ className = '' }: { className?: string }) {
             }}
           >
             {/* Render cities three times for seamless infinite loop */}
-            {[...cities, ...cities, ...cities].map((cityData, i) => (
+            {[...rotatedCities, ...rotatedCities, ...rotatedCities].map((cityData, i) => (
               <WeatherCityPill
                 key={`${cityData.city}-${i}`}
                 {...cityData}
