@@ -21,7 +21,10 @@ interface DayTab {
 
 function getTodayDateStr(): string {
   const today = new Date();
-  return today.toISOString().split('T')[0];
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function getDayLabel(date: Date, offset: number): string {
@@ -52,7 +55,10 @@ function generateDayTabs(warnings: WeatherWarning[]): DayTab[] {
     const dayEnd = new Date(dayStart);
     dayEnd.setHours(23, 59, 59, 999);
 
-    const dateStr = dayStart.toISOString().split('T')[0];
+    const year = dayStart.getFullYear();
+    const month = String(dayStart.getMonth() + 1).padStart(2, '0');
+    const day = String(dayStart.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
 
     // Get warnings active on this day
     const dayWarnings = warnings.filter(w => {
