@@ -210,57 +210,60 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
           </button>
         </div>
 
-        {/* Severity Filter Chips */}
-        <div className="mt-4 flex items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground">
-            Visa varningsnivå:
-          </span>
-          <div className="flex gap-2">
-            {severityLevels.map(level => (
-              <button
-                key={level.value}
-                onClick={() => toggleSeverity(level.value)}
+        {/* Filter Section */}
+        <div className="mt-4 space-y-3">
+          {/* Severity Filter Chips */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground shrink-0">
+              Varningsnivå:
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {severityLevels.map(level => (
+                <button
+                  key={level.value}
+                  onClick={() => toggleSeverity(level.value)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 flex items-center gap-2",
+                    selectedSeverities.has(level.value)
+                      ? `${level.bgActive} ${level.borderActive} ${level.textActive}`
+                      : "bg-white border-border text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <SMHIWarningIcon severity={level.severity} size={16} />
+                  {level.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Warning Type Dropdown */}
+          {uniqueWarningTypes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3">
+              <label htmlFor="warning-type-select" className="text-sm font-medium text-muted-foreground shrink-0">
+                Varningstyp:
+              </label>
+              <select
+                id="warning-type-select"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
                 className={cn(
-                  "px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 flex items-center gap-2",
-                  selectedSeverities.has(level.value)
-                    ? `${level.bgActive} ${level.borderActive} ${level.textActive}`
-                    : "bg-white border-border text-muted-foreground hover:bg-muted/50"
+                  "px-3 py-2 rounded-lg border-2 border-border bg-white",
+                  "text-sm font-medium text-foreground",
+                  "focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-light",
+                  "hover:bg-muted/30 transition-colors",
+                  "min-w-[200px]"
                 )}
               >
-                <SMHIWarningIcon severity={level.severity} size={16} />
-                {level.label}
-              </button>
-            ))}
-          </div>
+                <option value="all">Alla varningar</option>
+                {uniqueWarningTypes.map(type => (
+                  <option key={type} value={type}>
+                    {type} ({typeWarningCounts[type]})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
-
-        {/* Warning Type Dropdown */}
-        {uniqueWarningTypes.length > 0 && (
-          <div className="mt-3 flex items-center gap-3">
-            <label htmlFor="warning-type-select" className="text-sm font-medium text-muted-foreground">
-              Visa varningstyp:
-            </label>
-            <select
-              id="warning-type-select"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className={cn(
-                "px-3 py-2 rounded-lg border-2 border-border bg-white",
-                "text-sm font-medium text-foreground",
-                "focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary-light",
-                "hover:bg-muted/30 transition-colors",
-                "min-w-[200px]"
-              )}
-            >
-              <option value="all">Alla varningar</option>
-              {uniqueWarningTypes.map(type => (
-                <option key={type} value={type}>
-                  {type} ({typeWarningCounts[type]})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Day Timeline Filter */}
         <div className="mt-4 border-b border-border pb-4">
@@ -293,7 +296,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
           {/* Left column: Warnings list */}
-          <div className="overflow-y-auto max-h-[calc(80vh-120px)]">
+          <div className="overflow-y-auto max-h-[calc(80vh-280px)]">
             {filteredWarnings.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
@@ -345,7 +348,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
           </div>
 
           {/* Right column: Map placeholder */}
-          <div className="hidden md:block sticky top-0 h-[calc(80vh-120px)]">
+          <div className="hidden md:block sticky top-0 h-[calc(80vh-280px)]">
             <div className="h-full rounded-lg border-2 border-dashed border-border bg-muted/10 flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Karta kommer här</p>
             </div>
