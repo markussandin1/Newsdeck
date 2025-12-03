@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { WeatherWarning } from '@/types/weather';
-import { ExternalLink, X } from 'lucide-react';
+import { ChevronRight, Clock, X } from 'lucide-react';
 import { SMHIWarningIcon, type SMHISeverity } from './SMHIWarningIcon';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,38 @@ function getTodayDateStr(): string {
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const day = String(today.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function formatTimeRange(start?: string, end?: string): string {
+  if (!start && !end) return '';
+
+  const locale = 'sv-SE';
+
+  if (!start && end) {
+    const endDate = new Date(end);
+    return `Till ${endDate.toLocaleDateString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+  }
+
+  if (start && !end) {
+    const startDate = new Date(start);
+    return `Från ${startDate.toLocaleDateString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+  }
+
+  const startDate = new Date(start!);
+  const endDate = new Date(end!);
+
+  const isSameDay = startDate.toDateString() === endDate.toDateString();
+
+  if (isSameDay) {
+    const today = new Date();
+    const isToday = startDate.toDateString() === today.toDateString();
+    const dayLabel = isToday ? 'Idag' : startDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+    const startTime = startDate.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    const endTime = endDate.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    return `${dayLabel} ${startTime} - ${endTime}`;
+  }
+
+  return `${startDate.toLocaleDateString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleDateString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function getDayLabel(date: Date, offset: number): string {
@@ -313,36 +345,54 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {filteredWarnings.map((warning) => (
-              <div key={warning.id} className="border-b border-border pb-4 last:border-b-0">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-foreground pr-4 font-display">
-                      {warning.headline}
-                    </h3>
-                    <p className="mt-1 text-sm font-medium text-muted-foreground">
-                      {warning.areas.join(', ') || 'Hela landet'}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <SMHIWarningIcon severity={warning.severity as SMHISeverity} size={32} />
-                  </div>
-                </div>
-                <p className="mt-3 text-foreground whitespace-pre-wrap">
-                  {warning.description}
-                </p>
-                {warning.web && (
-                  <a
-                    href={warning.web}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 mt-3 text-sm text-primary-light hover:text-primary smooth-transition"
+                  <button
+                    key={warning.id}
+                    className={cn(
+                      "w-full text-left rounded-lg border-2 transition-all p-4 bg-white",
+                      "hover:shadow-md hover:border-primary-light/50",
+                      "focus:outline-none focus:ring-2 focus:ring-primary-light"
+                    )}
                   >
-                    Läs mer <ExternalLink size={14} />
-                  </a>
-                )}
-              </div>
+                    <div className="flex items-start gap-3">
+                      {/* Left: Severity icon */}
+                      <div className="flex-shrink-0 pt-1">
+                        <SMHIWarningIcon severity={warning.severity as SMHISeverity} size={32} />
+                      </div>
+
+                      {/* Center: Content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Title + Location */}
+                        <h3 className="font-bold text-foreground text-base leading-tight mb-1">
+                          {warning.headline}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {warning.areas.join(', ') || 'Hela landet'}
+                        </p>
+
+                        {/* Short description (max 2 lines) */}
+                        <p className="text-sm text-foreground line-clamp-2">
+                          {warning.description}
+                        </p>
+
+                        {/* Time range (if available) */}
+                        {(warning.approximateStart || warning.approximateEnd) && (
+                          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            <span>
+                              {formatTimeRange(warning.approximateStart, warning.approximateEnd)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Chevron arrow */}
+                      <div className="flex-shrink-0 text-muted-foreground">
+                        <ChevronRight className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </button>
                 ))}
               </div>
             )}
