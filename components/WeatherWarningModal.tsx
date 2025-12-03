@@ -31,7 +31,7 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
       aria-label="Aktuella vädervarningar"
     >
       <div
-        className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg"
+        className="relative w-full max-w-6xl max-h-[80vh] rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-4 border-b border-border">
@@ -46,37 +46,47 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
           </button>
         </div>
 
-        <div className="mt-4 space-y-6">
-          {warnings.map((warning) => (
-            <div key={warning.id} className="border-b border-border pb-4 last:border-b-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-foreground pr-4 font-display">
-                    {warning.headline}
-                  </h3>
-                  <p className="mt-1 text-sm font-medium text-muted-foreground">
-                    {warning.areas.join(', ') || 'Hela landet'}
-                  </p>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-6">
+          {/* Left column: Warnings list */}
+          <div className="overflow-y-auto max-h-[calc(80vh-120px)] space-y-6">
+            {warnings.map((warning) => (
+              <div key={warning.id} className="border-b border-border pb-4 last:border-b-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-foreground pr-4 font-display">
+                      {warning.headline}
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-muted-foreground">
+                      {warning.areas.join(', ') || 'Hela landet'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <SMHIWarningIcon severity={warning.severity as SMHISeverity} size={32} />
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <SMHIWarningIcon severity={warning.severity as SMHISeverity} size={32} />
-                </div>
+                <p className="mt-3 text-foreground whitespace-pre-wrap">
+                  {warning.description}
+                </p>
+                {warning.web && (
+                  <a
+                    href={warning.web}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 mt-3 text-sm text-primary-light hover:text-primary smooth-transition"
+                  >
+                    Läs mer <ExternalLink size={14} />
+                  </a>
+                )}
               </div>
-              <p className="mt-3 text-foreground whitespace-pre-wrap">
-                {warning.description}
-              </p>
-              {warning.web && (
-                <a
-                  href={warning.web}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 mt-3 text-sm text-primary-light hover:text-primary smooth-transition"
-                >
-                  Läs mer <ExternalLink size={14} />
-                </a>
-              )}
+            ))}
+          </div>
+
+          {/* Right column: Map placeholder */}
+          <div className="hidden md:block sticky top-0 h-[calc(80vh-120px)]">
+            <div className="h-full rounded-lg border-2 border-dashed border-border bg-muted/10 flex items-center justify-center">
+              <p className="text-muted-foreground text-sm">Karta kommer här</p>
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </div>
