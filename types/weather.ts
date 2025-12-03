@@ -85,7 +85,13 @@ export interface SMHIWarningAreaDetail {
     en?: string;
   }[];
   descriptions: SMHIWarningDescription[];
-  area?: unknown; // Geometry we currently ignore for UI
+  area?: {
+    type: string;
+    geometry: {
+      type: 'Polygon' | 'MultiPolygon';
+      coordinates: number[][][] | number[][][][];
+    };
+  };
   created?: string;
 }
 
@@ -104,4 +110,8 @@ export interface WeatherWarning {
   approximateStart?: string; // ISO 8601 timestamp
   approximateEnd?: string; // ISO 8601 timestamp
   event?: string; // Warning type (e.g., "Plötslig ishalka", "Kuling")
+  geometry?: {
+    type: 'Polygon' | 'MultiPolygon';
+    coordinates: number[][][] | number[][][][];
+  };
 }

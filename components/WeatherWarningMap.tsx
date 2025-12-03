@@ -70,6 +70,7 @@ export function WeatherWarningMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMapInstance | null>(null);
   const markersLayerRef = useRef<LayerGroup | null>(null);
+  const polygonsLayerRef = useRef<LayerGroup | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Initialize map once
@@ -125,6 +126,77 @@ export function WeatherWarningMap({
       }
     };
   }, []);
+
+  // Add polygons for warning areas
+  useEffect(() => {
+    if (!isReady || !mapInstanceRef.current) return;
+
+    const addPolygons = async () => {
+      const map = mapInstanceRef.current!;
+      const L = (await import('leaflet')).default;
+
+      // Clear existing polygons
+      if (polygonsLayerRef.current) {
+        polygonsLayerRef.current.clearLayers();
+      } else {
+        polygonsLayerRef.current = L.layerGroup().addTo(map);
+      }
+
+      const layer = polygonsLayerRef.current;
+
+      // Color mapping for severities
+      const colors: Record<string, string> = {
+        'Moderate': '#facc15',
+        'Severe': '#f97316',
+        'Extreme': '#ef4444'
+      };
+
+      // Add polygon for each warning
+      warnings.forEach(warning => {
+        if (!warning.geometry) return;
+
+        const color = colors[warning.severity] || '#facc15';
+        const isSelected = warning.id === selectedWarning?.id;
+
+        try {
+          // GeoJSON uses [lng, lat] but Leaflet uses [lat, lng]
+          const swapCoordinates = (coords: any): any => {
+            if (typeof coords[0] === 'number') {
+              return [coords[1], coords[0]];
+            }
+            return coords.map(swapCoordinates);
+          };
+
+          const leafletCoords = swapCoordinates(warning.geometry.coordinates);
+
+          const polygon = L.polygon(leafletCoords, {
+            color: isSelected ? '#3b82f6' : color,
+            fillColor: color,
+            fillOpacity: isSelected ? 0.3 : 0.2,
+            weight: isSelected ? 3 : 2,
+            opacity: 0.8
+          });
+
+          polygon.bindTooltip(warning.headline, {
+            sticky: true,
+            opacity: 0.95
+          });
+
+          if (onMarkerClick) {
+            polygon.on('click', () => {
+              onMarkerClick(warning);
+            });
+          }
+
+          polygon.addTo(layer);
+        } catch (error) {
+          console.error('Error rendering polygon for warning:', warning.id, error);
+        }
+      });
+    };
+
+    addPolygons();
+  }, [warnings, selectedWarning, isReady, onMarkerClick]);
 
   // Add markers for warnings
   useEffect(() => {
@@ -217,13 +289,39 @@ export function WeatherWarningMap({
     const flyToWarning = async () => {
       const map = mapInstanceRef.current!;
       const L = (await import('leaflet')).default;
-      const location = getWarningLocation(selectedWarning);
-      if (!location) return;
 
-      map.flyTo(location, 8, {
-        animate: true,
-        duration: 1.5
-      });
+      // If warning has geometry, fit bounds to polygon
+      if (selectedWarning.geometry) {
+        try {
+          const swapCoordinates = (coords: any): any => {
+            if (typeof coords[0] === 'number') {
+              return [coords[1], coords[0]];
+            }
+            return coords.map(swapCoordinates);
+          };
+
+          const leafletCoords = swapCoordinates(selectedWarning.geometry.coordinates);
+          const polygon = L.polygon(leafletCoords);
+          const bounds = polygon.getBounds();
+
+          map.flyToBounds(bounds, {
+            animate: true,
+            duration: 1.5,
+            padding: [50, 50]
+          });
+        } catch (error) {
+          console.error('Error flying to polygon bounds:', error);
+        }
+      } else {
+        // Fallback to center point
+        const location = getWarningLocation(selectedWarning);
+        if (location) {
+          map.flyTo(location, 8, {
+            animate: true,
+            duration: 1.5
+          });
+        }
+      }
     };
 
     flyToWarning();
