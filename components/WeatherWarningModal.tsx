@@ -236,8 +236,8 @@ export function WeatherWarningModal({ warnings, onClose }: WeatherWarningModalPr
             </div>
           </div>
 
-          {/* Warning Type Dropdown */}
-          {uniqueWarningTypes.length > 0 && (
+          {/* Warning Type Dropdown - only show if multiple types exist */}
+          {uniqueWarningTypes.length > 1 && (
             <div className="flex flex-wrap items-center gap-3">
               <label htmlFor="warning-type-select" className="text-sm font-medium text-muted-foreground shrink-0">
                 Varningstyp:
