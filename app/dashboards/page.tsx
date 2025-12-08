@@ -5,13 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Dashboard } from '@/lib/types'
-import { WeatherCycle } from '@/components/WeatherCycle'
-import { WeatherWarningBadge } from '@/components/WeatherWarningBadge'
-import { WeatherWarningModal } from '@/components/WeatherWarningModal'
-import { EnhancedDateTime } from '@/components/EnhancedDateTime'
-import { UserMenu } from '@/components/UserMenu'
-import { useWeather } from '@/lib/hooks/useWeather'
-import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings'
+import { GlobalHeader } from '@/components/GlobalHeader'
 
 type DashboardWithStats = Dashboard & {
   columnCount?: number
@@ -28,9 +22,23 @@ export default function DashboardsPage() {
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const [creatingDashboard, setCreatingDashboard] = useState(false)
-  const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false)
-  const { weather } = useWeather()
-  const { warnings } = useWeatherWarnings()
+  const [userName, setUserName] = useState<string | null>(null)
+
+  // Fetch user session
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session')
+        const session = await response.json()
+        if (session?.user) {
+          setUserName(session.user.name || session.user.email?.split('@')[0] || null)
+        }
+      } catch (error) {
+        console.error('Failed to fetch session:', error)
+      }
+    }
+    fetchSession()
+  }, [])
 
   const fetchDashboards = async (mine: boolean) => {
     setLoading(true)
@@ -120,70 +128,26 @@ export default function DashboardsPage() {
     window.location.href = '/api/auth/signout'
   }
 
+  // Page context content for Zone 2
+  const pageContext = (
+    <div className="px-4 py-2">
+      <h1 className="text-xl font-display font-semibold text-foreground">
+        Dashboards
+      </h1>
+      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+        <span>{dashboards.length} dashboards</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header - Matches DashboardHeader design */}
-      <div className="glass border-b border-border sticky top-0 z-50 hidden lg:block">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between gap-6">
-            {/* Zone 1 + 2: Tightly Grouped Left Side */}
-            <div className="flex items-center gap-2">
-              {/* Zone 1: Brand Anchor */}
-              <Link href="/dashboards" className="shrink-0">
-                <div className="w-12 h-12 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
-                  <Image
-                    src="/newsdeck-icon.svg"
-                    alt="Newsdeck logo"
-                    width={48}
-                    height={48}
-                    className="w-12 h-12 object-contain"
-                  />
-                </div>
-              </Link>
-
-              {/* Zone 2: Page Context */}
-              <div className="px-4 py-2">
-                <h1 className="text-xl font-display font-semibold text-foreground">
-                  Dashboards
-                </h1>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                  <span>{dashboards.length} dashboards</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Zone 3: Consolidated Weather & DateTime */}
-            <div className="hidden lg:flex items-center gap-3 shrink-0">
-              {warnings.length > 0 && (
-                <WeatherWarningBadge
-                  warnings={warnings}
-                  onClick={() => setIsWarningsModalOpen(true)}
-                />
-              )}
-              <WeatherCycle cities={weather} className="w-[120px] xl:w-[140px]" />
-              <div className="hidden xl:block">
-                <EnhancedDateTime />
-              </div>
-              <div className="xl:hidden">
-                <EnhancedDateTime showDate={false} />
-              </div>
-            </div>
-
-            {/* Zone 4: User Controls */}
-            <div className="flex items-center gap-4 shrink-0">
-              {/* Time only on mobile/tablet */}
-              <div className="flex lg:hidden">
-                <EnhancedDateTime showDate={false} />
-              </div>
-              <UserMenu
-                userName="User"
-                dashboardId=""
-                onLogout={handleLogout}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Global Header */}
+      <GlobalHeader
+        contextContent={pageContext}
+        userName={userName}
+        onLogout={handleLogout}
+      />
 
       {/* Filter Tabs */}
       <div className="bg-card border-b border-border">
@@ -309,14 +273,6 @@ export default function DashboardsPage() {
           </div>
         )}
       </div>
-
-      {/* Weather Warnings Modal */}
-      {isWarningsModalOpen && (
-        <WeatherWarningModal
-          warnings={warnings}
-          onClose={() => setIsWarningsModalOpen(false)}
-        />
-      )}
 
       {/* Create Dashboard Modal */}
       {showCreateModal && (

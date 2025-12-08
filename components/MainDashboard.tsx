@@ -10,6 +10,8 @@ import { extractWorkflowId } from '@/lib/dashboard/utils'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardPolling } from '@/lib/dashboard/hooks/useDashboardPolling'
 import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
+import { useNotificationSettings } from '@/lib/dashboard/hooks/useNotificationSettings'
+import { useDesktopNotifications } from '@/lib/dashboard/hooks/useDesktopNotifications'
 import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
 import { ThemeToggle } from './theme-toggle'
 import NewsItem from './NewsItem'
@@ -19,7 +21,12 @@ import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCirc
 import { motion, AnimatePresence } from 'framer-motion'
 import ColumnMapButton from './ColumnMapButton'
 import { DashboardHeader } from './DashboardHeader'
-import { WeatherStrip } from './WeatherStrip'
+import { WeatherCycle } from './WeatherCycle'
+import { WeatherWarningBanner } from './WeatherWarningBanner'
+import { WeatherWarningModal } from './WeatherWarningModal'
+import { NotificationSettingsModal } from './NotificationSettingsModal'
+import { useWeather } from '@/lib/hooks/useWeather'
+import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings'
 
 interface DashboardSearchInputProps {
   value: string
@@ -75,22 +82,45 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     updateColumnData,
   } = useDashboardData({ dashboard })
 
-  // Audio notification management (extracted to hook)
+  // Notification settings management
   const {
-    mutedColumns,
+    settings: notificationSettings,
+    updateGlobalSettings,
+    getColumnSettings,
+    setColumnSoundEnabled,
+  } = useNotificationSettings({ dashboardId: dashboard.id })
+
+  // Desktop notifications
+  const {
+    permission: desktopPermission,
+    requestPermission: requestDesktopPermission,
+    showNotification: showDesktopNotification,
+  } = useDesktopNotifications()
+
+  // Audio and desktop notification management
+  const {
     showAudioPrompt,
-    toggleMute,
-    playNotification,
+    handleNewItems,
     enableAudio,
     disableAudio,
-  } = useColumnNotifications({ dashboardId: dashboard.id })
+    testNotification,
+  } = useColumnNotifications({
+    settings: notificationSettings,
+    desktopPermission,
+    showDesktopNotification,
+    columns: dashboard?.columns || [],
+  })
 
   // Long-polling for real-time updates (extracted to hook)
   const { connectionStatus } = useDashboardPolling({
     columns: dashboard?.columns || [],
     updateColumnData,
-    onNewItems: playNotification,
+    onNewItems: handleNewItems,
   })
+
+  // Weather data
+  const { weather } = useWeather()
+  const { warnings } = useWeatherWarnings()
 
   // Layout and mobile state management (extracted to hook)
   const {
@@ -139,6 +169,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false)
+  const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false)
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -237,6 +269,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
   const hasActiveSearch = normalizedSearchQuery.length > 0
   const showSearchNoResults = hasActiveSearch && Object.values(filteredColumnData).every(items => items.length === 0)
+
+  // Helper function to check if a column has sound muted (for backwards compatibility with UI)
+  const isColumnSoundMuted = useCallback((columnId: string): boolean => {
+    const columnSettings = getColumnSettings(columnId)
+    return !columnSettings.soundEnabled
+  }, [getColumnSettings])
+
+  // Helper to toggle sound for a column
+  const toggleColumnSound = useCallback((columnId: string) => {
+    const currentSettings = getColumnSettings(columnId)
+    setColumnSoundEnabled(columnId, !currentSettings.soundEnabled)
+  }, [getColumnSettings, setColumnSoundEnabled])
 
   const getTotalNewsCount = () => {
     return Object.values(columnData).reduce((total, items) => total + items.length, 0)
@@ -698,9 +742,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 </button>
               </div>
 
-              {/* Weather Ticker - Mobile */}
+              {/* Weather Warning Banner - Mobile */}
+              {warnings.length > 0 && (
+                <div className="lg:hidden">
+                  <WeatherWarningBanner
+                    warnings={warnings}
+                    onClick={() => setIsWarningsModalOpen(true)}
+                  />
+                </div>
+              )}
+
+              {/* Weather Display - Mobile */}
               <div className="lg:hidden flex justify-center">
-                <WeatherStrip className="max-w-[280px]" />
+                <WeatherCycle cities={weather} className="max-w-[280px]" />
               </div>
             </div>
           ) : null}
@@ -716,6 +770,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             setShowCreateDashboardModal={setShowCreateDashboardModal}
             getTotalNewsCount={getTotalNewsCount}
             navigateToDashboard={navigateToDashboard}
+            onOpenNotificationSettings={() => setIsNotificationSettingsOpen(true)}
           />
 
           <div className="mt-3">
@@ -1156,12 +1211,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                                 />
                               )}
                               <Button
-                                onClick={() => toggleMute(column.id)}
+                                onClick={() => toggleColumnSound(column.id)}
                                 variant="ghost"
                                 size="icon"
-                                title={mutedColumns.has(column.id) ? "Ljud av - Klicka för att aktivera" : "Ljud på - Klicka för att stänga av"}
+                                title={isColumnSoundMuted(column.id) ? "Ljud av - Klicka för att aktivera" : "Ljud på - Klicka för att stänga av"}
                               >
-                                {mutedColumns.has(column.id) ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                {isColumnSoundMuted(column.id) ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                               </Button>
                               <Button
                                 onClick={() => startEditing(column)}
@@ -1846,13 +1901,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
               <div className="p-2 pb-4">
                 <button
                   onClick={() => {
-                    toggleMute(activeColumns[activeColumnIndex].id)
+                    toggleColumnSound(activeColumns[activeColumnIndex].id)
                     setShowDashboardDropdown(false)
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700"
                 >
                   <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center">
-                    {mutedColumns.has(activeColumns[activeColumnIndex].id) ? (
+                    {isColumnSoundMuted(activeColumns[activeColumnIndex].id) ? (
                       <VolumeX className="h-5 w-5" />
                     ) : (
                       <Volume2 className="h-5 w-5" />
@@ -1860,10 +1915,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                   </div>
                   <div className="flex-1">
                     <div className="font-medium">
-                      {mutedColumns.has(activeColumns[activeColumnIndex].id) ? 'Aktivera ljud' : 'Stäng av ljud'}
+                      {isColumnSoundMuted(activeColumns[activeColumnIndex].id) ? 'Aktivera ljud' : 'Stäng av ljud'}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {mutedColumns.has(activeColumns[activeColumnIndex].id)
+                      {isColumnSoundMuted(activeColumns[activeColumnIndex].id)
                         ? 'Notisljud är avstängt för denna kolumn'
                         : 'Ljudnotiser för nya händelser'}
                     </div>
@@ -1913,6 +1968,26 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
           </>
         )}
       </AnimatePresence>
+
+      {/* Weather Warnings Modal */}
+      {isWarningsModalOpen && (
+        <WeatherWarningModal
+          warnings={warnings}
+          onClose={() => setIsWarningsModalOpen(false)}
+        />
+      )}
+
+      {/* Notification Settings Modal */}
+      {isNotificationSettingsOpen && (
+        <NotificationSettingsModal
+          settings={notificationSettings}
+          desktopPermission={desktopPermission}
+          onClose={() => setIsNotificationSettingsOpen(false)}
+          onUpdateGlobal={updateGlobalSettings}
+          onRequestDesktopPermission={requestDesktopPermission}
+          onTestNotification={testNotification}
+        />
+      )}
     </div>
   )
 }

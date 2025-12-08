@@ -267,3 +267,51 @@ export type FormatLocationFn = (item: NewsItem) => string
  * Format relative time (e.g., "2 minuter sedan")
  */
 export type FormatRelativeTimeFn = (timestamp: string) => string
+
+// ============================================================================
+// Notification Settings Types
+// ============================================================================
+
+/**
+ * Per-column notification settings
+ */
+export interface ColumnNotificationSettings {
+  soundEnabled: boolean
+  desktopEnabled: boolean
+}
+
+/**
+ * Global notification settings
+ */
+export interface GlobalNotificationSettings {
+  masterEnabled: boolean           // Master toggle for all notifications
+  defaultSoundEnabled: boolean     // Default for new columns
+  defaultDesktopEnabled: boolean   // Default for new columns
+  newsValueThreshold: 1 | 2 | 3 | 4 | 5  // Only notify for items >= this value
+}
+
+/**
+ * Complete notification settings structure
+ */
+export interface NotificationSettings {
+  global: GlobalNotificationSettings
+  columns: Record<string, ColumnNotificationSettings>
+}
+
+/**
+ * Default notification settings
+ */
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  global: {
+    masterEnabled: true,
+    defaultSoundEnabled: true,
+    defaultDesktopEnabled: false,  // Off by default (requires permission)
+    newsValueThreshold: 3  // Notify for newsValue >= 3
+  },
+  columns: {}
+}
+
+/**
+ * Desktop notification permission status
+ */
+export type DesktopNotificationPermission = NotificationPermission | 'unsupported'

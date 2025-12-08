@@ -6,7 +6,7 @@ import { isNewsItemNew } from '@/lib/time-utils'
 interface UseDashboardPollingProps {
   columns: DashboardColumn[]
   updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void
-  onNewItems?: (columnId: string) => void
+  onNewItems?: (columnId: string, items: NewsItem[]) => void
 }
 
 interface UseDashboardPollingReturn {
@@ -137,13 +137,13 @@ export function useDashboardPolling({
 
             console.log(`LongPoll: Adding ${newItems.length} deduplicated items to column ${columnId}`)
 
-            // Only play notification sound if:
+            // Only trigger notification if:
             // 1. This is NOT the first poll (lastSeen exists)
             // 2. There are actually new items that are "new" (< 1 minute old)
-            const hasRecentItems = newItems.some(item => item.isNew)
-            if (onNewItems && lastSeen && hasRecentItems) {
-              console.log(`🔔 Playing notification for column ${columnId} (${newItems.filter(i => i.isNew).length} recent items)`)
-              onNewItems(columnId)
+            const recentItems = newItems.filter(item => item.isNew)
+            if (onNewItems && lastSeen && recentItems.length > 0) {
+              console.log(`🔔 Triggering notification for column ${columnId} (${recentItems.length} recent items)`)
+              onNewItems(columnId, recentItems)
             } else if (!lastSeen) {
               console.log(`🔇 Skipping notification for column ${columnId} (initial load)`)
             }
