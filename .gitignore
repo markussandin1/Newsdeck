@@ -78,4 +78,8 @@ claude.md
 *.gif
 Skärmavbild*
 Screenshot*
+
+# PWA icons are needed for deployment
+!public/icon-*.png
+
 .test-dist/
