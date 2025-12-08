@@ -1,0 +1,19 @@
+{
+  "name": "Newsdeck",
+  "short_name": "Newsdeck",
+  "description": "Real-time news dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/newsdeck-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["news", "productivity"]
+}

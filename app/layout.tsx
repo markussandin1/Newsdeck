@@ -22,13 +22,15 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Breaking News Dashboard',
-  description: 'Real-time breaking news dashboard POC',
+  title: 'Newsdeck',
+  description: 'Real-time news dashboard',
+  applicationName: 'Newsdeck',
   icons: {
     icon: '/newsdeck-icon.svg',
     shortcut: '/newsdeck-icon.svg',
     apple: '/newsdeck-icon.svg',
   },
+  manifest: '/manifest.json',
   viewport: {
     width: 'device-width',
     initialScale: 1,
@@ -39,11 +41,12 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'NewsDeck',
+    title: 'Newsdeck',
   },
   formatDetection: {
     telephone: false,
   },
+  themeColor: '#3b82f6',
 }
 
 export default function RootLayout({
