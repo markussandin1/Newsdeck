@@ -56,6 +56,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className={`${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} bg-gray-50 min-h-screen`}>
         <ThemeProvider
           attribute="class"
