@@ -27,7 +27,15 @@ export interface NewsItem {
     name?: string;              // Platsnamn (för bakåtkompatibilitet)
     coordinates?: number[];      // [lat, lng] eller annat format
   };
-  
+
+  // Normaliserade geografiska koder (från reference tables)
+  countryCode?: string;                  // ISO 3166-1 alpha-2: 'SE', 'NO', 'DK'
+  regionCountryCode?: string;            // Land för län (samma som countryCode)
+  regionCode?: string;                   // ISO 3166-2 länskod: 'AB', 'C', 'O', etc.
+  municipalityCountryCode?: string;      // Land för kommun
+  municipalityRegionCode?: string;       // Län för kommun
+  municipalityCode?: string;             // Kommunkod: '0180', '1480', etc.
+
   // Metadata
   createdInDb?: string;         // ISO 8601 format - när posten skapades i databasen
   isNew?: boolean;              // Om meddelandet är nytt (yngre än 1 minut, visas med pulserande effekt i max 60 sekunder)
@@ -75,6 +83,53 @@ export interface DashboardFollow {
   userId: string;
   dashboardId: string;
   followedAt: string;
+}
+
+// Geographic metadata types (for filtering)
+export interface Country {
+  code: string;                // ISO 3166-1 alpha-2: 'SE', 'NO', 'DK'
+  name: string;                // 'Sweden', 'Norway', 'Denmark'
+  nameLocal?: string;          // 'Sverige', 'Norge', 'Danmark'
+  createdAt: string;
+}
+
+export interface Region {
+  countryCode: string;         // 'SE', 'NO', etc.
+  code: string;                // SCB länskod: '01', '03', '12', etc.
+  name: string;                // 'Stockholms län', 'Skåne län'
+  nameShort?: string;          // 'Stockholm', 'Skåne'
+  isActive: boolean;           // För soft deletes (länssammanslagningar)
+  createdAt: string;
+}
+
+export interface Municipality {
+  countryCode: string;
+  regionCode: string;
+  code: string;                // SCB kommunkod: '0180', '1480', etc.
+  name: string;                // 'Stockholm', 'Göteborg', 'Malmö'
+  isActive: boolean;           // För soft deletes (kommunsammanslagningar)
+  mergedIntoCode?: string;     // Om kommunen slagits samman med annan
+  createdAt: string;
+}
+
+export interface LocationNameMapping {
+  id: number;
+  variant: string;             // Normaliserad variant (lowercase, trimmed)
+  countryCode?: string;
+  regionCountryCode?: string;
+  regionCode?: string;
+  municipalityCountryCode?: string;
+  municipalityRegionCode?: string;
+  municipalityCode?: string;
+  matchPriority: number;       // Lägre = högre prioritet (kommun > län > land)
+  matchType: 'exact' | 'fuzzy';
+  createdAt: string;
+}
+
+export interface GeoFilters {
+  regionCodes: string[];                // Valda länskoder: ['AB', 'M', 'O'] (ISO 3166-2)
+  municipalityCodes: string[];          // Valda kommunkoder: ['0180', '1280']
+  showItemsWithoutLocation: boolean;    // Visa items utan geografisk data
 }
 
 // Fake workflow data för POC

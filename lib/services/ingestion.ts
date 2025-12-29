@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid'
 import type { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 import { newsdeckPubSub } from '@/lib/pubsub'
 import { eventQueue } from '@/lib/event-queue'
+import { locationCache } from '@/lib/services/location-cache'
+import { persistentDb } from '@/lib/db-postgresql'
 
 export class IngestionError extends Error {
   status: number
@@ -109,6 +111,116 @@ const normalizeCoordinates = (coords: unknown): number[] | undefined => {
   }
 
   return undefined
+}
+
+/**
+ * Normalize location metadata using in-memory cache
+ *
+ * This function attempts to match location strings (country, county, municipality)
+ * to normalized geographic codes using the location cache. It tries matching in
+ * order of specificity: municipality -> county -> country.
+ *
+ * CRITICAL: This is a synchronous operation using in-memory cache (no DB queries!)
+ * to avoid performance degradation during high-volume ingestion.
+ *
+ * @param location - The location object from the news item
+ * @param workflowId - The workflow ID for logging unmatched locations
+ * @returns Normalized geographic codes (countryCode, regionCode, municipalityCode)
+ */
+const normalizeLocationMetadata = (
+  location: NewsItem['location'],
+  workflowId: string
+): {
+  countryCode?: string
+  regionCountryCode?: string
+  regionCode?: string
+  municipalityCountryCode?: string
+  municipalityRegionCode?: string
+  municipalityCode?: string
+} => {
+  if (!location) return {}
+
+  // Only proceed if location cache is ready
+  if (!locationCache.isReady()) {
+    return {}
+  }
+
+  // Try to match municipality first (most specific)
+  if (location.municipality) {
+    const match = locationCache.lookup(location.municipality)
+    if (match && match.municipalityCode) {
+      return {
+        countryCode: match.countryCode,
+        regionCountryCode: match.regionCountryCode,
+        regionCode: match.regionCode,
+        municipalityCountryCode: match.municipalityCountryCode,
+        municipalityRegionCode: match.municipalityRegionCode,
+        municipalityCode: match.municipalityCode
+      }
+    } else if (location.municipality) {
+      // Log unmatched municipality for admin review (async, don't wait)
+      persistentDb.logUnmatchedLocation({
+        rawLocation: location,
+        failedField: 'municipality',
+        failedValue: location.municipality,
+        sourceWorkflowId: workflowId
+      }).catch(() => {
+        // Logging failures shouldn't break ingestion
+      })
+    }
+  }
+
+  // Fall back to county/region matching
+  if (location.county) {
+    const match = locationCache.lookup(location.county)
+    if (match && match.regionCode) {
+      return {
+        countryCode: match.countryCode,
+        regionCountryCode: match.regionCountryCode,
+        regionCode: match.regionCode,
+        municipalityCountryCode: undefined,
+        municipalityRegionCode: undefined,
+        municipalityCode: undefined
+      }
+    } else if (location.county) {
+      // Log unmatched county for admin review (async, don't wait)
+      persistentDb.logUnmatchedLocation({
+        rawLocation: location,
+        failedField: 'county',
+        failedValue: location.county,
+        sourceWorkflowId: workflowId
+      }).catch(() => {
+        // Logging failures shouldn't break ingestion
+      })
+    }
+  }
+
+  // Fall back to country matching
+  if (location.country) {
+    const match = locationCache.lookup(location.country)
+    if (match && match.countryCode) {
+      return {
+        countryCode: match.countryCode,
+        regionCountryCode: undefined,
+        regionCode: undefined,
+        municipalityCountryCode: undefined,
+        municipalityRegionCode: undefined,
+        municipalityCode: undefined
+      }
+    } else if (location.country) {
+      // Log unmatched country for admin review (async, don't wait)
+      persistentDb.logUnmatchedLocation({
+        rawLocation: location,
+        failedField: 'country',
+        failedValue: location.country,
+        sourceWorkflowId: workflowId
+      }).catch(() => {
+        // Logging failures shouldn't break ingestion
+      })
+    }
+  }
+
+  return {} // No match found, original location preserved in JSONB
 }
 
 const resolveUrl = (item: RawNewsItem): string | undefined => {
@@ -229,6 +341,9 @@ export const ingestNewsItems = async (
       ? item.timestamp
       : new Date().toISOString()
 
+    // Normalize location metadata using in-memory cache (synchronous, fast)
+    const normalizedLocation = normalizeLocationMetadata(item.location, resolvedWorkflowId)
+
     return {
       id: toOptionalTrimmed(item.id), // Optional source ID
       dbId: uuidv4(),
@@ -248,6 +363,13 @@ export const ingestNewsItems = async (
         ...item.location,
         coordinates: normalizeCoordinates(item.location.coordinates)
       } : undefined,
+      // Add normalized geographic codes
+      countryCode: normalizedLocation.countryCode,
+      regionCountryCode: normalizedLocation.regionCountryCode,
+      regionCode: normalizedLocation.regionCode,
+      municipalityCountryCode: normalizedLocation.municipalityCountryCode,
+      municipalityRegionCode: normalizedLocation.municipalityRegionCode,
+      municipalityCode: normalizedLocation.municipalityCode,
       extra: {
         ...(isRecord(item.extra) ? item.extra : {}),
         ...extra

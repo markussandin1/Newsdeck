@@ -13,11 +13,13 @@ import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotificat
 import { useNotificationSettings } from '@/lib/dashboard/hooks/useNotificationSettings'
 import { useDesktopNotifications } from '@/lib/dashboard/hooks/useDesktopNotifications'
 import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
+import { useGeoFilters } from '@/lib/dashboard/hooks/useGeoFilters'
 import { ThemeToggle } from './theme-toggle'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
-import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search, MapPin } from 'lucide-react'
+import { GeoFilterPanel } from './GeoFilterPanel'
 import { motion, AnimatePresence } from 'framer-motion'
 import ColumnMapButton from './ColumnMapButton'
 import { DashboardHeader } from './DashboardHeader'
@@ -97,6 +99,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     showNotification: showDesktopNotification,
   } = useDesktopNotifications()
 
+  // Geographic filters
+  const geoFilters = useGeoFilters({ dashboardId: dashboard.id })
+
   // Audio and desktop notification management
   const {
     showAudioPrompt,
@@ -171,6 +176,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [searchQuery, setSearchQuery] = useState('')
   const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false)
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false)
+  const [showGeoFilterPanel, setShowGeoFilterPanel] = useState(false)
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -222,7 +228,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const normalizedSearchQuery = searchQuery.trim().toLowerCase()
 
   const filteredColumnData = useMemo(() => {
-    if (!normalizedSearchQuery) {
+    const hasSearchQuery = !!normalizedSearchQuery
+    const hasGeoFilters = geoFilters.isActive
+
+    // If no filters are active, return all data
+    if (!hasSearchQuery && !hasGeoFilters) {
       return memoizedColumnData
     }
 
@@ -261,13 +271,25 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
     const filtered: ColumnData = {}
     Object.entries(memoizedColumnData).forEach(([columnId, items]) => {
-      filtered[columnId] = items.filter(matchesQuery)
+      let columnItems = items
+
+      // Apply search filter
+      if (hasSearchQuery) {
+        columnItems = columnItems.filter(matchesQuery)
+      }
+
+      // Apply geographic filters
+      if (hasGeoFilters) {
+        columnItems = geoFilters.applyFilters(columnItems)
+      }
+
+      filtered[columnId] = columnItems
     })
 
     return filtered
-  }, [memoizedColumnData, normalizedSearchQuery])
+  }, [memoizedColumnData, normalizedSearchQuery, geoFilters])
 
-  const hasActiveSearch = normalizedSearchQuery.length > 0
+  const hasActiveSearch = normalizedSearchQuery.length > 0 || geoFilters.isActive
   const showSearchNoResults = hasActiveSearch && Object.values(filteredColumnData).every(items => items.length === 0)
 
   // Helper function to check if a column has sound muted (for backwards compatibility with UI)
@@ -773,12 +795,47 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             onOpenNotificationSettings={() => setIsNotificationSettingsOpen(true)}
           />
 
-          <div className="mt-3">
-            <DashboardSearchInput value={searchQuery} onChange={setSearchQuery} />
+          <div className="mt-3 space-y-2">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <DashboardSearchInput value={searchQuery} onChange={setSearchQuery} />
+              </div>
+              <button
+                onClick={() => setShowGeoFilterPanel(!showGeoFilterPanel)}
+                className={`px-3 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
+                  geoFilters.isActive
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-input hover:bg-muted'
+                }`}
+                title="Geografiska filter"
+              >
+                <MapPin className="h-4 w-4" />
+                {geoFilters.isActive && (
+                  <span className="text-xs font-medium">
+                    {geoFilters.filters.regionCodes.length + geoFilters.filters.municipalityCodes.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {showGeoFilterPanel && (
+              <GeoFilterPanel geoFilters={geoFilters} />
+            )}
           </div>
+
           {hasActiveSearch && !showSearchNoResults && (
             <div className="mt-2 text-xs text-muted-foreground">
-              Visar händelser som matchar <span className="font-medium text-foreground">{searchQuery}</span>
+              {searchQuery && (
+                <span>
+                  Visar händelser som matchar <span className="font-medium text-foreground">{searchQuery}</span>
+                </span>
+              )}
+              {searchQuery && geoFilters.isActive && <span> och </span>}
+              {geoFilters.isActive && (
+                <span>
+                  filtrerade efter plats
+                </span>
+              )}
             </div>
           )}
         </div>

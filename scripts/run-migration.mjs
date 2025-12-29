@@ -4,6 +4,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
 
+// Load .env.local first (takes precedence), then .env
+dotenv.config({ path: '.env.local' })
 dotenv.config()
 
 const { Pool } = pg

@@ -8,6 +8,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: process.env.DOCKER_BUILD === 'true',
   },
+  // Enable instrumentation hook for server initialization
+  experimental: {
+    instrumentationHook: true,
+  },
 }
 
 module.exports = nextConfig

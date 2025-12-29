@@ -1,6 +1,6 @@
 import { Pool } from 'pg'
 import { parse as parseConnectionString } from 'pg-connection-string'
-import { NewsItem, Dashboard, DashboardColumn } from './types'
+import { NewsItem, Dashboard, DashboardColumn, Country, Region, Municipality } from './types'
 import { logger } from './logger'
 
 // PostgreSQL connection pool
@@ -105,8 +105,10 @@ export const persistentDb = {
       const result = await pool.query(
         `INSERT INTO news_items (
           source_id, workflow_id, source, timestamp, title, description,
-          news_value, category, severity, location, extra, raw, created_in_db
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          news_value, category, severity, location, extra, raw, created_in_db,
+          country_code, region_country_code, region_code,
+          municipality_country_code, municipality_region_code, municipality_code
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         RETURNING db_id`,
         [
           item.id || null,  // Original source ID (can be null)
@@ -121,7 +123,13 @@ export const persistentDb = {
           JSON.stringify(item.location || {}),
           JSON.stringify(item.extra || {}),
           JSON.stringify(item.raw || {}),
-          itemWithTimestamp.createdInDb
+          itemWithTimestamp.createdInDb,
+          item.countryCode || null,
+          item.regionCountryCode || null,
+          item.regionCode || null,
+          item.municipalityCountryCode || null,
+          item.municipalityRegionCode || null,
+          item.municipalityCode || null
         ]
       )
 
@@ -154,8 +162,10 @@ export const persistentDb = {
         const result = await client.query(
           `INSERT INTO news_items (
             source_id, workflow_id, source, timestamp, title, description,
-            news_value, category, severity, location, extra, raw, created_in_db
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            news_value, category, severity, location, extra, raw, created_in_db,
+            country_code, region_country_code, region_code,
+            municipality_country_code, municipality_region_code, municipality_code
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
           RETURNING db_id`,
           [
             item.id || null,  // Original source ID (can be null)
@@ -170,7 +180,13 @@ export const persistentDb = {
             JSON.stringify(item.location || {}),
             JSON.stringify(item.extra || {}),
             JSON.stringify(item.raw || {}),
-            item.createdInDb
+            item.createdInDb,
+            item.countryCode || null,
+            item.regionCountryCode || null,
+            item.regionCode || null,
+            item.municipalityCountryCode || null,
+            item.municipalityRegionCode || null,
+            item.municipalityCode || null
           ]
         )
 
@@ -1227,6 +1243,205 @@ export const persistentDb = {
     } catch (error) {
       logger.error('db.isConnected.error', { error })
       return false
+    }
+  },
+
+  // ========================================
+  // Geographic Metadata Functions
+  // ========================================
+
+  /**
+   * Get all countries
+   */
+  getCountries: async (): Promise<Country[]> => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(`
+        SELECT code, name, name_local as "nameLocal", created_at as "createdAt"
+        FROM countries
+        ORDER BY name
+      `)
+      return result.rows
+    } catch (error) {
+      logger.error('db.getCountries.error', { error })
+      throw error
+    }
+  },
+
+  /**
+   * Get all regions (counties) for a specific country
+   */
+  getRegionsByCountry: async (countryCode: string): Promise<Region[]> => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(`
+        SELECT
+          country_code as "countryCode",
+          code,
+          name,
+          name_short as "nameShort",
+          is_active as "isActive",
+          created_at as "createdAt"
+        FROM regions
+        WHERE country_code = $1 AND is_active = TRUE
+        ORDER BY name
+      `, [countryCode])
+      return result.rows
+    } catch (error) {
+      logger.error('db.getRegionsByCountry.error', { error, countryCode })
+      throw error
+    }
+  },
+
+  /**
+   * Get all municipalities for a specific region
+   */
+  getMunicipalitiesByRegion: async (countryCode: string, regionCode: string): Promise<Municipality[]> => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(`
+        SELECT
+          country_code as "countryCode",
+          region_code as "regionCode",
+          code,
+          name,
+          is_active as "isActive",
+          merged_into_code as "mergedIntoCode",
+          created_at as "createdAt"
+        FROM municipalities
+        WHERE country_code = $1 AND region_code = $2 AND is_active = TRUE
+        ORDER BY name
+      `, [countryCode, regionCode])
+      return result.rows
+    } catch (error) {
+      logger.error('db.getMunicipalitiesByRegion.error', { error, countryCode, regionCode })
+      throw error
+    }
+  },
+
+  /**
+   * Get all municipalities for a country (across all regions)
+   */
+  getMunicipalitiesByCountry: async (countryCode: string): Promise<Municipality[]> => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(`
+        SELECT
+          country_code as "countryCode",
+          region_code as "regionCode",
+          code,
+          name,
+          is_active as "isActive",
+          merged_into_code as "mergedIntoCode",
+          created_at as "createdAt"
+        FROM municipalities
+        WHERE country_code = $1 AND is_active = TRUE
+        ORDER BY name
+      `, [countryCode])
+      return result.rows
+    } catch (error) {
+      logger.error('db.getMunicipalitiesByCountry.error', { error, countryCode })
+      throw error
+    }
+  },
+
+  /**
+   * Log an unmatched location for data quality monitoring
+   */
+  logUnmatchedLocation: async (log: {
+    rawLocation: NewsItem['location']
+    failedField: string
+    failedValue: string
+    sourceWorkflowId: string
+  }): Promise<void> => {
+    try {
+      const pool = getPool()
+      await pool.query(`
+        INSERT INTO location_normalization_logs (raw_location, failed_field, failed_value, source_workflow_id)
+        VALUES ($1, $2, $3, $4)
+      `, [JSON.stringify(log.rawLocation), log.failedField, log.failedValue, log.sourceWorkflowId])
+    } catch (error) {
+      logger.error('db.logUnmatchedLocation.error', { error, log })
+      // Don't throw - logging failures shouldn't break ingestion
+    }
+  },
+
+  /**
+   * Get unmatched locations grouped by value for admin review
+   */
+  getUnmatchedLocations: async (limit: number = 100): Promise<Array<{
+    value: string
+    field: string
+    count: number
+    firstSeen: string
+    lastSeen: string
+  }>> => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(`
+        SELECT
+          failed_value as value,
+          failed_field as field,
+          COUNT(*) as count,
+          MIN(created_at) as "firstSeen",
+          MAX(created_at) as "lastSeen"
+        FROM location_normalization_logs
+        GROUP BY failed_value, failed_field
+        ORDER BY count DESC, "lastSeen" DESC
+        LIMIT $1
+      `, [limit])
+      return result.rows
+    } catch (error) {
+      logger.error('db.getUnmatchedLocations.error', { error })
+      throw error
+    }
+  },
+
+  /**
+   * Create a new location name mapping (admin function)
+   */
+  createLocationMapping: async (mapping: {
+    variant: string
+    countryCode?: string
+    regionCountryCode?: string
+    regionCode?: string
+    municipalityCountryCode?: string
+    municipalityRegionCode?: string
+    municipalityCode?: string
+    matchPriority: number
+    matchType: 'exact' | 'fuzzy'
+  }): Promise<void> => {
+    try {
+      const pool = getPool()
+      await pool.query(`
+        INSERT INTO location_name_mappings (
+          variant, country_code, region_country_code, region_code,
+          municipality_country_code, municipality_region_code, municipality_code,
+          match_priority, match_type
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (variant) DO UPDATE SET
+          country_code = EXCLUDED.country_code,
+          region_country_code = EXCLUDED.region_country_code,
+          region_code = EXCLUDED.region_code,
+          municipality_country_code = EXCLUDED.municipality_country_code,
+          municipality_region_code = EXCLUDED.municipality_region_code,
+          municipality_code = EXCLUDED.municipality_code,
+          match_priority = EXCLUDED.match_priority,
+          match_type = EXCLUDED.match_type
+      `, [
+        mapping.variant.toLowerCase().trim(),
+        mapping.countryCode || null,
+        mapping.regionCountryCode || null,
+        mapping.regionCode || null,
+        mapping.municipalityCountryCode || null,
+        mapping.municipalityRegionCode || null,
+        mapping.municipalityCode || null,
+        mapping.matchPriority,
+        mapping.matchType
+      ])
+    } catch (error) {
+      logger.error('db.createLocationMapping.error', { error, mapping })
+      throw error
     }
   }
 }
