@@ -87,7 +87,8 @@ ALTER TABLE news_items
   ADD COLUMN IF NOT EXISTS municipality_region_code TEXT,
   ADD COLUMN IF NOT EXISTS municipality_code TEXT;
 
--- Add foreign key constraints (only if columns don't already have them)
+-- Add foreign key constraints with SET NULL protection (only if columns don't already have them)
+-- CRITICAL: Use ON DELETE SET NULL to prevent data loss when geo data is cleaned/updated
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -97,7 +98,8 @@ BEGIN
     ALTER TABLE news_items
       ADD CONSTRAINT news_items_region_fkey
       FOREIGN KEY (region_country_code, region_code)
-      REFERENCES regions(country_code, code);
+      REFERENCES regions(country_code, code)
+      ON DELETE SET NULL;  -- Protect news_items from cascading deletes
   END IF;
 
   IF NOT EXISTS (
@@ -107,7 +109,8 @@ BEGIN
     ALTER TABLE news_items
       ADD CONSTRAINT news_items_municipality_fkey
       FOREIGN KEY (municipality_country_code, municipality_region_code, municipality_code)
-      REFERENCES municipalities(country_code, region_code, code);
+      REFERENCES municipalities(country_code, region_code, code)
+      ON DELETE SET NULL;  -- Protect news_items from cascading deletes
   END IF;
 END$$;
 
