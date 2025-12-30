@@ -3,8 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import type { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 import { newsdeckPubSub } from '@/lib/pubsub'
 import { eventQueue } from '@/lib/event-queue'
-import { locationCache } from '@/lib/services/location-cache'
-import { persistentDb } from '@/lib/db-postgresql'
+import { persistentDb, geoLookup } from '@/lib/db-postgresql'
 
 export class IngestionError extends Error {
   status: number
@@ -141,27 +140,39 @@ const normalizeLocationMetadata = async (
 }> => {
   if (!location) return {}
 
-  // Wait for location cache to load if it's not ready
-  // This handles race condition during server startup
-  if (!locationCache.isReady()) {
-    console.warn('[Ingestion] Location cache not ready, waiting for it to load...')
-    try {
-      await locationCache.load()
-      console.log('[Ingestion] ✅ Location cache loaded successfully')
-    } catch (error) {
-      console.error('[Ingestion] ❌ Failed to load location cache:', error)
-      return {} // If cache fails to load, return empty (item will have no geo codes)
+  // Check if location already has geographic codes from Workflows AI agent
+  // If codes are present, trust them and skip fuzzy matching
+  const hasCountryCode = isNonEmptyString(location.countryCode)
+  const hasRegionCode = isNonEmptyString(location.regionCode)
+  const hasMunicipalityCode = isNonEmptyString(location.municipalityCode)
+
+  if (hasCountryCode && hasRegionCode) {
+    // Codes provided by AI agent - use them directly
+    return {
+      countryCode: location.countryCode,
+      regionCountryCode: location.countryCode,
+      regionCode: location.regionCode,
+      municipalityCountryCode: hasMunicipalityCode ? location.countryCode : undefined,
+      municipalityRegionCode: hasMunicipalityCode ? location.regionCode : undefined,
+      municipalityCode: hasMunicipalityCode ? location.municipalityCode : undefined
     }
   }
 
+  // Fall back to fuzzy matching if codes not provided
   // Try to match municipality first (most specific)
   if (location.municipality) {
-    const match = locationCache.lookup(location.municipality)
+    // Normalize: strip common suffixes like " kommun", " stad", etc.
+    const normalizedMunicipality = location.municipality
+      .replace(/\s+kommun$/i, '')
+      .replace(/\s+stad$/i, '')
+      .trim()
+
+    const match = await geoLookup.findByName(normalizedMunicipality)
     if (match && match.municipalityCode) {
       return {
-        countryCode: match.countryCode,
-        regionCountryCode: match.regionCountryCode,
-        regionCode: match.regionCode,
+        countryCode: match.municipalityCountryCode || match.countryCode,
+        regionCountryCode: match.municipalityCountryCode || match.countryCode,
+        regionCode: match.municipalityRegionCode,  // Use municipality's region!
         municipalityCountryCode: match.municipalityCountryCode,
         municipalityRegionCode: match.municipalityRegionCode,
         municipalityCode: match.municipalityCode
@@ -181,7 +192,12 @@ const normalizeLocationMetadata = async (
 
   // Fall back to county/region matching
   if (location.county) {
-    const match = locationCache.lookup(location.county)
+    // Normalize: strip " län" suffix
+    const normalizedCounty = location.county
+      .replace(/\s+län$/i, '')
+      .trim()
+
+    const match = await geoLookup.findByName(normalizedCounty)
     if (match && match.regionCode) {
       return {
         countryCode: match.countryCode,
@@ -204,9 +220,39 @@ const normalizeLocationMetadata = async (
     }
   }
 
+  // Try location.area (e.g., "Mjällom" → Kramfors municipality)
+  if (location.area) {
+    const match = await geoLookup.findByName(location.area)
+    if (match && (match.municipalityCode || match.regionCode)) {
+      return {
+        countryCode: match.countryCode,
+        regionCountryCode: match.regionCountryCode,
+        regionCode: match.regionCode,
+        municipalityCountryCode: match.municipalityCountryCode,
+        municipalityRegionCode: match.municipalityRegionCode,
+        municipalityCode: match.municipalityCode
+      }
+    }
+  }
+
+  // Try location.name as last resort
+  if (location.name) {
+    const match = await geoLookup.findByName(location.name)
+    if (match && (match.municipalityCode || match.regionCode)) {
+      return {
+        countryCode: match.countryCode,
+        regionCountryCode: match.regionCountryCode,
+        regionCode: match.regionCode,
+        municipalityCountryCode: match.municipalityCountryCode,
+        municipalityRegionCode: match.municipalityRegionCode,
+        municipalityCode: match.municipalityCode
+      }
+    }
+  }
+
   // Fall back to country matching
   if (location.country) {
-    const match = locationCache.lookup(location.country)
+    const match = await geoLookup.findByName(location.country)
     if (match && match.countryCode) {
       return {
         countryCode: match.countryCode,

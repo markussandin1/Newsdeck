@@ -1,0 +1,124 @@
+{
+  "type": "object",
+  "properties": {
+    "events": {
+      "type": "object",
+      "description": "Händelser som händer",
+      "properties": {
+        "columnId": {
+          "type": "string",
+          "description": "Kolumn-id"
+        },
+        "workflowId": {
+          "type": "string",
+          "description": "{{context.workflowId}}"
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "description": "Olika",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": ""
+          },
+          "title": {
+            "type": "string",
+            "description": "Rubrik"
+          },
+          "description": {
+            "type": "string",
+            "description": "Beskrivning"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source like Polis, SOS etc"
+          },
+          "URL": {
+            "type": "string",
+            "description": "URL to a source or link"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "tidsstämpel"
+          },
+          "newsValue": {
+            "type": "number",
+            "description": "Nyhetsvärde mellan 1-5"
+          },
+          "category": {
+            "type": "string",
+            "description": "kategori"
+          },
+          "severity": {
+            "type": "string",
+            "description": "Allvarlighetsgrad"
+          },
+          "location": {
+            "type": "object",
+            "description": "Plats med koder",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Platsnamn, t.ex. 'Stockholm'"
+              },
+              "municipality": {
+                "type": "string",
+                "description": "Kommunnamn, t.ex. 'Stockholm kommun'",
+                "nullable": true
+              },
+              "county": {
+                "type": "string",
+                "description": "Länsnamn, t.ex. 'Stockholms län'",
+                "nullable": true
+              },
+              "countryCode": {
+                "type": "string",
+                "description": "Landskod enligt ISO 3166-1 alpha-2, t.ex. 'SE'"
+              },
+              "regionCode": {
+                "type": "string",
+                "description": "Regionkod utan lands-prefix, t.ex. '01'"
+              },
+              "municipalityCode": {
+                "type": "string",
+                "description": "Kommmunkod, t.ex. '0180', eller null om endast region är känt",
+                "nullable": true
+              },
+              "coordinates": {
+                "type": "array",
+                "description": "Valfri koordinat [lat, lng]",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": ["name", "countryCode", "regionCode"]
+          }
+        },
+        "required": ["title", "description"]
+      }
+    },
+    "extra": {
+      "type": "object",
+      "description": "extrafält",
+      "required": ["cms-url", "source-url"],
+      "properties": {
+        "cms-url": {
+          "type": "string",
+          "description": "CMS to articles in the Abbe cms"
+        },
+        "source-url": {
+          "type": "string",
+          "description": "url to the source"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -26,6 +26,10 @@ export interface NewsItem {
     street?: string;            // Gata/adress
     name?: string;              // Platsnamn (för bakåtkompatibilitet)
     coordinates?: number[];      // [lat, lng] eller annat format
+    // Geographic codes from Workflows AI agent (new format)
+    countryCode?: string;        // ISO 3166-1 alpha-2: 'SE' (provided by AI)
+    regionCode?: string;         // ISO 3166-2 region code: '01' (provided by AI)
+    municipalityCode?: string;   // Municipality code: '0180' (provided by AI, nullable)
   };
 
   // Normaliserade geografiska koder (från reference tables)
