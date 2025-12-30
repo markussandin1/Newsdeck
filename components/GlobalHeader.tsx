@@ -3,8 +3,7 @@
 import { useState, ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { WeatherCycle } from './WeatherCycle';
-import { WeatherWarningBanner } from './WeatherWarningBanner';
+import { WeatherWidget } from './WeatherWidget';
 import { WeatherWarningModal } from './WeatherWarningModal';
 import { EnhancedDateTime } from './EnhancedDateTime';
 import { UserMenu } from './UserMenu';
@@ -49,14 +48,6 @@ export function GlobalHeader({
 
   return (
     <div className={`glass border-b border-border sticky top-0 z-50 hidden lg:block ${className}`}>
-      {/* Weather Warning Banner - Full Width */}
-      {warnings.length > 0 && (
-        <WeatherWarningBanner
-          warnings={warnings}
-          onClick={() => setIsWarningsModalOpen(true)}
-        />
-      )}
-
       <div className="px-6 py-4">
         <div className="flex items-center justify-between gap-6">
           {/* Zone 1 + 2: Tightly Grouped Left Side */}
@@ -78,31 +69,23 @@ export function GlobalHeader({
             {contextContent}
           </div>
 
-          {/* Zone 3: Consolidated Weather & DateTime */}
-          <div className="hidden lg:flex items-center gap-3 shrink-0">
-            <WeatherCycle cities={weather} className="w-[120px] xl:w-[140px]" />
-            <div className="hidden xl:block">
-              <EnhancedDateTime />
-            </div>
-            <div className="xl:hidden">
-              <EnhancedDateTime showDate={false} />
-            </div>
+          {/* Zone 3: Weather Widget */}
+          <div className="hidden lg:flex items-center gap-6 shrink-0">
+            <WeatherWidget
+              cities={weather}
+              warnings={warnings}
+              onWarningsClick={() => setIsWarningsModalOpen(true)}
+            />
           </div>
 
           {/* Zone 4: User Controls */}
-          <div className="flex items-center gap-4 shrink-0">
-            {/* Time only on mobile/tablet */}
-            <div className="flex lg:hidden">
-              <EnhancedDateTime showDate={false} />
-            </div>
-            {userName && (
-              <UserMenu
-                userName={userName}
-                dashboardId={dashboardId}
-                onLogout={handleLogout}
-                onOpenNotificationSettings={onOpenNotificationSettings}
-              />
-            )}
+          <div className="flex items-center shrink-0">
+            <UserMenu
+              userName={userName || 'User'}
+              dashboardId={dashboardId}
+              onLogout={handleLogout}
+              onOpenNotificationSettings={onOpenNotificationSettings}
+            />
           </div>
         </div>
       </div>

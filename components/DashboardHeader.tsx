@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react';
 import { Dashboard as DashboardType } from '@/lib/types';
 import { ConnectionStatus } from './ConnectionStatus';
 import { GlobalHeader } from './GlobalHeader';
+import { EnhancedDateTime } from './EnhancedDateTime';
 
 interface DashboardHeaderProps {
   dashboard: DashboardType;
@@ -63,9 +64,7 @@ export function DashboardHeader({
           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
             <ConnectionStatus status={connectionStatus} />
             <span>•</span>
-            <span>{dashboard?.columns?.filter((col) => !col.isArchived)?.length || 0} kolumner</span>
-            <span>•</span>
-            <span>{getTotalNewsCount()} händelser</span>
+            <EnhancedDateTime />
           </div>
         </div>
         <svg

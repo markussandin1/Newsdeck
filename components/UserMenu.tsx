@@ -61,18 +61,16 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
       {/* Trigger: Avatar + Name + Chevron */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors"
-        aria-label="User menu"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+        aria-label={`User menu for ${userName}`}
         aria-expanded={isOpen}
+        title={userName}
       >
         <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center text-sm font-semibold text-primary-foreground">
           {userName.charAt(0).toUpperCase()}
         </div>
-        <span className="text-sm font-body font-medium text-foreground hidden md:block">
-          {userName}
-        </span>
         <ChevronDown
-          className={`h-4 w-4 text-muted-foreground transition-transform ${
+          className={`h-4 w-4 text-foreground transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
         />

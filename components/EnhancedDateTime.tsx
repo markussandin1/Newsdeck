@@ -41,7 +41,7 @@ export function EnhancedDateTime({ className = '', showDate = true }: EnhancedDa
     return (
       <time
         dateTime={isoDateTime}
-        className={`text-lg font-display font-semibold tabular-nums text-foreground ${className}`}
+        className={`text-sm font-normal tabular-nums text-gray-500 dark:text-gray-400 ${className}`}
       >
         {time}
       </time>
@@ -49,19 +49,11 @@ export function EnhancedDateTime({ className = '', showDate = true }: EnhancedDa
   }
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <time
-        dateTime={isoDateTime}
-        className="text-sm text-muted-foreground lowercase"
-      >
-        {dayOfWeek}. {date}
-      </time>
-      <time
-        dateTime={isoDateTime}
-        className="text-xl font-display font-semibold tabular-nums text-foreground"
-      >
-        {time}
-      </time>
-    </div>
+    <time
+      dateTime={isoDateTime}
+      className={`text-sm font-normal tabular-nums text-gray-500 dark:text-gray-400 ${className}`}
+    >
+      {dayOfWeek}. {date} {time}
+    </time>
   );
 }
