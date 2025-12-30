@@ -112,12 +112,11 @@ export function useGeoFilters({
     }
   }, [filters, storageKey, isLoaded])
 
-  // Check if any filters are active
+  // Check if any geographic filters are active
   const isActive = useMemo(() => {
     return (
       filters.regionCodes.length > 0 ||
-      filters.municipalityCodes.length > 0 ||
-      !filters.showItemsWithoutLocation
+      filters.municipalityCodes.length > 0
     )
   }, [filters])
 
@@ -164,8 +163,10 @@ export function useGeoFilters({
 
   // Apply filters to news items
   const applyFilters = useCallback((items: NewsItem[]): NewsItem[] => {
-    // If no filters are active, return all items
-    if (!isActive) {
+    // If no geographic filters are active, return all items
+    const hasGeoFilters = filters.regionCodes.length > 0 || filters.municipalityCodes.length > 0
+
+    if (!hasGeoFilters) {
       return items
     }
 
@@ -177,45 +178,32 @@ export function useGeoFilters({
         item.municipalityCode
       )
 
-      // If item has no location and we're hiding items without location
-      if (!hasLocation && !filters.showItemsWithoutLocation) {
-        return false
+      // If item has no location
+      if (!hasLocation) {
+        // Include only if showItemsWithoutLocation is true
+        return filters.showItemsWithoutLocation
       }
 
-      // If item has no location and we're showing items without location
-      if (!hasLocation && filters.showItemsWithoutLocation) {
-        return true
-      }
+      // Item has location - check if it matches the selected filters
+      let matches = false
 
-      // If municipality filters are active, check municipality match
+      // Check municipality match (most specific)
       if (filters.municipalityCodes.length > 0) {
-        if (
-          item.municipalityCode &&
-          filters.municipalityCodes.includes(item.municipalityCode)
-        ) {
-          return true
+        if (item.municipalityCode && filters.municipalityCodes.includes(item.municipalityCode)) {
+          matches = true
         }
       }
 
-      // If region filters are active (and no municipality match), check region match
+      // Check region match
       if (filters.regionCodes.length > 0) {
-        if (
-          item.regionCode &&
-          filters.regionCodes.includes(item.regionCode)
-        ) {
-          return true
+        if (item.regionCode && filters.regionCodes.includes(item.regionCode)) {
+          matches = true
         }
       }
 
-      // If we have filters active but no match, exclude the item
-      if (filters.regionCodes.length > 0 || filters.municipalityCodes.length > 0) {
-        return false
-      }
-
-      // Default: include the item
-      return true
+      return matches
     })
-  }, [filters, isActive])
+  }, [filters])
 
   return {
     filters,
