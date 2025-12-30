@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { MapPin, X, ChevronDown, ChevronRight, Search, Eye, EyeOff } from 'lucide-react';
+import { MapPin, X, ChevronDown, ChevronRight, Search, Eye, EyeOff, Check } from 'lucide-react';
 import type { Region, Municipality } from '@/lib/types';
 import type { UseGeoFiltersReturn } from '@/lib/dashboard/hooks/useGeoFilters';
+import { Button } from './ui/button';
 
 interface GeoFilterPanelProps {
   geoFilters: UseGeoFiltersReturn;
+  onClose: () => void;
 }
 
-export function GeoFilterPanel({ geoFilters }: GeoFilterPanelProps) {
+export function GeoFilterPanel({ geoFilters, onClose }: GeoFilterPanelProps) {
   const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -103,14 +105,19 @@ export function GeoFilterPanel({ geoFilters }: GeoFilterPanelProps) {
             </span>
           )}
         </div>
-        {isActive && (
-          <button
-            onClick={clearFilters}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Rensa alla
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isActive && (
+            <button
+              onClick={clearFilters}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors mr-2"
+            >
+              Rensa alla
+            </button>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -294,14 +301,16 @@ export function GeoFilterPanel({ geoFilters }: GeoFilterPanelProps) {
         )}
       </div>
 
-      {/* Footer with info */}
-      {!isMetadataLoading && (
-        <div className="px-4 py-2 border-t border-border/50 bg-muted/30">
-          <p className="text-xs text-muted-foreground">
-            {metadata.regions.length} län, {metadata.municipalities.length} kommuner
-          </p>
-        </div>
-      )}
+      {/* Footer with action */}
+      <div className="p-4 border-t border-border/50 bg-muted/30 flex justify-between items-center gap-4">
+        <p className="text-xs text-muted-foreground hidden sm:block">
+          {metadata.regions.length} län, {metadata.municipalities.length} kommuner
+        </p>
+        <Button onClick={onClose} className="w-full sm:w-auto ml-auto">
+          <Check className="h-4 w-4 mr-2" />
+          Visa resultat
+        </Button>
+      </div>
     </div>
   );
 }

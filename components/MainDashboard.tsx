@@ -18,6 +18,7 @@ import { ThemeToggle } from './theme-toggle'
 import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search, MapPin } from 'lucide-react'
 import { GeoFilterPanel } from './GeoFilterPanel'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -37,7 +38,7 @@ interface DashboardSearchInputProps {
 
 function DashboardSearchInput({ value, onChange }: DashboardSearchInputProps) {
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <input
         type="text"
@@ -46,6 +47,7 @@ function DashboardSearchInput({ value, onChange }: DashboardSearchInputProps) {
         placeholder="Filtrera händelser..."
         aria-label="Filtrera händelser"
         autoComplete="off"
+        autoFocus
         className="w-full pl-10 pr-10 py-2 rounded-lg border border-input bg-background font-body text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
       {value && (
@@ -177,6 +179,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false)
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false)
   const [showGeoFilterPanel, setShowGeoFilterPanel] = useState(false)
+  const [showSearchInput, setShowSearchInput] = useState(false)
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -795,33 +798,99 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             onOpenNotificationSettings={() => setIsNotificationSettingsOpen(true)}
           />
 
-          <div className="mt-3 space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <DashboardSearchInput value={searchQuery} onChange={setSearchQuery} />
-              </div>
-              <button
-                onClick={() => setShowGeoFilterPanel(!showGeoFilterPanel)}
-                className={`px-3 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
-                  geoFilters.isActive
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background border-input hover:bg-muted'
-                }`}
-                title="Geografiska filter"
-              >
-                <MapPin className="h-4 w-4" />
-                {geoFilters.isActive && (
-                  <span className="text-xs font-medium">
-                    {geoFilters.filters.regionCodes.length + geoFilters.filters.municipalityCodes.length}
-                  </span>
-                )}
-              </button>
+          <div className="mt-3 space-y-2 relative">
+            <div className="flex gap-2 items-center">
+              {showSearchInput ? (
+                <div className="flex-1 flex gap-2 animate-in fade-in slide-in-from-right-2">
+                  <DashboardSearchInput value={searchQuery} onChange={setSearchQuery} />
+                  <Button variant="ghost" size="icon" onClick={() => setShowSearchInput(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowGeoFilterPanel(!showGeoFilterPanel)}
+                    className={`flex-1 px-3 py-2 rounded-lg border transition-colors flex items-center justify-between group ${
+                      geoFilters.isActive
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-input hover:bg-muted'
+                    }`}
+                    title="Geografiska filter"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {geoFilters.isActive 
+                          ? `${geoFilters.filters.regionCodes.length + geoFilters.filters.municipalityCodes.length} valda områden` 
+                          : "Filtrera på område..."}
+                      </span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 opacity-50 group-hover:opacity-100 transition-opacity rotate-90" />
+                  </button>
+                  
+                  <Button 
+                    variant={searchQuery ? "secondary" : "outline"}
+                    size="icon" 
+                    onClick={() => setShowSearchInput(true)}
+                    title="Sök i händelser"
+                    className={searchQuery ? "border-primary text-primary" : ""}
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </div>
 
             {showGeoFilterPanel && (
-              <GeoFilterPanel geoFilters={geoFilters} />
+              <div className="absolute top-full left-0 mt-2 w-full max-w-sm z-50">
+                <GeoFilterPanel 
+                  geoFilters={geoFilters} 
+                  onClose={() => setShowGeoFilterPanel(false)} 
+                />
+              </div>
             )}
           </div>
+
+          {/* Active Geo Filters Badges */}
+          {geoFilters.isActive && (
+            <div className="flex flex-wrap gap-2 mt-2 pb-2">
+              {geoFilters.filters.regionCodes.map(code => {
+                const region = geoFilters.metadata.regions.find(r => r.code === code)
+                return (
+                  <Badge 
+                    key={`region-${code}`} 
+                    variant="secondary"
+                    className="flex items-center gap-1 pl-2 pr-1 py-1 cursor-pointer hover:bg-secondary/80"
+                    onClick={() => geoFilters.toggleRegion(code)}
+                  >
+                    {region ? (region.nameShort || region.name) : code}
+                    <X className="h-3 w-3 hover:text-foreground/70" />
+                  </Badge>
+                )
+              })}
+              {geoFilters.filters.municipalityCodes.map(code => {
+                const municipality = geoFilters.metadata.municipalities.find(m => m.code === code)
+                return (
+                  <Badge 
+                    key={`muni-${code}`} 
+                    variant="secondary"
+                    className="flex items-center gap-1 pl-2 pr-1 py-1 cursor-pointer hover:bg-secondary/80"
+                    onClick={() => geoFilters.toggleMunicipality(code)}
+                  >
+                    {municipality ? municipality.name : code}
+                    <X className="h-3 w-3 hover:text-foreground/70" />
+                  </Badge>
+                )
+              })}
+              <button
+                onClick={geoFilters.clearFilters}
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 px-2"
+              >
+                Rensa alla
+              </button>
+            </div>
+          )}
 
           {hasActiveSearch && !showSearchNoResults && (
             <div className="mt-2 text-xs text-muted-foreground">

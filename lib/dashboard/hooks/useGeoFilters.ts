@@ -233,21 +233,13 @@ export function useGeoFilters({
 
   // Apply filters to news items
   const applyFilters = useCallback((items: NewsItem[]): NewsItem[] => {
-    // If no geographic filters are active, return all items
-    const hasGeoFilters = filters.municipalityCodes.length > 0
+    const hasGeoFilters =
+      filters.regionCodes.length > 0 ||
+      filters.municipalityCodes.length > 0
 
     if (!hasGeoFilters) {
       return items
     }
-
-    // Get region codes for selected municipalities (for fallback matching)
-    const selectedRegionCodes = new Set<string>()
-    filters.municipalityCodes.forEach(muniCode => {
-      const municipality = metadata.municipalities.find(m => m.code === muniCode)
-      if (municipality?.regionCode) {
-        selectedRegionCodes.add(municipality.regionCode)
-      }
-    })
 
     return items.filter(item => {
       // Check if item has normalized location codes
@@ -262,20 +254,23 @@ export function useGeoFilters({
         return filters.showItemsWithoutLocation
       }
 
-      // Match items by municipality code (exact match)
-      if (item.municipalityCode && filters.municipalityCodes.includes(item.municipalityCode)) {
-        return true
+      // Exact municipality match ONLY (no fallback)
+      if (filters.municipalityCodes.length > 0) {
+        return item.municipalityCode && filters.municipalityCodes.includes(item.municipalityCode)
       }
 
-      // Fallback: Match items by region code if they don't have municipality code
-      // This handles source data that only has county-level tagging
-      if (!item.municipalityCode && item.regionCode && selectedRegionCodes.has(item.regionCode)) {
-        return true
+      // Exact region match ONLY (no fallback)
+      if (filters.regionCodes.length > 0) {
+        return item.regionCode && filters.regionCodes.includes(item.regionCode)
       }
 
       return false
     })
-  }, [filters, metadata.municipalities])
+  }, [
+    filters.regionCodes,
+    filters.municipalityCodes,
+    filters.showItemsWithoutLocation,
+  ])
 
   return {
     filters,
