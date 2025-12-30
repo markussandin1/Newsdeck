@@ -180,6 +180,25 @@ export function useGeoFilters({
       return items
     }
 
+    // Build a set of region codes that should be included based on selected municipalities
+    // This allows matching items that have regionCode but not municipalityCode
+    const implicitRegionCodes = new Set<string>()
+    if (filters.municipalityCodes.length > 0) {
+      filters.municipalityCodes.forEach(muniCode => {
+        // Find which region this municipality belongs to
+        const municipality = metadata.municipalities.find(m => m.code === muniCode)
+        if (municipality?.regionCode) {
+          implicitRegionCodes.add(municipality.regionCode)
+        }
+      })
+    }
+
+    // Combine explicit region codes with implicit ones from municipalities
+    const allRegionCodes = new Set([
+      ...filters.regionCodes,
+      ...Array.from(implicitRegionCodes)
+    ])
+
     return items.filter(item => {
       // Check if item has normalized location codes
       const hasLocation = !!(
@@ -207,15 +226,17 @@ export function useGeoFilters({
       }
 
       // Check region match
-      if (filters.regionCodes.length > 0) {
-        if (item.regionCode && filters.regionCodes.includes(item.regionCode)) {
+      // This now includes BOTH explicitly selected regions AND regions from selected municipalities
+      // This handles the common case where source data has county but not municipality
+      if (allRegionCodes.size > 0) {
+        if (item.regionCode && allRegionCodes.has(item.regionCode)) {
           matches = true
         }
       }
 
       return matches
     })
-  }, [filters])
+  }, [filters, metadata.municipalities])
 
   return {
     filters,

@@ -1,147 +1,135 @@
+#!/usr/bin/env node
+
 /**
- * Test Geographic Filtering Logic
- *
- * This script tests the filtering logic to ensure it works correctly
+ * Quick diagnostic test for geographic filtering
  */
 
-// Mock filters and items
-const testCases = [
-  {
-    name: 'Scenario 1: Väljer Sundsvall kommun',
-    filters: {
-      regionCodes: [],
-      municipalityCodes: ['2281'], // Sundsvall
-      showItemsWithoutLocation: true
-    },
-    items: [
-      { title: 'Event 1', municipalityCode: '2281', regionCode: 'Y' }, // Sundsvall - SHOULD MATCH
-      { title: 'Event 2', municipalityCode: '2280', regionCode: 'Y' }, // Örnsköldsvik - SHOULD NOT MATCH
-      { title: 'Event 3', municipalityCode: null, regionCode: 'Y' }, // Västernorrland (no municipality) - SHOULD NOT MATCH
-      { title: 'Event 4', municipalityCode: null, regionCode: null }, // No location - SHOULD MATCH (showItemsWithoutLocation=true)
-    ],
-    expectedCount: 2,
-    expectedTitles: ['Event 1', 'Event 4']
-  },
-  {
-    name: 'Scenario 2: Väljer Västernorrlands län',
-    filters: {
-      regionCodes: ['Y'],
-      municipalityCodes: [],
-      showItemsWithoutLocation: true
-    },
-    items: [
-      { title: 'Event 1', municipalityCode: '2281', regionCode: 'Y' }, // Sundsvall - SHOULD MATCH
-      { title: 'Event 2', municipalityCode: '2280', regionCode: 'Y' }, // Örnsköldsvik - SHOULD MATCH
-      { title: 'Event 3', municipalityCode: null, regionCode: 'Y' }, // Västernorrland (no municipality) - SHOULD MATCH
-      { title: 'Event 4', municipalityCode: null, regionCode: 'X' }, // Gävleborg - SHOULD NOT MATCH
-      { title: 'Event 5', municipalityCode: null, regionCode: null }, // No location - SHOULD MATCH (showItemsWithoutLocation=true)
-    ],
-    expectedCount: 4,
-    expectedTitles: ['Event 1', 'Event 2', 'Event 3', 'Event 5']
-  },
-  {
-    name: 'Scenario 3: Väljer Sundsvall, stänger av "Visa utan plats"',
-    filters: {
-      regionCodes: [],
-      municipalityCodes: ['2281'],
-      showItemsWithoutLocation: false
-    },
-    items: [
-      { title: 'Event 1', municipalityCode: '2281', regionCode: 'Y' }, // Sundsvall - SHOULD MATCH
-      { title: 'Event 2', municipalityCode: '2280', regionCode: 'Y' }, // Örnsköldsvik - SHOULD NOT MATCH
-      { title: 'Event 3', municipalityCode: null, regionCode: null }, // No location - SHOULD NOT MATCH (showItemsWithoutLocation=false)
-    ],
-    expectedCount: 1,
-    expectedTitles: ['Event 1']
-  },
-  {
-    name: 'Scenario 4: Inga filter valda',
-    filters: {
-      regionCodes: [],
-      municipalityCodes: [],
-      showItemsWithoutLocation: true
-    },
-    items: [
-      { title: 'Event 1', municipalityCode: '2281', regionCode: 'Y' },
-      { title: 'Event 2', municipalityCode: null, regionCode: null },
-      { title: 'Event 3', municipalityCode: '2280', regionCode: 'Y' },
-    ],
-    expectedCount: 3,
-    expectedTitles: ['Event 1', 'Event 2', 'Event 3']
+import { config } from 'dotenv'
+import pg from 'pg'
+
+config({ path: '.env.local' })
+config()
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+})
+
+async function testGeoFiltering() {
+  console.log('Geographic Filtering Diagnostic Test')
+  console.log('=' .repeat(80))
+  console.log()
+
+  // Test 1: Check if items have geographic codes
+  console.log('Test 1: Checking for items with geographic codes...')
+  const withCodes = await pool.query(`
+    SELECT COUNT(*) as count
+    FROM news_items
+    WHERE country_code IS NOT NULL
+       OR region_code IS NOT NULL
+       OR municipality_code IS NOT NULL
+  `)
+  console.log('Items with geographic codes: ' + withCodes.rows[0].count)
+  console.log()
+
+  // Test 2: Check Stockholm-specific items
+  console.log('Test 2: Stockholm municipality items (municipalityCode = 0180)...')
+  const stockholmMuni = await pool.query(`
+    SELECT COUNT(*) as count
+    FROM news_items
+    WHERE municipality_code = '0180'
+  `)
+  console.log('Items with Stockholm municipality code: ' + stockholmMuni.rows[0].count)
+  
+  if (stockholmMuni.rows[0].count > 0) {
+    const examples = await pool.query(`
+      SELECT title, municipality_code, region_code, (location->>'municipality') as loc_muni
+      FROM news_items
+      WHERE municipality_code = '0180'
+      LIMIT 5
+    `)
+    console.log('Examples:')
+    examples.rows.forEach(row => {
+      console.log('  - ' + row.title.substring(0, 60))
+      console.log('    municipalityCode: ' + row.municipality_code + ', regionCode: ' + row.region_code)
+      console.log('    location.municipality: ' + (row.loc_muni || 'null'))
+    })
   }
-];
+  console.log()
 
-// Filter logic (extracted from useGeoFilters)
-function applyFilters(items, filters) {
-  const hasGeoFilters = filters.regionCodes.length > 0 || filters.municipalityCodes.length > 0;
+  // Test 3: Check Stockholm region items
+  console.log('Test 3: Stockholm region items (regionCode = AB)...')
+  const stockholmRegion = await pool.query(`
+    SELECT COUNT(*) as count
+    FROM news_items
+    WHERE region_code = 'AB'
+  `)
+  console.log('Items with Stockholm region code: ' + stockholmRegion.rows[0].count)
+  console.log()
 
-  if (!hasGeoFilters) {
-    return items;
+  // Test 4: Recent items breakdown
+  console.log('Test 4: Geographic code distribution (last 100 items)...')
+  const distribution = await pool.query(`
+    SELECT
+      CASE
+        WHEN municipality_code IS NOT NULL THEN 'Has municipality'
+        WHEN region_code IS NOT NULL THEN 'Has region only'
+        WHEN country_code IS NOT NULL THEN 'Has country only'
+        ELSE 'No geo codes'
+      END as geo_level,
+      COUNT(*) as count
+    FROM (
+      SELECT municipality_code, region_code, country_code
+      FROM news_items
+      ORDER BY created_in_db DESC
+      LIMIT 100
+    ) recent
+    GROUP BY geo_level
+    ORDER BY count DESC
+  `)
+  
+  console.log('Distribution:')
+  distribution.rows.forEach(row => {
+    console.log('  ' + row.geo_level + ': ' + row.count)
+  })
+  console.log()
+
+  // Test 5: Check if location cache is accessible
+  console.log('Test 5: Testing location cache lookup...')
+  try {
+    const module = await import('../lib/services/location-cache.ts')
+    const locationCache = module.locationCache
+    
+    await locationCache.load()
+    const stats = locationCache.getStats()
+    console.log('Location cache loaded: ' + stats.count + ' variants')
+    
+    const stockholmTest = locationCache.lookup('Stockholm')
+    console.log('Lookup "Stockholm": ' + JSON.stringify(stockholmTest))
+  } catch (error) {
+    console.log('ERROR: Could not load location cache - ' + error.message)
   }
+  console.log()
 
-  return items.filter(item => {
-    const hasLocation = !!(
-      item.countryCode ||
-      item.regionCode ||
-      item.municipalityCode
-    );
-
-    if (!hasLocation) {
-      return filters.showItemsWithoutLocation;
-    }
-
-    let matches = false;
-
-    if (filters.municipalityCodes.length > 0) {
-      if (item.municipalityCode && filters.municipalityCodes.includes(item.municipalityCode)) {
-        matches = true;
-      }
-    }
-
-    if (filters.regionCodes.length > 0) {
-      if (item.regionCode && filters.regionCodes.includes(item.regionCode)) {
-        matches = true;
-      }
-    }
-
-    return matches;
-  });
-}
-
-// Run tests
-console.log('🧪 Testing Geographic Filtering Logic\n');
-
-let allPassed = true;
-
-testCases.forEach((testCase, index) => {
-  console.log(`Test ${index + 1}: ${testCase.name}`);
-  console.log(`  Filters: ${JSON.stringify(testCase.filters)}`);
-
-  const filtered = applyFilters(testCase.items, testCase.filters);
-  const actualTitles = filtered.map(item => item.title);
-
-  const passed =
-    filtered.length === testCase.expectedCount &&
-    actualTitles.every(title => testCase.expectedTitles.includes(title)) &&
-    testCase.expectedTitles.every(title => actualTitles.includes(title));
-
-  if (passed) {
-    console.log(`  ✅ PASSED: ${filtered.length} items matched`);
-    console.log(`     Expected: ${testCase.expectedTitles.join(', ')}`);
-    console.log(`     Got:      ${actualTitles.join(', ')}`);
+  console.log('=' .repeat(80))
+  console.log('SUMMARY')
+  console.log('=' .repeat(80))
+  
+  if (withCodes.rows[0].count === 0) {
+    console.log('PROBLEM: No items have geographic codes!')
+    console.log('ACTION: Run backfill script: npx tsx scripts/backfill-geo-codes.mjs')
+  } else if (stockholmMuni.rows[0].count === 0 && stockholmRegion.rows[0].count === 0) {
+    console.log('PROBLEM: No Stockholm items found!')
+    console.log('ACTION: Check if ingestion is working and items are being normalized')
   } else {
-    console.log(`  ❌ FAILED:`);
-    console.log(`     Expected ${testCase.expectedCount} items: ${testCase.expectedTitles.join(', ')}`);
-    console.log(`     Got ${filtered.length} items: ${actualTitles.join(', ')}`);
-    allPassed = false;
+    console.log('SUCCESS: Geographic codes are present in database')
+    console.log('Stockholm municipality items: ' + stockholmMuni.rows[0].count)
+    console.log('Stockholm region items: ' + stockholmRegion.rows[0].count)
   }
-  console.log();
-});
 
-if (allPassed) {
-  console.log('✅ All tests passed!');
-  process.exit(0);
-} else {
-  console.log('❌ Some tests failed!');
-  process.exit(1);
+  await pool.end()
 }
+
+testGeoFiltering().catch(error => {
+  console.error('Test failed:', error)
+  process.exit(1)
+})
