@@ -234,10 +234,19 @@ export const persistentDb = {
     try {
       const result = await pool.query(
         `SELECT
-          id, workflow_id as "workflowId", source, timestamp, title, description,
-          news_value as "newsValue", category, severity, location, extra, raw,
+          db_id as "dbId",
+          source_id as "id",
+          workflow_id as "workflowId",
+          source, timestamp, title, description,
+          news_value as "newsValue",
+          category, severity, location, extra, raw,
           created_in_db as "createdInDb",
-          id as "dbId"
+          country_code as "countryCode",
+          region_country_code as "regionCountryCode",
+          region_code as "regionCode",
+          municipality_country_code as "municipalityCountryCode",
+          municipality_region_code as "municipalityRegionCode",
+          municipality_code as "municipalityCode"
         FROM news_items
         ORDER BY created_in_db DESC, timestamp DESC`
       )
@@ -260,10 +269,19 @@ export const persistentDb = {
     try {
       const result = await pool.query(
         `SELECT
-          id, workflow_id as "workflowId", source, timestamp, title, description,
-          news_value as "newsValue", category, severity, location, extra, raw,
+          db_id as "dbId",
+          source_id as "id",
+          workflow_id as "workflowId",
+          source, timestamp, title, description,
+          news_value as "newsValue",
+          category, severity, location, extra, raw,
           created_in_db as "createdInDb",
-          id as "dbId"
+          country_code as "countryCode",
+          region_country_code as "regionCountryCode",
+          region_code as "regionCode",
+          municipality_country_code as "municipalityCountryCode",
+          municipality_region_code as "municipalityRegionCode",
+          municipality_code as "municipalityCode"
         FROM news_items
         ORDER BY created_in_db DESC, timestamp DESC
         LIMIT $1`,
@@ -325,7 +343,13 @@ export const persistentDb = {
           source, timestamp, title, description,
           news_value as "newsValue",
           category, severity, location, extra, raw,
-          created_in_db as "createdInDb"
+          created_in_db as "createdInDb",
+          country_code as "countryCode",
+          region_country_code as "regionCountryCode",
+          region_code as "regionCode",
+          municipality_country_code as "municipalityCountryCode",
+          municipality_region_code as "municipalityRegionCode",
+          municipality_code as "municipalityCode"
         FROM news_items
         ORDER BY created_in_db DESC, timestamp DESC
         LIMIT $1 OFFSET $2`,
@@ -609,19 +633,30 @@ export const persistentDb = {
 
     try {
       const query = limit
-        ? 'SELECT data, news_item_db_id FROM column_data WHERE column_id = $1 ORDER BY created_at DESC LIMIT $2'
-        : 'SELECT data, news_item_db_id FROM column_data WHERE column_id = $1 ORDER BY created_at DESC'
+        ? `SELECT cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
+           FROM column_data cd
+           LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
+           WHERE cd.column_id = $1
+           ORDER BY cd.created_at DESC LIMIT $2`
+        : `SELECT cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
+           FROM column_data cd
+           LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
+           WHERE cd.column_id = $1
+           ORDER BY cd.created_at DESC`
 
       const params = limit ? [columnId, limit] : [columnId]
       const result = await pool.query(query, params)
 
       return result.rows.map(row => {
         const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
-        // CRITICAL FIX: Ensure dbId is always set from the foreign key
-        // This prevents items from being lost during re-ingestion
+        // CRITICAL FIX: Ensure dbId and geographic codes are always set from the database
+        // This prevents items from being lost during re-ingestion and ensures filters work correctly
         return {
           ...data,
-          dbId: row.news_item_db_id
+          dbId: row.news_item_db_id,
+          countryCode: row.country_code || data.countryCode,
+          regionCode: row.region_code || data.regionCode,
+          municipalityCode: row.municipality_code || data.municipalityCode
         }
       })
     } catch (error) {
@@ -640,7 +675,11 @@ export const persistentDb = {
       }
 
       const result = await pool.query(
-        'SELECT column_id, data, news_item_db_id FROM column_data WHERE column_id = ANY($1) ORDER BY column_id, created_at DESC',
+        `SELECT cd.column_id, cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
+         FROM column_data cd
+         LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
+         WHERE cd.column_id = ANY($1)
+         ORDER BY cd.column_id, cd.created_at DESC`,
         [columnIds]
       )
 
@@ -658,11 +697,14 @@ export const persistentDb = {
         if (!columnData[row.column_id]) {
           columnData[row.column_id] = []
         }
-        // CRITICAL FIX: Ensure dbId is always set from the foreign key
-        // This prevents items from being lost during re-ingestion
+        // CRITICAL FIX: Ensure dbId and geographic codes are always set from the database
+        // This prevents items from being lost during re-ingestion and ensures filters work correctly
         columnData[row.column_id].push({
           ...data,
-          dbId: row.news_item_db_id
+          dbId: row.news_item_db_id,
+          countryCode: row.country_code || data.countryCode,
+          regionCode: row.region_code || data.regionCode,
+          municipalityCode: row.municipality_code || data.municipalityCode
         })
       })
 
@@ -832,10 +874,19 @@ export const persistentDb = {
     try {
       const result = await pool.query(
         `SELECT
-          id, workflow_id as "workflowId", source, timestamp, title, description,
-          news_value as "newsValue", category, severity, location, extra, raw,
+          db_id as "dbId",
+          source_id as "id",
+          workflow_id as "workflowId",
+          source, timestamp, title, description,
+          news_value as "newsValue",
+          category, severity, location, extra, raw,
           created_in_db as "createdInDb",
-          id as "dbId"
+          country_code as "countryCode",
+          region_country_code as "regionCountryCode",
+          region_code as "regionCode",
+          municipality_country_code as "municipalityCountryCode",
+          municipality_region_code as "municipalityRegionCode",
+          municipality_code as "municipalityCode"
         FROM news_items
         WHERE workflow_id = $1
         ORDER BY created_in_db DESC, timestamp DESC`,
@@ -861,10 +912,19 @@ export const persistentDb = {
     try {
       const result = await pool.query(
         `SELECT
-          id, workflow_id as "workflowId", source, timestamp, title, description,
-          news_value as "newsValue", category, severity, location, extra, raw,
+          db_id as "dbId",
+          source_id as "id",
+          workflow_id as "workflowId",
+          source, timestamp, title, description,
+          news_value as "newsValue",
+          category, severity, location, extra, raw,
           created_in_db as "createdInDb",
-          id as "dbId"
+          country_code as "countryCode",
+          region_country_code as "regionCountryCode",
+          region_code as "regionCode",
+          municipality_country_code as "municipalityCountryCode",
+          municipality_region_code as "municipalityRegionCode",
+          municipality_code as "municipalityCode"
         FROM news_items
         WHERE workflow_id = ANY($1)
         ORDER BY created_in_db DESC, timestamp DESC`,
@@ -1463,6 +1523,156 @@ export const persistentDb = {
     } catch (error) {
       logger.error('db.createLocationMapping.error', { error, mapping })
       throw error
+    }
+  }
+}
+
+/**
+ * Geographic lookup functions for location normalization
+ * Replaces in-memory cache with direct DB queries
+ */
+export const geoLookup = {
+  /**
+   * Find geographic codes by location name
+   * @param name - Location name to search for (case-insensitive)
+   * @returns Normalized location codes or null if not found
+   */
+  findByName: async (name: string): Promise<{
+    countryCode?: string
+    regionCountryCode?: string
+    regionCode?: string
+    municipalityCountryCode?: string
+    municipalityRegionCode?: string
+    municipalityCode?: string
+    matchPriority?: number
+    matchType?: string
+  } | null> => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(
+        `SELECT
+          country_code,
+          region_country_code,
+          region_code,
+          municipality_country_code,
+          municipality_region_code,
+          municipality_code,
+          match_priority,
+          match_type
+        FROM location_name_mappings
+        WHERE variant = $1
+        ORDER BY match_priority ASC
+        LIMIT 1`,
+        [name.toLowerCase().trim()]
+      )
+
+      if (result.rows.length === 0) {
+        return null
+      }
+
+      const row = result.rows[0]
+      return {
+        countryCode: row.country_code,
+        regionCountryCode: row.region_country_code,
+        regionCode: row.region_code,
+        municipalityCountryCode: row.municipality_country_code,
+        municipalityRegionCode: row.municipality_region_code,
+        municipalityCode: row.municipality_code,
+        matchPriority: row.match_priority,
+        matchType: row.match_type
+      }
+    } catch (error) {
+      logger.error('geoLookup.findByName.error', { error, name })
+      return null
+    }
+  },
+
+  /**
+   * Find municipality by name
+   * @param name - Municipality name to search for
+   * @returns Municipality codes or null
+   */
+  findMunicipalityByName: async (name: string) => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(
+        `SELECT
+          country_code,
+          region_country_code,
+          region_code,
+          municipality_country_code,
+          municipality_region_code,
+          municipality_code,
+          match_priority,
+          match_type
+        FROM location_name_mappings
+        WHERE variant = $1
+          AND municipality_code IS NOT NULL
+        ORDER BY match_priority ASC
+        LIMIT 1`,
+        [name.toLowerCase().trim()]
+      )
+
+      if (result.rows.length === 0) {
+        return null
+      }
+
+      const row = result.rows[0]
+      return {
+        countryCode: row.country_code,
+        regionCountryCode: row.region_country_code,
+        regionCode: row.region_code,
+        municipalityCountryCode: row.municipality_country_code,
+        municipalityRegionCode: row.municipality_region_code,
+        municipalityCode: row.municipality_code,
+        matchPriority: row.match_priority,
+        matchType: row.match_type
+      }
+    } catch (error) {
+      logger.error('geoLookup.findMunicipalityByName.error', { error, name })
+      return null
+    }
+  },
+
+  /**
+   * Find region by name
+   * @param name - Region/county name to search for
+   * @returns Region codes or null
+   */
+  findRegionByName: async (name: string) => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(
+        `SELECT
+          country_code,
+          region_country_code,
+          region_code,
+          match_priority,
+          match_type
+        FROM location_name_mappings
+        WHERE variant = $1
+          AND region_code IS NOT NULL
+          AND municipality_code IS NULL
+        ORDER BY match_priority ASC
+        LIMIT 1`,
+        [name.toLowerCase().trim()]
+      )
+
+      if (result.rows.length === 0) {
+        return null
+      }
+
+      const row = result.rows[0]
+      return {
+        countryCode: row.country_code,
+        regionCountryCode: row.region_country_code,
+        regionCode: row.region_code,
+        matchPriority: row.match_priority,
+        matchType: row.match_type
+      }
+    } catch (error) {
+      logger.error('geoLookup.findRegionByName.error', { error, name })
+      return null
     }
   }
 }
