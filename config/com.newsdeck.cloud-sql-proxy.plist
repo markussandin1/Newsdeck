@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Unique identifier for this LaunchAgent -->
+    <key>Label</key>
+    <string>com.newsdeck.cloud-sql-proxy</string>
+
+    <!-- Command to run -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/cloud-sql-proxy</string>
+        <string>newsdeck-473620:europe-west1:newsdeck-db</string>
+        <string>--port</string>
+        <string>5432</string>
+    </array>
+
+    <!-- Start at login -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart if crashes -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Logging -->
+    <key>StandardOutPath</key>
+    <string>/tmp/cloud-sql-proxy-newsdeck.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/cloud-sql-proxy-newsdeck-error.log</string>
+
+    <!-- Environment variables -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

@@ -6,7 +6,7 @@
 INSTANCE_CONNECTION_NAME="newsdeck-473620:europe-west1:newsdeck-db"
 
 echo "🚀 Starting Cloud SQL Proxy for $INSTANCE_CONNECTION_NAME..."
-echo "🔌 Listening on localhost:5434"
+echo "🔌 Listening on localhost:5432"
 echo "⚠️  Make sure you have authenticated with gcloud: gcloud auth application-default login"
 
 # Check if cloud-sql-proxy is installed
@@ -17,4 +17,4 @@ if ! command -v cloud-sql-proxy &> /dev/null; then
 fi
 
 # Start the proxy
-cloud-sql-proxy --port 5434 $INSTANCE_CONNECTION_NAME
+cloud-sql-proxy --port 5432 $INSTANCE_CONNECTION_NAME

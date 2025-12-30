@@ -11,7 +11,17 @@ export const getPool = () => {
     const DATABASE_URL = process.env.DATABASE_URL
 
     if (!DATABASE_URL) {
-      throw new Error('DATABASE_URL environment variable is not set')
+      throw new Error(
+        'DATABASE_URL environment variable is not set!\n' +
+        '\n' +
+        'For local development:\n' +
+        '  1. Start Cloud SQL Proxy: npm run proxy:start\n' +
+        '  2. Ensure .env.local has DATABASE_URL set\n' +
+        '  3. Or use: npm run dev:full (auto-starts proxy)\n' +
+        '\n' +
+        'For production:\n' +
+        '  Set DATABASE_URL in your environment variables\n'
+      )
     }
 
     // Parse DATABASE_URL to handle Cloud SQL Unix socket format
@@ -71,7 +81,18 @@ export const getPool = () => {
     pool = new Pool(poolConfig)
 
     pool.on('error', (err) => {
-      logger.error('db.pool.unexpectedError', { error: err.message })
+      // Detect connection errors (proxy not running or stale connection)
+      if (err.message.includes('ECONNREFUSED') ||
+          err.message.includes('ECONNRESET') ||
+          err.message.includes('Connection refused')) {
+        logger.error('db.pool.connectionError', {
+          error: 'Cloud SQL Proxy connection issue',
+          solution: 'Run: npm run proxy:restart',
+          details: err.message
+        })
+      } else {
+        logger.error('db.pool.unexpectedError', { error: err.message })
+      }
     })
   }
 

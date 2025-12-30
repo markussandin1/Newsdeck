@@ -8,6 +8,7 @@ import { WeatherWarningBanner } from './WeatherWarningBanner';
 import { WeatherWarningModal } from './WeatherWarningModal';
 import { EnhancedDateTime } from './EnhancedDateTime';
 import { UserMenu } from './UserMenu';
+import { DatabaseStatusIndicator } from './DatabaseStatusIndicator';
 import { useWeather } from '@/lib/hooks/useWeather';
 import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings';
 
@@ -113,6 +114,9 @@ export function GlobalHeader({
           onClose={() => setIsWarningsModalOpen(false)}
         />
       )}
+
+      {/* Database Status Indicator (development only) */}
+      {process.env.NODE_ENV === 'development' && <DatabaseStatusIndicator />}
     </div>
   );
 }

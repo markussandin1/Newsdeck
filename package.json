@@ -15,7 +15,15 @@
     "db:stop": "docker-compose down",
     "db:reset": "docker-compose down -v && ./scripts/setup-local-db.sh",
     "db:logs": "docker-compose logs -f postgres",
-    "db:connect": "docker exec -it newsdeck-postgres psql -U newsdeck -d newsdeck_dev"
+    "db:connect": "docker exec -it newsdeck-postgres psql -U newsdeck -d newsdeck_dev",
+    "proxy:start": "./scripts/start-prod-proxy.sh",
+    "proxy:stop": "pkill -f 'cloud-sql-proxy.*newsdeck' || true",
+    "proxy:restart": "npm run proxy:stop && npm run proxy:start",
+    "proxy:status": "ps aux | grep -i cloud-sql-proxy | grep -v grep || echo '❌ Proxy not running'",
+    "proxy:check": "node scripts/check-proxy.mjs",
+    "proxy:logs": "tail -f /tmp/cloud-sql-proxy-newsdeck.log",
+    "proxy:autostart": "./scripts/setup-proxy-autostart.sh",
+    "dev:full": "npm run proxy:check && npm run dev"
   },
   "keywords": [],
   "author": "",
