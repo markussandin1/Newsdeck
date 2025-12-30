@@ -1,0 +1,27 @@
+{
+  "description": "Mapping between ISO 3166-2 letter codes and SCB numeric codes for Swedish counties (län)",
+  "source": "https://www.scb.se/hitta-statistik/regional-statistik-och-kartor/regionala-indelningar/lan-och-kommuner/",
+  "regions": [
+    { "iso": "AB", "scb": "01", "name": "Stockholms län" },
+    { "iso": "C", "scb": "03", "name": "Uppsala län" },
+    { "iso": "D", "scb": "04", "name": "Södermanlands län" },
+    { "iso": "E", "scb": "05", "name": "Östergötlands län" },
+    { "iso": "F", "scb": "06", "name": "Jönköpings län" },
+    { "iso": "G", "scb": "07", "name": "Kronobergs län" },
+    { "iso": "H", "scb": "08", "name": "Kalmar län" },
+    { "iso": "I", "scb": "09", "name": "Gotlands län" },
+    { "iso": "K", "scb": "10", "name": "Blekinge län" },
+    { "iso": "M", "scb": "12", "name": "Skåne län" },
+    { "iso": "N", "scb": "13", "name": "Hallands län" },
+    { "iso": "O", "scb": "14", "name": "Västra Götalands län" },
+    { "iso": "S", "scb": "17", "name": "Värmlands län" },
+    { "iso": "T", "scb": "18", "name": "Örebro län" },
+    { "iso": "U", "scb": "19", "name": "Västmanlands län" },
+    { "iso": "W", "scb": "20", "name": "Dalarnas län" },
+    { "iso": "X", "scb": "21", "name": "Gävleborgs län" },
+    { "iso": "Y", "scb": "22", "name": "Västernorrlands län" },
+    { "iso": "Z", "scb": "23", "name": "Jämtlands län" },
+    { "iso": "AC", "scb": "24", "name": "Västerbottens län" },
+    { "iso": "BD", "scb": "25", "name": "Norrbottens län" }
+  ]
+}

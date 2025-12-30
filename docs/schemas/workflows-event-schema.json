@@ -81,11 +81,11 @@
               },
               "regionCode": {
                 "type": "string",
-                "description": "Regionkod utan lands-prefix, t.ex. '01'"
+                "description": "SCB länskod (2-siffrig), t.ex. '01' för Stockholm, '23' för Jämtland"
               },
               "municipalityCode": {
                 "type": "string",
-                "description": "Kommmunkod, t.ex. '0180', eller null om endast region är känt",
+                "description": "SCB kommunkod (4-siffrig), t.ex. '0180' för Stockholm, eller null om endast region är känt",
                 "nullable": true
               },
               "coordinates": {

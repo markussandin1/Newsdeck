@@ -28,17 +28,17 @@ export interface NewsItem {
     coordinates?: number[];      // [lat, lng] eller annat format
     // Geographic codes from Workflows AI agent (new format)
     countryCode?: string;        // ISO 3166-1 alpha-2: 'SE' (provided by AI)
-    regionCode?: string;         // ISO 3166-2 region code: '01' (provided by AI)
-    municipalityCode?: string;   // Municipality code: '0180' (provided by AI, nullable)
+    regionCode?: string;         // SCB län code (2-digit): '01', '23', etc. (provided by AI)
+    municipalityCode?: string;   // SCB kommun code (4-digit): '0180', etc. (provided by AI, nullable)
   };
 
   // Normaliserade geografiska koder (från reference tables)
   countryCode?: string;                  // ISO 3166-1 alpha-2: 'SE', 'NO', 'DK'
   regionCountryCode?: string;            // Land för län (samma som countryCode)
-  regionCode?: string;                   // ISO 3166-2 länskod: 'AB', 'C', 'O', etc.
+  regionCode?: string;                   // SCB länskod (2-digit): '01', '23', etc.
   municipalityCountryCode?: string;      // Land för kommun
-  municipalityRegionCode?: string;       // Län för kommun
-  municipalityCode?: string;             // Kommunkod: '0180', '1480', etc.
+  municipalityRegionCode?: string;       // Län för kommun (SCB 2-digit code)
+  municipalityCode?: string;             // SCB kommunkod (4-digit): '0180', '1480', etc.
 
   // Metadata
   createdInDb?: string;         // ISO 8601 format - när posten skapades i databasen
