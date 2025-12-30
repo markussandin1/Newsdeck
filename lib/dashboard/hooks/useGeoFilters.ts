@@ -130,6 +130,18 @@ export function useGeoFilters({
     )
   }, [filters])
 
+  // Track which regions have selected municipalities (for implicit region-level filtering)
+  const regionsWithSelectedMunicipalities = useMemo(() => {
+    const regions = new Set<string>()
+    filters.municipalityCodes.forEach(muniCode => {
+      const muni = metadata.municipalities.find(m => m.code === muniCode)
+      if (muni) {
+        regions.add(muni.regionCode)
+      }
+    })
+    return regions
+  }, [filters.municipalityCodes, metadata.municipalities])
+
   // Filter actions
   const setRegionCodes = useCallback((codes: string[]) => {
     setFilters(prev => ({ ...prev, regionCodes: codes }))
@@ -254,12 +266,22 @@ export function useGeoFilters({
         return filters.showItemsWithoutLocation
       }
 
-      // Exact municipality match ONLY (no fallback)
+      // When municipalities are selected
       if (filters.municipalityCodes.length > 0) {
-        return item.municipalityCode && filters.municipalityCodes.includes(item.municipalityCode)
+        // Direct municipality match
+        if (item.municipalityCode && filters.municipalityCodes.includes(item.municipalityCode)) {
+          return true
+        }
+
+        // Region-level item (no specific municipality) where region has selected municipalities
+        if (item.regionCode && !item.municipalityCode) {
+          return regionsWithSelectedMunicipalities.has(item.regionCode)
+        }
+
+        return false
       }
 
-      // Exact region match ONLY (no fallback)
+      // When only regions are selected (no municipalities)
       if (filters.regionCodes.length > 0) {
         return item.regionCode && filters.regionCodes.includes(item.regionCode)
       }
@@ -270,6 +292,7 @@ export function useGeoFilters({
     filters.regionCodes,
     filters.municipalityCodes,
     filters.showItemsWithoutLocation,
+    regionsWithSelectedMunicipalities,
   ])
 
   return {
