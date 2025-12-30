@@ -120,29 +120,38 @@ const normalizeCoordinates = (coords: unknown): number[] | undefined => {
  * to normalized geographic codes using the location cache. It tries matching in
  * order of specificity: municipality -> county -> country.
  *
- * CRITICAL: This is a synchronous operation using in-memory cache (no DB queries!)
- * to avoid performance degradation during high-volume ingestion.
+ * IMPORTANT: This function will wait for the location cache to load if it's not ready.
+ * This ensures that all news items get properly normalized geographic codes, even if
+ * ingestion happens during server startup.
  *
  * @param location - The location object from the news item
  * @param workflowId - The workflow ID for logging unmatched locations
  * @returns Normalized geographic codes (countryCode, regionCode, municipalityCode)
  */
-const normalizeLocationMetadata = (
+const normalizeLocationMetadata = async (
   location: NewsItem['location'],
   workflowId: string
-): {
+): Promise<{
   countryCode?: string
   regionCountryCode?: string
   regionCode?: string
   municipalityCountryCode?: string
   municipalityRegionCode?: string
   municipalityCode?: string
-} => {
+}> => {
   if (!location) return {}
 
-  // Only proceed if location cache is ready
+  // Wait for location cache to load if it's not ready
+  // This handles race condition during server startup
   if (!locationCache.isReady()) {
-    return {}
+    console.warn('[Ingestion] Location cache not ready, waiting for it to load...')
+    try {
+      await locationCache.load()
+      console.log('[Ingestion] ✅ Location cache loaded successfully')
+    } catch (error) {
+      console.error('[Ingestion] ❌ Failed to load location cache:', error)
+      return {} // If cache fails to load, return empty (item will have no geo codes)
+    }
   }
 
   // Try to match municipality first (most specific)
@@ -327,7 +336,8 @@ export const ingestNewsItems = async (
     throw new IngestionError('Unable to resolve workflow or column identifier from payload')
   }
 
-  const validatedItems = items.map((item) => {
+  // Validate and normalize all items (with async location normalization)
+  const validatedItems = await Promise.all(items.map(async (item) => {
     if (!item || typeof item !== 'object') {
       throw new IngestionError('Each item must be an object with required fields')
     }
@@ -341,8 +351,8 @@ export const ingestNewsItems = async (
       ? item.timestamp
       : new Date().toISOString()
 
-    // Normalize location metadata using in-memory cache (synchronous, fast)
-    const normalizedLocation = normalizeLocationMetadata(item.location, resolvedWorkflowId)
+    // Normalize location metadata using in-memory cache (async - waits for cache if needed)
+    const normalizedLocation = await normalizeLocationMetadata(item.location, resolvedWorkflowId)
 
     return {
       id: toOptionalTrimmed(item.id), // Optional source ID
@@ -377,7 +387,7 @@ export const ingestNewsItems = async (
       raw: item,
       createdInDb: createdTimestamp
     } satisfies NewsItem
-  })
+  }))
 
   const matchingColumns = new Set<string>()
 
