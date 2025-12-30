@@ -146,26 +146,86 @@ export function useGeoFilters({
   const toggleRegion = useCallback((code: string) => {
     setFilters(prev => {
       const isSelected = prev.regionCodes.includes(code)
-      return {
-        ...prev,
-        regionCodes: isSelected
-          ? prev.regionCodes.filter(c => c !== code)
-          : [...prev.regionCodes, code]
+
+      // Get all municipalities in this region
+      const municipalitiesInRegion = metadata.municipalities
+        .filter(m => m.regionCode === code)
+        .map(m => m.code)
+
+      if (isSelected) {
+        // Deselecting region: remove region AND all its municipalities
+        return {
+          ...prev,
+          regionCodes: prev.regionCodes.filter(c => c !== code),
+          municipalityCodes: prev.municipalityCodes.filter(
+            c => !municipalitiesInRegion.includes(c)
+          )
+        }
+      } else {
+        // Selecting region: add region AND all its municipalities
+        return {
+          ...prev,
+          regionCodes: [...prev.regionCodes, code],
+          municipalityCodes: [
+            ...prev.municipalityCodes,
+            ...municipalitiesInRegion.filter(
+              m => !prev.municipalityCodes.includes(m)
+            )
+          ]
+        }
       }
     })
-  }, [])
+  }, [metadata.municipalities])
 
   const toggleMunicipality = useCallback((code: string) => {
     setFilters(prev => {
       const isSelected = prev.municipalityCodes.includes(code)
-      return {
-        ...prev,
-        municipalityCodes: isSelected
-          ? prev.municipalityCodes.filter(c => c !== code)
-          : [...prev.municipalityCodes, code]
+
+      // Find which region this municipality belongs to
+      const municipality = metadata.municipalities.find(m => m.code === code)
+      const regionCode = municipality?.regionCode
+
+      if (isSelected) {
+        // Deselecting municipality: remove it from list
+        // Also remove region if it was selected (user is customizing selection)
+        return {
+          ...prev,
+          municipalityCodes: prev.municipalityCodes.filter(c => c !== code),
+          regionCodes: regionCode
+            ? prev.regionCodes.filter(c => c !== regionCode)
+            : prev.regionCodes
+        }
+      } else {
+        // Selecting municipality: add it to list
+        const newMunicipalityCodes = [...prev.municipalityCodes, code]
+
+        // Check if ALL municipalities in this region are now selected
+        if (regionCode) {
+          const allMunicipalitiesInRegion = metadata.municipalities
+            .filter(m => m.regionCode === regionCode)
+            .map(m => m.code)
+
+          const allSelected = allMunicipalitiesInRegion.every(m =>
+            newMunicipalityCodes.includes(m)
+          )
+
+          // If all municipalities selected, also select the region
+          return {
+            ...prev,
+            municipalityCodes: newMunicipalityCodes,
+            regionCodes: allSelected && !prev.regionCodes.includes(regionCode)
+              ? [...prev.regionCodes, regionCode]
+              : prev.regionCodes
+          }
+        }
+
+        return {
+          ...prev,
+          municipalityCodes: newMunicipalityCodes
+        }
       }
     })
-  }, [])
+  }, [metadata.municipalities])
 
   const clearFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS)
@@ -174,30 +234,20 @@ export function useGeoFilters({
   // Apply filters to news items
   const applyFilters = useCallback((items: NewsItem[]): NewsItem[] => {
     // If no geographic filters are active, return all items
-    const hasGeoFilters = filters.regionCodes.length > 0 || filters.municipalityCodes.length > 0
+    const hasGeoFilters = filters.municipalityCodes.length > 0
 
     if (!hasGeoFilters) {
       return items
     }
 
-    // Build a set of region codes that should be included based on selected municipalities
-    // This allows matching items that have regionCode but not municipalityCode
-    const implicitRegionCodes = new Set<string>()
-    if (filters.municipalityCodes.length > 0) {
-      filters.municipalityCodes.forEach(muniCode => {
-        // Find which region this municipality belongs to
-        const municipality = metadata.municipalities.find(m => m.code === muniCode)
-        if (municipality?.regionCode) {
-          implicitRegionCodes.add(municipality.regionCode)
-        }
-      })
-    }
-
-    // Combine explicit region codes with implicit ones from municipalities
-    const allRegionCodes = new Set([
-      ...filters.regionCodes,
-      ...Array.from(implicitRegionCodes)
-    ])
+    // Get region codes for selected municipalities (for fallback matching)
+    const selectedRegionCodes = new Set<string>()
+    filters.municipalityCodes.forEach(muniCode => {
+      const municipality = metadata.municipalities.find(m => m.code === muniCode)
+      if (municipality?.regionCode) {
+        selectedRegionCodes.add(municipality.regionCode)
+      }
+    })
 
     return items.filter(item => {
       // Check if item has normalized location codes
@@ -209,32 +259,21 @@ export function useGeoFilters({
 
       // If item has no normalized location codes
       if (!hasLocation) {
-        // When specific filters are active, ONLY show items without location
-        // if showItemsWithoutLocation is explicitly enabled
-        // This prevents showing all un-normalized items when filtering by specific municipality
         return filters.showItemsWithoutLocation
       }
 
-      // Item has location - check if it matches the selected filters
-      let matches = false
-
-      // Check municipality match (most specific)
-      if (filters.municipalityCodes.length > 0) {
-        if (item.municipalityCode && filters.municipalityCodes.includes(item.municipalityCode)) {
-          matches = true
-        }
+      // Match items by municipality code (exact match)
+      if (item.municipalityCode && filters.municipalityCodes.includes(item.municipalityCode)) {
+        return true
       }
 
-      // Check region match
-      // This now includes BOTH explicitly selected regions AND regions from selected municipalities
-      // This handles the common case where source data has county but not municipality
-      if (allRegionCodes.size > 0) {
-        if (item.regionCode && allRegionCodes.has(item.regionCode)) {
-          matches = true
-        }
+      // Fallback: Match items by region code if they don't have municipality code
+      // This handles source data that only has county-level tagging
+      if (!item.municipalityCode && item.regionCode && selectedRegionCodes.has(item.regionCode)) {
+        return true
       }
 
-      return matches
+      return false
     })
   }, [filters, metadata.municipalities])
 
