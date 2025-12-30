@@ -48,3 +48,4 @@ mappings.rows.forEach(row => {
 })
 
 await pool.end()
+

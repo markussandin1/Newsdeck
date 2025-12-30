@@ -10,31 +10,30 @@ const fs = require('fs')
 
 // Load environment variables
 function loadEnv() {
-  const envPath = path.join(__dirname, '..', '.env')
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8')
-    envContent.split('\n').forEach(line => {
-      const match = line.match(/^([^=:#]+)=(.*)$/)
-      if (match) {
-        const key = match[1].trim()
-        const value = match[2].trim()
-        if (!process.env[key]) {
-          process.env[key] = value
+  const envFiles = ['.env.local', '.env']
+  envFiles.forEach(file => {
+    const envPath = path.join(__dirname, '..', file)
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8')
+      envContent.split('\n').forEach(line => {
+        const match = line.match(/^([^=:#]+)=(.*)$/)
+        if (match) {
+          const key = match[1].trim()
+          const value = match[2].trim()
+          if (!process.env[key]) {
+            process.env[key] = value
+          }
         }
-      }
-    })
-  }
+      })
+    }
+  })
 }
 
 loadEnv()
 
 async function restoreColumnData() {
   const client = new Client({
-    host: 'localhost',
-    port: 5432,
-    database: 'newsdeck',
-    user: 'newsdeck-user',
-    password: 'bt7M1kQvgxokVayDWheKIAs4ZDZnrNefz9+Ond7jAzY='
+    connectionString: process.env.DATABASE_URL
   })
 
   try {
@@ -83,7 +82,9 @@ async function restoreColumnData() {
             await client.query(
               `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
                VALUES ($1, $2, $3, $4)
-               ON CONFLICT (column_id, news_item_db_id) DO NOTHING`,
+               ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
+                 data = EXCLUDED.data,
+                 created_at = EXCLUDED.created_at`,
               [
                 column.id,
                 item.db_id,
@@ -101,7 +102,13 @@ async function restoreColumnData() {
                   location: item.location,
                   extra: item.extra,
                   raw: item.raw,
-                  createdInDb: item.created_in_db
+                  createdInDb: item.created_in_db,
+                  countryCode: item.country_code,
+                  regionCountryCode: item.region_country_code,
+                  regionCode: item.region_code,
+                  municipalityCountryCode: item.municipality_country_code,
+                  municipalityRegionCode: item.municipality_region_code,
+                  municipalityCode: item.municipality_code
                 }),
                 item.created_in_db
               ]
