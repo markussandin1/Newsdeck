@@ -844,15 +844,26 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
       {showSearchNoResults && (
         <div className="bg-amber-50 border-y border-amber-200 text-amber-800 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            Inga händelser matchar &quot;{searchQuery}&quot;.
+            {searchQuery && geoFilters.isActive && (
+              <>Inga händelser matchar &quot;{searchQuery}&quot; med valda geografiska filter.</>
+            )}
+            {searchQuery && !geoFilters.isActive && (
+              <>Inga händelser matchar &quot;{searchQuery}&quot;.</>
+            )}
+            {!searchQuery && geoFilters.isActive && (
+              <>Inga händelser matchar valda geografiska filter.</>
+            )}
           </div>
           <button
             type="button"
-            onClick={() => setSearchQuery('')}
+            onClick={() => {
+              setSearchQuery('')
+              geoFilters.clearFilters()
+            }}
             className="inline-flex items-center gap-2 text-sm font-medium text-amber-900 hover:underline"
           >
             <X className="h-4 w-4" />
-            Rensa sökning
+            Rensa alla filter
           </button>
         </div>
       )}
