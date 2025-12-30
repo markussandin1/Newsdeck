@@ -37,7 +37,7 @@ export interface UseGeoFiltersReturn {
 const DEFAULT_FILTERS: GeoFilters = {
   regionCodes: [],
   municipalityCodes: [],
-  showItemsWithoutLocation: true,
+  showItemsWithoutLocation: false, // Don't show un-normalized items by default when filtering
 }
 
 const STORAGE_KEY_PREFIX = 'geoFilters_'
@@ -93,7 +93,17 @@ export function useGeoFilters({
       if (saved) {
         try {
           const parsed = JSON.parse(saved) as GeoFilters
-          setFilters(parsed)
+
+          // Migration: Force showItemsWithoutLocation to false for better UX
+          // Previously it defaulted to true, which caused items without normalized location codes
+          // to show even when filtering by specific municipality/region
+          // This migration ensures existing users get the corrected behavior
+          const migratedFilters = {
+            ...parsed,
+            showItemsWithoutLocation: false
+          }
+
+          setFilters(migratedFilters)
           console.log('Loaded geographic filters from localStorage')
         } catch (e) {
           console.error('Failed to parse geographic filters:', e)
@@ -171,16 +181,18 @@ export function useGeoFilters({
     }
 
     return items.filter(item => {
-      // Check if item has location data
+      // Check if item has normalized location codes
       const hasLocation = !!(
         item.countryCode ||
         item.regionCode ||
         item.municipalityCode
       )
 
-      // If item has no location
+      // If item has no normalized location codes
       if (!hasLocation) {
-        // Include only if showItemsWithoutLocation is true
+        // When specific filters are active, ONLY show items without location
+        // if showItemsWithoutLocation is explicitly enabled
+        // This prevents showing all un-normalized items when filtering by specific municipality
         return filters.showItemsWithoutLocation
       }
 
