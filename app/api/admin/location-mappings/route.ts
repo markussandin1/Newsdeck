@@ -12,7 +12,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { persistentDb } from '@/lib/db-postgresql'
-import { locationCache } from '@/lib/services/location-cache'
 
 // GET - Fetch unmatched locations for admin review
 export async function GET(request: NextRequest) {
@@ -96,13 +95,10 @@ export async function POST(request: NextRequest) {
       matchType: body.matchType
     })
 
-    // Automatically refresh cache after creating mapping
-    console.log('[Admin API] Refreshing location cache after creating mapping...')
-    await locationCache.refresh()
-
+    // Note: No cache refresh needed - geoLookup queries DB directly
     return NextResponse.json({
       success: true,
-      message: 'Location mapping created successfully and cache refreshed',
+      message: 'Location mapping created successfully',
       mapping: {
         variant: body.variant,
         matchType: body.matchType,

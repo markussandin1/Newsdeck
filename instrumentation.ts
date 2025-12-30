@@ -41,18 +41,5 @@ export async function register() {
         console.error('[Instrumentation] Failed to check database health:', error)
       }
     }
-
-    // Load location cache
-    const { locationCache } = await import('./lib/services/location-cache')
-
-    try {
-      console.log('[Instrumentation] Loading location cache...')
-      await locationCache.load()
-      console.log('[Instrumentation] ✅ Location cache loaded successfully')
-    } catch (error) {
-      console.error('[Instrumentation] ❌ Failed to load location cache:', error)
-      // Don't throw - allow server to start even if cache loading fails
-      // The ingestion pipeline will gracefully handle cache not being ready
-    }
   }
 }

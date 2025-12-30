@@ -135,7 +135,16 @@ async function importGeoData(jsonFilePath) {
           await client.query(
             `INSERT INTO location_name_mappings (variant, country_code, region_country_code, region_code, match_type, match_priority)
              VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (variant) DO NOTHING`,
+             ON CONFLICT (variant) DO UPDATE SET
+               country_code = EXCLUDED.country_code,
+               region_country_code = EXCLUDED.region_country_code,
+               region_code = EXCLUDED.region_code,
+               municipality_country_code = NULL,
+               municipality_region_code = NULL,
+               municipality_code = NULL,
+               match_type = EXCLUDED.match_type,
+               match_priority = EXCLUDED.match_priority
+             WHERE EXCLUDED.match_priority < location_name_mappings.match_priority`,
             [variant.toLowerCase(), countryCode, countryCode, code, variant === region.name ? 'exact' : 'fuzzy', variant === region.name ? 1 : 10]
           );
           mappingCount++;
@@ -152,7 +161,16 @@ async function importGeoData(jsonFilePath) {
           await client.query(
             `INSERT INTO location_name_mappings (variant, country_code, municipality_country_code, municipality_region_code, municipality_code, match_type, match_priority)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (variant) DO NOTHING`,
+             ON CONFLICT (variant) DO UPDATE SET
+               country_code = EXCLUDED.country_code,
+               municipality_country_code = EXCLUDED.municipality_country_code,
+               municipality_region_code = EXCLUDED.municipality_region_code,
+               municipality_code = EXCLUDED.municipality_code,
+               region_country_code = NULL,
+               region_code = NULL,
+               match_type = EXCLUDED.match_type,
+               match_priority = EXCLUDED.match_priority
+             WHERE EXCLUDED.match_priority < location_name_mappings.match_priority`,
             [variant.toLowerCase(), countryCode, countryCode, regionCode, municipalityCode, variant === municipality.name ? 'exact' : 'fuzzy', variant === municipality.name ? 1 : 10]
           );
           mappingCount++;
