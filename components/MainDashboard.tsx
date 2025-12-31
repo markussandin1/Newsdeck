@@ -44,8 +44,8 @@ function DashboardSearchInput({ value, onChange }: DashboardSearchInputProps) {
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Filtrera händelser..."
-        aria-label="Filtrera händelser"
+        placeholder="Sök händelser..."
+        aria-label="Sök händelser"
         autoComplete="off"
         autoFocus
         className="w-full pl-10 pr-10 py-2 rounded-lg border border-input bg-background font-body text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
