@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { MapPin, X, ChevronDown, ChevronRight, Search, Eye, EyeOff, Check } from 'lucide-react';
-import type { Region, Municipality } from '@/lib/types';
+import type { Municipality } from '@/lib/types';
 import type { UseGeoFiltersReturn } from '@/lib/dashboard/hooks/useGeoFilters';
 import { Button } from './ui/button';
 
@@ -14,6 +14,7 @@ interface GeoFilterPanelProps {
 export function GeoFilterPanel({ geoFilters, onClose }: GeoFilterPanelProps) {
   const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<string>>(new Set());
 
   const {
     filters,
@@ -44,12 +45,22 @@ export function GeoFilterPanel({ geoFilters, onClose }: GeoFilterPanelProps) {
   const filteredRegions = useMemo(() => {
     if (!searchQuery.trim()) return metadata.regions;
     const query = searchQuery.toLowerCase();
-    return metadata.regions.filter(
-      region =>
+    return metadata.regions.filter(region => {
+      // Check if region name matches
+      const regionMatches =
         region.name.toLowerCase().includes(query) ||
-        region.nameShort?.toLowerCase().includes(query)
-    );
-  }, [metadata.regions, searchQuery]);
+        region.nameShort?.toLowerCase().includes(query);
+
+      // Check if any municipality in this region matches
+      const regionKey = `${region.countryCode}-${region.code}`;
+      const municipalities = municipalitiesByRegion.get(regionKey) || [];
+      const municipalityMatches = municipalities.some(muni =>
+        muni.name.toLowerCase().includes(query)
+      );
+
+      return regionMatches || municipalityMatches;
+    });
+  }, [metadata.regions, searchQuery, municipalitiesByRegion]);
 
   const getFilteredMunicipalities = (regionKey: string): Municipality[] => {
     const municipalities = municipalitiesByRegion.get(regionKey) || [];
@@ -60,13 +71,57 @@ export function GeoFilterPanel({ geoFilters, onClose }: GeoFilterPanelProps) {
     );
   };
 
+  // Auto-expand regions with matching municipalities when searching
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      // Reset manually collapsed tracking when clearing search
+      setManuallyCollapsed(new Set());
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const regionsToExpand = new Set<string>();
+
+    filteredRegions.forEach(region => {
+      // Skip if user manually collapsed this region
+      if (manuallyCollapsed.has(region.code)) return;
+
+      // Check if region has any matching municipalities
+      const regionKey = `${region.countryCode}-${region.code}`;
+      const municipalities = municipalitiesByRegion.get(regionKey) || [];
+      const hasMatchingMunicipality = municipalities.some(muni =>
+        muni.name.toLowerCase().includes(query)
+      );
+
+      if (hasMatchingMunicipality) {
+        regionsToExpand.add(region.code);
+      }
+    });
+
+    if (regionsToExpand.size > 0) {
+      setExpandedRegions(prev => {
+        const next = new Set(prev);
+        regionsToExpand.forEach(code => next.add(code));
+        return next;
+      });
+    }
+  }, [searchQuery, filteredRegions, municipalitiesByRegion, manuallyCollapsed]);
+
   const toggleRegionExpanded = (regionCode: string) => {
     setExpandedRegions(prev => {
       const next = new Set(prev);
       if (next.has(regionCode)) {
         next.delete(regionCode);
+        // Track that user manually collapsed this region
+        setManuallyCollapsed(mc => new Set(mc).add(regionCode));
       } else {
         next.add(regionCode);
+        // Remove from manually collapsed if user expands it
+        setManuallyCollapsed(mc => {
+          const newSet = new Set(mc);
+          newSet.delete(regionCode);
+          return newSet;
+        });
       }
       return next;
     });
