@@ -405,8 +405,8 @@ export const ingestNewsItems = async (
     
     // Look for nearby traffic camera if coordinates exist and category is traffic-related
     let nearbyCamera = undefined
-    const isTrafficRelated = (cat?: string) => {
-      if (!cat) return false
+    const isTrafficRelated = (cat: unknown) => {
+      if (typeof cat !== 'string' || !cat) return false
       const trafficCategories = ['trafikolycka', 'vägarbete', 'fordonsbrand', 'kö', 'halka', 'snöoväder', 'djur']
       return trafficCategories.includes(cat.toLowerCase())
     }
