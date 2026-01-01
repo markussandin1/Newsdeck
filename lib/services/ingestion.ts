@@ -149,6 +149,43 @@ const normalizeLocationMetadata = async (
 
   if (hasCountryCode && hasRegionCode) {
     // Codes provided by AI agent - use them directly
+    // But validate that municipality code matches municipality name (async, don't block)
+    if (hasMunicipalityCode && location.municipality) {
+      // Validate municipality code against municipality name
+      const normalizedMunicipality = location.municipality
+        .replace(/\s+kommun$/i, '')
+        .replace(/\s+stad$/i, '')
+        .trim()
+
+      // Async validation - don't wait for it
+      geoLookup.findByName(normalizedMunicipality)
+        .then(match => {
+          if (match && match.municipalityCode && match.municipalityCode !== location.municipalityCode) {
+            // Municipality code mismatch detected!
+            console.warn('⚠️  Municipality code mismatch from Workflows AI agent:', {
+              workflowId,
+              municipality: location.municipality,
+              providedCode: location.municipalityCode,
+              expectedCode: match.municipalityCode,
+              locationName: location.name
+            })
+
+            // Log for admin review
+            persistentDb.logUnmatchedLocation({
+              rawLocation: location,
+              failedField: 'municipalityCode_mismatch',
+              failedValue: `Provided: ${location.municipalityCode}, Expected: ${match.municipalityCode} (${location.municipality})`,
+              sourceWorkflowId: workflowId
+            }).catch(() => {
+              // Logging failures shouldn't break ingestion
+            })
+          }
+        })
+        .catch(() => {
+          // Validation lookup failures shouldn't break ingestion
+        })
+    }
+
     return {
       countryCode: location.countryCode,
       regionCountryCode: location.countryCode,
