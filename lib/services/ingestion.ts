@@ -403,9 +403,15 @@ export const ingestNewsItems = async (
 
     const coordinates = item.location ? normalizeCoordinates(item.location.coordinates) : undefined
     
-    // Look for nearby traffic camera if coordinates exist
+    // Look for nearby traffic camera if coordinates exist and category is traffic-related
     let nearbyCamera = undefined
-    if (coordinates && coordinates.length === 2) {
+    const isTrafficRelated = (cat?: string) => {
+      if (!cat) return false
+      const trafficCategories = ['trafikolycka', 'vägarbete', 'fordonsbrand', 'kö', 'halka', 'snöoväder', 'djur']
+      return trafficCategories.includes(cat.toLowerCase())
+    }
+
+    if (coordinates && coordinates.length === 2 && isTrafficRelated(item.category)) {
       const [lat, lon] = coordinates
       try {
         const camera = await trafficCameraService.findNearestCamera(lat, lon, 10) // 10km radius
