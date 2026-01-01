@@ -117,5 +117,51 @@ export const trafficCameraService = {
       logger.error('trafficCameraService.findNearestCamera.error', { error, lat, lon })
       return null
     }
+  },
+
+  /**
+   * Fetch live camera data from Trafikverket API
+   * Used to get the absolute latest image URL and timestamp at the moment of an event
+   */
+  fetchLiveCameraData: async (cameraId: string) => {
+    try {
+      const apiKey = process.env.TRAFIKVERKET_API_KEY || 'e525079af6474863a80d6155890396c2'
+      const xmlRequest = `
+        <REQUEST>
+            <LOGIN authenticationkey="${apiKey}" />
+            <QUERY objecttype="Camera" schemaversion="1.0">
+                <FILTER>
+                    <EQ name="Id" value="${cameraId}" />
+                </FILTER>
+                <INCLUDE>Id</INCLUDE>
+                <INCLUDE>PhotoUrl</INCLUDE>
+                <INCLUDE>PhotoTime</INCLUDE>
+            </QUERY>
+        </REQUEST>`
+
+      const response = await fetch('https://api.trafikinfo.trafikverket.se/v2/data.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/xml' },
+        body: xmlRequest
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const camera = data?.RESPONSE?.RESULT?.[0]?.Camera?.[0]
+
+      if (!camera) return null
+
+      return {
+        id: camera.Id,
+        photoUrl: camera.PhotoUrl,
+        photoTime: camera.PhotoTime
+      }
+    } catch (error) {
+      logger.error('trafficCameraService.fetchLiveCameraData.error', { error, cameraId })
+      return null
+    }
   }
 }

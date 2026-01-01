@@ -455,14 +455,20 @@ export const ingestNewsItems = async (
     if (coordinates && coordinates.length === 2 && isTrafficRelated(item)) {
       const [lat, lon] = coordinates
       try {
+        // 1. Find nearest camera in local DB (fast spatial lookup)
         const camera = await trafficCameraService.findNearestCamera(lat, lon, 10) // 10km radius
+        
         if (camera) {
+          // 2. Fetch live data from Trafikverket to get the exact snapshot at this moment
+          const liveData = await trafficCameraService.fetchLiveCameraData(camera.id)
+          
           nearbyCamera = {
             id: camera.id,
             name: camera.name,
-            photoUrl: camera.photoUrl,
+            // Use live data if available, otherwise fall back to local DB data
+            photoUrl: liveData?.photoUrl || camera.photoUrl,
             distance: Math.round(camera.distance * 10) / 10, // Round to 1 decimal
-            photoTime: camera.photoTime
+            photoTime: liveData?.photoTime || camera.photoTime
           }
         }
       } catch (error) {
