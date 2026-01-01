@@ -261,11 +261,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
               alt={item.trafficCamera.name}
               className="object-cover w-full h-full"
             />
-            {item.trafficCamera.photoTime && (
-              <div className="absolute bottom-1 right-2 text-[10px] text-white/80 bg-black/40 px-1.5 py-0.5 rounded-sm backdrop-blur-[2px]">
-                {new Date(item.trafficCamera.photoTime).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            )}
           </div>
         </div>
       )}

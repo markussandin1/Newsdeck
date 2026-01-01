@@ -305,11 +305,6 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                     alt={item.trafficCamera.name}
                     className="object-cover w-full h-full"
                   />
-                  {item.trafficCamera.photoTime && (
-                    <div className="absolute bottom-2 right-3 text-xs text-white bg-black/50 px-2 py-1 rounded backdrop-blur-sm">
-                      Kameratid: {new Date(item.trafficCamera.photoTime).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
