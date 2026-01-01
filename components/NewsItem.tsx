@@ -1,6 +1,6 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { useState, useEffect, memo } from 'react'
-import { MapPin, ExternalLink } from 'lucide-react'
+import { MapPin, ExternalLink, Camera } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { formatCompactTime, isUrl, getHostname } from '@/lib/time-utils'
 
@@ -188,6 +188,11 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
               <Badge variant={getNewsValueBadgeVariant(item.newsValue)}>
                 {item.newsValue}
               </Badge>
+              {item.trafficCamera && (
+                <div className="text-muted-foreground flex items-center" title={`Kamera finns: ${item.trafficCamera.name}`}>
+                  <Camera className="w-3.5 h-3.5" />
+                </div>
+              )}
             </div>
             {locationSummary && (
               <span className="text-xs text-muted-foreground flex items-center gap-1 text-right">
@@ -237,6 +242,32 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
         <p className="font-body text-muted-foreground mb-3 text-sm leading-relaxed">
           {item.description}
         </p>
+      )}
+
+      {item.trafficCamera && (
+        <div className="mb-4 bg-muted/30 rounded-lg overflow-hidden border border-border/50">
+          <div className="p-2 border-b border-border/50 bg-muted/50 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Camera className="w-3.5 h-3.5" />
+              <span>{item.trafficCamera.name}</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">
+              {item.trafficCamera.distance} km bort
+            </span>
+          </div>
+          <div className="relative aspect-video">
+            <img 
+              src={item.trafficCamera.photoUrl} 
+              alt={item.trafficCamera.name}
+              className="object-cover w-full h-full"
+            />
+            {item.trafficCamera.photoTime && (
+              <div className="absolute bottom-1 right-2 text-[10px] text-white/80 bg-black/40 px-1.5 py-0.5 rounded-sm backdrop-blur-[2px]">
+                {new Date(item.trafficCamera.photoTime).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       <div className="space-y-4">

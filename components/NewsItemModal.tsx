@@ -3,7 +3,7 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { useEffect, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
-import { MapPin, ExternalLink, X, Paperclip, Settings, Map } from 'lucide-react'
+import { MapPin, ExternalLink, X, Paperclip, Settings, Map, Camera } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -280,6 +280,38 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                 Besök källa
                 <ExternalLink className="h-4 w-4" />
               </Button>
+            </div>
+          )}
+
+          {/* Traffic Camera */}
+          {item.trafficCamera && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Camera className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-lg font-display font-semibold text-foreground">Trafikkamera</h3>
+              </div>
+              <div className="bg-muted/50 rounded-lg overflow-hidden border border-border/50">
+                <div className="p-3 border-b border-border/50 bg-muted flex items-center justify-between">
+                  <div className="text-sm font-semibold text-foreground">
+                    {item.trafficCamera.name}
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-white/50 px-2 py-0.5 rounded-full">
+                    {item.trafficCamera.distance} km bort
+                  </div>
+                </div>
+                <div className="relative aspect-video">
+                  <img 
+                    src={item.trafficCamera.photoUrl} 
+                    alt={item.trafficCamera.name}
+                    className="object-cover w-full h-full"
+                  />
+                  {item.trafficCamera.photoTime && (
+                    <div className="absolute bottom-2 right-3 text-xs text-white bg-black/50 px-2 py-1 rounded backdrop-blur-sm">
+                      Kameratid: {new Date(item.trafficCamera.photoTime).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           

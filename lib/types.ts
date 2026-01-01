@@ -47,6 +47,13 @@ export interface NewsItem {
   // Övrigt
   extra?: Record<string, unknown>;  // Källspecifika fält
   raw?: unknown;                    // Originaldata för debugging
+  trafficCamera?: {
+    id: string;
+    name: string;
+    photoUrl: string;
+    distance: number; // km
+    photoTime?: string;
+  };
 }
 
 export interface DashboardColumn {

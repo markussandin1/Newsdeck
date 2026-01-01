@@ -4,6 +4,7 @@ import type { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 import { newsdeckPubSub } from '@/lib/pubsub'
 import { eventQueue } from '@/lib/event-queue'
 import { persistentDb, geoLookup } from '@/lib/db-postgresql'
+import { trafficCameraService } from './traffic-camera-service'
 
 export class IngestionError extends Error {
   status: number
@@ -400,6 +401,29 @@ export const ingestNewsItems = async (
     // Normalize location metadata using in-memory cache (async - waits for cache if needed)
     const normalizedLocation = await normalizeLocationMetadata(item.location, resolvedWorkflowId)
 
+    const coordinates = item.location ? normalizeCoordinates(item.location.coordinates) : undefined
+    
+    // Look for nearby traffic camera if coordinates exist
+    let nearbyCamera = undefined
+    if (coordinates && coordinates.length === 2) {
+      const [lat, lon] = coordinates
+      try {
+        const camera = await trafficCameraService.findNearestCamera(lat, lon, 10) // 10km radius
+        if (camera) {
+          nearbyCamera = {
+            id: camera.id,
+            name: camera.name,
+            photoUrl: camera.photoUrl,
+            distance: Math.round(camera.distance * 10) / 10, // Round to 1 decimal
+            photoTime: camera.photoTime
+          }
+        }
+      } catch (error) {
+        // Don't let camera lookup failure break ingestion
+        console.error('Failed to find nearby traffic camera:', error)
+      }
+    }
+
     return {
       id: toOptionalTrimmed(item.id), // Optional source ID
       dbId: uuidv4(),
@@ -417,7 +441,7 @@ export const ingestNewsItems = async (
         : undefined,
       location: item.location ? {
         ...item.location,
-        coordinates: normalizeCoordinates(item.location.coordinates)
+        coordinates: coordinates
       } : undefined,
       // Add normalized geographic codes
       countryCode: normalizedLocation.countryCode,
@@ -426,6 +450,7 @@ export const ingestNewsItems = async (
       municipalityCountryCode: normalizedLocation.municipalityCountryCode,
       municipalityRegionCode: normalizedLocation.municipalityRegionCode,
       municipalityCode: normalizedLocation.municipalityCode,
+      trafficCamera: nearbyCamera,
       extra: {
         ...(isRecord(item.extra) ? item.extra : {}),
         ...extra

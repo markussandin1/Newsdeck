@@ -142,7 +142,7 @@ export const persistentDb = {
           item.category || null,
           item.severity || null,
           JSON.stringify(item.location || {}),
-          JSON.stringify(item.extra || {}),
+          JSON.stringify({ ...(item.extra || {}), trafficCamera: item.trafficCamera }),
           JSON.stringify(item.raw || {}),
           itemWithTimestamp.createdInDb,
           item.countryCode || null,
@@ -199,7 +199,7 @@ export const persistentDb = {
             item.category || null,
             item.severity || null,
             JSON.stringify(item.location || {}),
-            JSON.stringify(item.extra || {}),
+            JSON.stringify({ ...(item.extra || {}), trafficCamera: item.trafficCamera }),
             JSON.stringify(item.raw || {}),
             item.createdInDb,
             item.countryCode || null,
@@ -251,12 +251,20 @@ export const persistentDb = {
         ORDER BY created_in_db DESC, timestamp DESC`
       )
 
-      return result.rows.map(row => ({
-        ...row,
-        location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-        extra: typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra,
-        raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-      }))
+      return result.rows.map(row => {
+        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
+        const trafficCamera = extra?.trafficCamera
+        
+        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
+        // or just leave it. For now, we extract it to top level.
+        return {
+          ...row,
+          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
+          extra,
+          trafficCamera,
+          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
+        }
+      })
     } catch (error) {
       logger.error('db.getNewsItems.error', { error })
       throw error
@@ -288,12 +296,20 @@ export const persistentDb = {
         [limit]
       )
 
-      return result.rows.map(row => ({
-        ...row,
-        location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-        extra: typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra,
-        raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-      }))
+      return result.rows.map(row => {
+        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
+        const trafficCamera = extra?.trafficCamera
+        
+        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
+        // or just leave it. For now, we extract it to top level.
+        return {
+          ...row,
+          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
+          extra,
+          trafficCamera,
+          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
+        }
+      })
     } catch (error) {
       logger.error('db.getRecentNewsItems.error', { error })
       throw error
@@ -356,12 +372,20 @@ export const persistentDb = {
         [limit, offset]
       )
 
-      return result.rows.map(row => ({
-        ...row,
-        location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-        extra: typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra,
-        raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-      }))
+      return result.rows.map(row => {
+        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
+        const trafficCamera = extra?.trafficCamera
+        
+        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
+        // or just leave it. For now, we extract it to top level.
+        return {
+          ...row,
+          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
+          extra,
+          trafficCamera,
+          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
+        }
+      })
     } catch (error) {
       logger.error('db.getNewsItemsPaginated.error', { error })
       throw error
@@ -893,12 +917,20 @@ export const persistentDb = {
         [workflowId]
       )
 
-      return result.rows.map(row => ({
-        ...row,
-        location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-        extra: typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra,
-        raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-      }))
+      return result.rows.map(row => {
+        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
+        const trafficCamera = extra?.trafficCamera
+        
+        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
+        // or just leave it. For now, we extract it to top level.
+        return {
+          ...row,
+          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
+          extra,
+          trafficCamera,
+          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
+        }
+      })
     } catch (error) {
       logger.error('db.getNewsItemsByWorkflow.error', { error, workflowId })
       throw error
@@ -931,12 +963,20 @@ export const persistentDb = {
         [workflowIds]
       )
 
-      return result.rows.map(row => ({
-        ...row,
-        location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-        extra: typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra,
-        raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-      }))
+      return result.rows.map(row => {
+        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
+        const trafficCamera = extra?.trafficCamera
+        
+        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
+        // or just leave it. For now, we extract it to top level.
+        return {
+          ...row,
+          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
+          extra,
+          trafficCamera,
+          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
+        }
+      })
     } catch (error) {
       logger.error('db.getNewsItemsByWorkflows.error', { error })
       throw error
