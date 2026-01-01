@@ -440,15 +440,19 @@ export const ingestNewsItems = async (
 
     const coordinates = item.location ? normalizeCoordinates(item.location.coordinates) : undefined
     
-    // Look for nearby traffic camera if coordinates exist and category is traffic-related
+    // Look for nearby traffic camera if coordinates exist and category is traffic-related or source is Trafikverket
     let nearbyCamera = undefined
-    const isTrafficRelated = (cat: unknown) => {
-      if (typeof cat !== 'string' || !cat) return false
+    const isTrafficRelated = (item: { category?: unknown, source?: string }) => {
+      const cat = typeof item.category === 'string' ? item.category.toLowerCase() : ''
+      const source = item.source?.toLowerCase() || ''
+      
+      if (source === 'trafikverket') return true
+      
       const trafficCategories = ['trafik', 'trafikolycka', 'vägarbete', 'fordonsbrand', 'kö', 'halka', 'snöoväder', 'djur']
-      return trafficCategories.includes(cat.toLowerCase())
+      return trafficCategories.includes(cat)
     }
 
-    if (coordinates && coordinates.length === 2 && isTrafficRelated(item.category)) {
+    if (coordinates && coordinates.length === 2 && isTrafficRelated(item)) {
       const [lat, lon] = coordinates
       try {
         const camera = await trafficCameraService.findNearestCamera(lat, lon, 10) // 10km radius
