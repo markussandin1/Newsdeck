@@ -442,9 +442,9 @@ export const ingestNewsItems = async (
     
     // Look for nearby traffic camera if coordinates exist and category is traffic-related or source is Trafikverket
     let nearbyCamera = undefined
-    const isTrafficRelated = (item: { category?: unknown, source?: string }) => {
+    const isTrafficRelated = (item: { category?: unknown, source?: unknown }) => {
       const cat = typeof item.category === 'string' ? item.category.toLowerCase() : ''
-      const source = item.source?.toLowerCase() || ''
+      const source = typeof item.source === 'string' ? item.source.toLowerCase() : ''
       
       if (source === 'trafikverket') return true
       
