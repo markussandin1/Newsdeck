@@ -1,7 +1,8 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { useState, useEffect, memo } from 'react'
-import { MapPin, ExternalLink, Camera } from 'lucide-react'
+import { MapPin, ExternalLink, Camera, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { formatCompactTime, isUrl, getHostname } from '@/lib/time-utils'
 
 interface NewsItemProps {
@@ -12,6 +13,22 @@ interface NewsItemProps {
 
 function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   const [isNew, setIsNew] = useState(item.isNew || false)
+  const [cameraUrl, setCameraUrl] = useState<string | null>(item.trafficCamera?.photoUrl || null)
+  const [isRefreshingCamera, setIsRefreshingCamera] = useState(false)
+
+  useEffect(() => {
+    if (item.trafficCamera) {
+      setCameraUrl(item.trafficCamera.photoUrl)
+    }
+  }, [item.trafficCamera])
+
+  const handleRefreshCamera = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!item.trafficCamera) return
+    setIsRefreshingCamera(true)
+    const baseUrl = item.trafficCamera.photoUrl.split('?')[0]
+    setCameraUrl(`${baseUrl}?t=${Date.now()}`)
+  }
 
   useEffect(() => {
     if (item.isNew) {
@@ -244,22 +261,35 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
         </p>
       )}
 
-      {item.trafficCamera && (
+      {item.trafficCamera && cameraUrl && (
         <div className="mb-4 bg-muted/30 rounded-lg overflow-hidden border border-border/50">
           <div className="p-2 border-b border-border/50 bg-muted/50 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
               <Camera className="w-3.5 h-3.5" />
               <span>{item.trafficCamera.name}</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">
-              {item.trafficCamera.distance} km bort
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">
+                {item.trafficCamera.distance} km bort
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={handleRefreshCamera}
+                disabled={isRefreshingCamera}
+                title="Uppdatera bild"
+              >
+                <RefreshCw className={`h-3 w-3 ${isRefreshingCamera ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
-          <div className="relative aspect-video">
+          <div className="relative aspect-video bg-black/5">
             <img 
-              src={item.trafficCamera.photoUrl} 
+              src={cameraUrl} 
               alt={item.trafficCamera.name}
-              className="object-cover w-full h-full"
+              className={`object-cover w-full h-full transition-opacity duration-300 ${isRefreshingCamera ? 'opacity-50' : 'opacity-100'}`}
+              onLoad={() => setIsRefreshingCamera(false)}
             />
           </div>
         </div>

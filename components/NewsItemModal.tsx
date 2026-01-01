@@ -3,7 +3,7 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { useEffect, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
-import { MapPin, ExternalLink, X, Paperclip, Settings, Map, Camera } from 'lucide-react'
+import { MapPin, ExternalLink, X, Paperclip, Settings, Map, Camera, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -22,6 +22,8 @@ interface NewsItemModalProps {
 
 export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [cameraUrl, setCameraUrl] = useState<string | null>(null)
+  const [isRefreshingCamera, setIsRefreshingCamera] = useState(false)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -34,6 +36,11 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
       document.addEventListener('keydown', handleKeyDown)
       // Prevent body scrolling when modal is open
       document.body.style.overflow = 'hidden'
+      
+      // Reset camera URL when item changes
+      if (item.trafficCamera) {
+        setCameraUrl(item.trafficCamera.photoUrl)
+      }
     }
 
     return () => {
@@ -47,6 +54,13 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
     const timer = setTimeout(() => setCopiedField(null), 2000)
     return () => clearTimeout(timer)
   }, [copiedField])
+
+  const handleRefreshCamera = () => {
+    if (!item?.trafficCamera) return
+    setIsRefreshingCamera(true)
+    const baseUrl = item.trafficCamera.photoUrl.split('?')[0]
+    setCameraUrl(`${baseUrl}?t=${Date.now()}`)
+  }
 
   if (!item) {
     return <AnimatePresence>{null}</AnimatePresence>
@@ -284,7 +298,7 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
           )}
 
           {/* Traffic Camera */}
-          {item.trafficCamera && (
+          {item.trafficCamera && cameraUrl && (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Camera className="h-5 w-5 text-muted-foreground" />
@@ -295,15 +309,28 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
                   <div className="text-sm font-semibold text-foreground">
                     {item.trafficCamera.name}
                   </div>
-                  <div className="text-xs text-muted-foreground bg-white/50 px-2 py-0.5 rounded-full">
-                    {item.trafficCamera.distance} km bort
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground bg-white/50 px-2 py-0.5 rounded-full">
+                      {item.trafficCamera.distance} km bort
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={handleRefreshCamera}
+                      disabled={isRefreshingCamera}
+                      title="Uppdatera bild"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingCamera ? 'animate-spin' : ''}`} />
+                    </Button>
                   </div>
                 </div>
-                <div className="relative aspect-video">
+                <div className="relative aspect-video bg-black/5">
                   <img 
-                    src={item.trafficCamera.photoUrl} 
+                    src={cameraUrl} 
                     alt={item.trafficCamera.name}
-                    className="object-cover w-full h-full"
+                    className={`object-cover w-full h-full transition-opacity duration-300 ${isRefreshingCamera ? 'opacity-50' : 'opacity-100'}`}
+                    onLoad={() => setIsRefreshingCamera(false)}
                   />
                 </div>
               </div>
