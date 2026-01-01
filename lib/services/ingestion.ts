@@ -5,6 +5,7 @@ import { newsdeckPubSub } from '@/lib/pubsub'
 import { eventQueue } from '@/lib/event-queue'
 import { persistentDb, geoLookup } from '@/lib/db-postgresql'
 import { trafficCameraService } from './traffic-camera-service'
+import { queueImageUpload } from './image-queue-service'
 
 export class IngestionError extends Error {
   status: number
@@ -461,14 +462,16 @@ export const ingestNewsItems = async (
         if (camera) {
           // 2. Fetch live data from Trafikverket to get the exact snapshot at this moment
           const liveData = await trafficCameraService.fetchLiveCameraData(camera.id)
-          
+
           nearbyCamera = {
             id: camera.id,
             name: camera.name,
-            // Use live data if available, otherwise fall back to local DB data
+            // Store original URL for backward compatibility and as source for async upload
             photoUrl: liveData?.photoUrl || camera.photoUrl,
             distance: Math.round(camera.distance * 10) / 10, // Round to 1 decimal
-            photoTime: liveData?.photoTime || camera.photoTime
+            photoTime: liveData?.photoTime || camera.photoTime,
+            // New: Set initial status to pending (will be updated by worker)
+            status: 'pending' as const
           }
         }
       } catch (error) {
@@ -526,6 +529,15 @@ export const ingestNewsItems = async (
   // (foreign key constraint requires news_item_db_id to exist)
   // addNewsItems returns items with correct db_id from database
   const insertedItems = await db.addNewsItems(validatedItems)
+
+  // Queue image uploads for items with traffic cameras (async, don't block)
+  for (const item of insertedItems) {
+    if (item.trafficCamera && item.trafficCamera.photoUrl && item.dbId) {
+      queueImageUpload(item.dbId, item.trafficCamera.photoUrl).catch(error => {
+        console.error(`Failed to queue image upload for ${item.dbId}:`, error)
+      })
+    }
+  }
 
   let columnsUpdated = 0
   const columnTotals: Record<string, number> = {}

@@ -41,5 +41,15 @@ export async function register() {
         console.error('[Instrumentation] Failed to check database health:', error)
       }
     }
+
+    // Start background image upload worker
+    try {
+      const { startImageUploadWorker } = await import('./lib/services/image-upload-worker')
+      startImageUploadWorker().catch(error => {
+        console.error('[Instrumentation] Image upload worker crashed:', error)
+      })
+    } catch (error) {
+      console.error('[Instrumentation] Failed to start image upload worker:', error)
+    }
   }
 }

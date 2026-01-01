@@ -13,12 +13,17 @@ interface NewsItemProps {
 
 function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
   const [isNew, setIsNew] = useState(item.isNew || false)
-  const [cameraUrl, setCameraUrl] = useState<string | null>(item.trafficCamera?.photoUrl || null)
+  // Prefer currentUrl (GCS) over photoUrl (Trafikverket) for backward compatibility
+  const [cameraUrl, setCameraUrl] = useState<string | null>(
+    item.trafficCamera?.currentUrl || item.trafficCamera?.photoUrl || null
+  )
   const [isRefreshingCamera, setIsRefreshingCamera] = useState(false)
 
   useEffect(() => {
     if (item.trafficCamera) {
-      setCameraUrl(item.trafficCamera.photoUrl)
+      // Use currentUrl if available (from GCS), otherwise fallback to photoUrl
+      const url = item.trafficCamera.currentUrl || item.trafficCamera.photoUrl
+      setCameraUrl(url)
     }
   }, [item.trafficCamera])
 
@@ -26,7 +31,8 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
     e.stopPropagation()
     if (!item.trafficCamera) return
     setIsRefreshingCamera(true)
-    const baseUrl = item.trafficCamera.photoUrl.split('?')[0]
+    // Use currentUrl or photoUrl for cache-busting (simple client-side refresh)
+    const baseUrl = (item.trafficCamera.currentUrl || item.trafficCamera.photoUrl).split('?')[0]
     setCameraUrl(`${baseUrl}?t=${Date.now()}`)
   }
 

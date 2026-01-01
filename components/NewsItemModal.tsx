@@ -24,6 +24,8 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [cameraUrl, setCameraUrl] = useState<string | null>(null)
   const [isRefreshingCamera, setIsRefreshingCamera] = useState(false)
+  const [cameraStatus, setCameraStatus] = useState<'pending' | 'ready' | 'failed'>('ready')
+  const [refreshCooldown, setRefreshCooldown] = useState(0)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -37,9 +39,12 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
       // Prevent body scrolling when modal is open
       document.body.style.overflow = 'hidden'
       
-      // Reset camera URL when item changes
+      // Reset camera URL and status when item changes
       if (item.trafficCamera) {
-        setCameraUrl(item.trafficCamera.photoUrl)
+        // Prefer currentUrl (GCS) over photoUrl (Trafikverket) for backward compatibility
+        const url = item.trafficCamera.currentUrl || item.trafficCamera.photoUrl
+        setCameraUrl(url)
+        setCameraStatus(item.trafficCamera.status || 'ready')
       }
     }
 
@@ -55,12 +60,51 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
     return () => clearTimeout(timer)
   }, [copiedField])
 
-  const handleRefreshCamera = () => {
-    if (!item?.trafficCamera) return
+  const handleRefreshCamera = async () => {
+    if (!item?.trafficCamera || !item.dbId) return
+
     setIsRefreshingCamera(true)
-    const baseUrl = item.trafficCamera.photoUrl.split('?')[0]
-    setCameraUrl(`${baseUrl}?t=${Date.now()}`)
+
+    try {
+      const response = await fetch('/api/traffic-cameras/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newsItemId: item.dbId })
+      })
+
+      const data = await response.json()
+
+      if (response.status === 429) {
+        // Rate limited
+        setRefreshCooldown(data.retryAfter || 60)
+        return
+      }
+
+      if (!response.ok) {
+        console.error('Failed to refresh camera:', data.error)
+        return
+      }
+
+      // Success - set status to pending
+      setCameraStatus('pending')
+      // UI will update via long-polling when worker completes the upload
+
+    } catch (error) {
+      console.error('Failed to refresh camera:', error)
+    } finally {
+      setIsRefreshingCamera(false)
+    }
   }
+
+  // Countdown timer for refresh cooldown
+  useEffect(() => {
+    if (refreshCooldown > 0) {
+      const timer = setInterval(() => {
+        setRefreshCooldown(prev => Math.max(0, prev - 1))
+      }, 1000)
+      return () => clearInterval(timer)
+    }
+  }, [refreshCooldown])
 
   if (!item) {
     return <AnimatePresence>{null}</AnimatePresence>
@@ -298,42 +342,71 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
           )}
 
           {/* Traffic Camera */}
-          {item.trafficCamera && cameraUrl && (
+          {item.trafficCamera && (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Camera className="h-5 w-5 text-muted-foreground" />
                 <h3 className="text-lg font-display font-semibold text-foreground">Trafikkamera</h3>
               </div>
-              <div className="bg-muted/50 rounded-lg overflow-hidden border border-border/50">
-                <div className="p-3 border-b border-border/50 bg-muted flex items-center justify-between">
-                  <div className="text-sm font-semibold text-foreground">
-                    {item.trafficCamera.name}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-xs text-muted-foreground bg-white/50 px-2 py-0.5 rounded-full">
-                      {item.trafficCamera.distance} km bort
+
+              {/* Status messages */}
+              {cameraStatus === 'pending' && (
+                <div className="mb-2 text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950 p-2 rounded">
+                  Hämtar ny bild...
+                </div>
+              )}
+
+              {cameraStatus === 'failed' && (
+                <div className="mb-2 text-sm text-destructive bg-red-50 dark:bg-red-950 p-2 rounded">
+                  Kunde inte hämta bild. {item.trafficCamera.error || 'Försök igen senare.'}
+                </div>
+              )}
+
+              {cameraUrl && cameraStatus === 'ready' && (
+                <div className="bg-muted/50 rounded-lg overflow-hidden border border-border/50">
+                  <div className="p-3 border-b border-border/50 bg-muted flex items-center justify-between">
+                    <div className="text-sm font-semibold text-foreground">
+                      {item.trafficCamera.name}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={handleRefreshCamera}
-                      disabled={isRefreshingCamera}
-                      title="Uppdatera bild"
-                    >
-                      <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingCamera ? 'animate-spin' : ''}`} />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground bg-white/50 px-2 py-0.5 rounded-full">
+                        {item.trafficCamera.distance} km bort
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={handleRefreshCamera}
+                        disabled={isRefreshingCamera || refreshCooldown > 0}
+                        title={refreshCooldown > 0 ? `Vänta ${refreshCooldown}s` : 'Uppdatera bild'}
+                      >
+                        {refreshCooldown > 0 ? (
+                          <span className="text-xs">{refreshCooldown}s</span>
+                        ) : (
+                          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingCamera ? 'animate-spin' : ''}`} />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="relative aspect-video bg-black/5">
+                    <img
+                      src={cameraUrl}
+                      alt={item.trafficCamera.name}
+                      className="object-cover w-full h-full transition-opacity duration-300"
+                      onError={() => {
+                        console.error('Failed to load traffic camera image')
+                        setCameraStatus('failed')
+                      }}
+                    />
                   </div>
                 </div>
-                <div className="relative aspect-video bg-black/5">
-                  <img 
-                    src={cameraUrl} 
-                    alt={item.trafficCamera.name}
-                    className={`object-cover w-full h-full transition-opacity duration-300 ${isRefreshingCamera ? 'opacity-50' : 'opacity-100'}`}
-                    onLoad={() => setIsRefreshingCamera(false)}
-                  />
+              )}
+
+              {!cameraUrl && cameraStatus !== 'pending' && cameraStatus !== 'failed' && (
+                <div className="text-sm text-muted-foreground">
+                  Ingen bild tillgänglig
                 </div>
-              </div>
+              )}
             </div>
           )}
           
