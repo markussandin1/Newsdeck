@@ -9,6 +9,7 @@ import { ColumnData } from '@/lib/dashboard/types'
 import { extractWorkflowId } from '@/lib/dashboard/utils'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardPolling } from '@/lib/dashboard/hooks/useDashboardPolling'
+import { usePendingImagePolling } from '@/lib/dashboard/hooks/usePendingImagePolling'
 import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
 import { useNotificationSettings } from '@/lib/dashboard/hooks/useNotificationSettings'
 import { useDesktopNotifications } from '@/lib/dashboard/hooks/useDesktopNotifications'
@@ -123,6 +124,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     columns: dashboard?.columns || [],
     updateColumnData,
     onNewItems: handleNewItems,
+  })
+
+  // Poll for pending traffic camera image uploads (auto-refresh when ready)
+  usePendingImagePolling({
+    columnData,
+    updateColumnData,
   })
 
   // Weather data
