@@ -377,7 +377,7 @@ const normalisePayload = (body: unknown): NormalisedPayload => {
     rawItems = undefined
   }
 
-  if (!rawItems || rawItems.length === 0) {
+  if (!rawItems) {
     throw new IngestionError('Either items array or item object is required in request body')
   }
 
