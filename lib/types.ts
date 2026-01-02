@@ -50,9 +50,18 @@ export interface NewsItem {
   trafficCamera?: {
     id: string;
     name: string;
-    photoUrl: string;
-    distance: number; // km
+    photoUrl: string;              // Trafikverket URL (fallback for backward compatibility)
+    distance: number;              // km
     photoTime?: string;
+    // New fields for GCS storage (added 2026-01-02)
+    status?: 'pending' | 'ready' | 'failed';  // Upload status
+    currentUrl?: string;           // GCS URL (persistent)
+    currentTimestamp?: string;     // ISO timestamp of current image
+    error?: string;                // Error message if status is 'failed'
+    history?: Array<{              // Image history (max 10)
+      url: string;
+      timestamp: string;
+    }>;
   };
 }
 

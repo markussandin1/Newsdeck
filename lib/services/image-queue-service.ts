@@ -10,7 +10,7 @@
  *                       ↗ (retry: back to pending)
  */
 
-import db from '@/lib/db';
+import { getPool } from '@/lib/db-postgresql';
 
 export interface ImageUploadJob {
   id: string;
@@ -31,6 +31,7 @@ export async function queueImageUpload(
   newsItemDbId: string,
   cameraUrl: string
 ): Promise<void> {
+  const db = getPool();
   await db.query(
     `
     INSERT INTO image_upload_queue (news_item_db_id, camera_url)
@@ -51,6 +52,7 @@ export async function queueImageUpload(
  * @returns Nästa jobb eller null om queue är tom
  */
 export async function getNextImageJob(): Promise<ImageUploadJob | null> {
+  const db = getPool();
   const result = await db.query(
     `
     UPDATE image_upload_queue
@@ -85,6 +87,7 @@ export async function getNextImageJob(): Promise<ImageUploadJob | null> {
  * @param jobId - UUID för jobbet
  */
 export async function completeImageJob(jobId: string): Promise<void> {
+  const db = getPool();
   await db.query(
     `
     UPDATE image_upload_queue
@@ -107,6 +110,7 @@ export async function completeImageJob(jobId: string): Promise<void> {
  * @param error - Felmeddelande
  */
 export async function failImageJob(jobId: string, error: string): Promise<void> {
+  const db = getPool();
   const result = await db.query(
     `
     UPDATE image_upload_queue
@@ -147,6 +151,7 @@ export async function getQueueStats(): Promise<{
   completed: number;
   failed: number;
 }> {
+  const db = getPool();
   const result = await db.query(`
     SELECT
       status,
@@ -179,6 +184,7 @@ export async function getQueueStats(): Promise<{
  * @returns Antal raderade jobs
  */
 export async function cleanupOldJobs(): Promise<number> {
+  const db = getPool();
   const result = await db.query(`
     DELETE FROM image_upload_queue
     WHERE status IN ('completed', 'failed')

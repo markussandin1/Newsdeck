@@ -23,7 +23,7 @@ import {
   cleanupOldJobs
 } from './image-queue-service';
 import { uploadTrafficImage } from './storage-service';
-import db from '@/lib/db';
+import { getPool } from '@/lib/db-postgresql';
 
 const MAX_HISTORY = 10;
 const POLL_INTERVAL = 5000; // 5 seconds when queue is empty
@@ -44,6 +44,7 @@ async function processImageJob(): Promise<boolean> {
     return false;
   }
 
+  const db = getPool();
   console.log(`🔄 Processing image upload job ${job.id} for NewsItem ${job.newsItemDbId}`);
 
   try {

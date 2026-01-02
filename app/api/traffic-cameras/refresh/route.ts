@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { getPool } from '@/lib/db-postgresql';
 import { queueImageUpload } from '@/lib/services/image-queue-service';
 import { trafficCameraService } from '@/lib/services/traffic-camera-service';
 
@@ -17,6 +17,7 @@ const REFRESH_COOLDOWN = 60; // sekunder
 
 export async function POST(request: NextRequest) {
   try {
+    const db = getPool();
     const { newsItemId } = await request.json();
 
     if (!newsItemId) {

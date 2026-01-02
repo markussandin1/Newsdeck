@@ -15,7 +15,7 @@
  * even if an event persists for more than 30 days.
  */
 
-import db from '@/lib/db';
+import { getPool } from '@/lib/db-postgresql';
 import { deleteTrafficImage } from './storage-service';
 
 /**
@@ -27,6 +27,7 @@ import { deleteTrafficImage } from './storage-service';
  * @returns Antal bilder som markerades för radering
  */
 export async function markOrphanedImagesForDeletion(): Promise<number> {
+  const db = getPool();
   const result = await db.query(`
     UPDATE traffic_images
     SET marked_for_deletion = true
@@ -60,6 +61,8 @@ export async function markOrphanedImagesForDeletion(): Promise<number> {
  * @returns Antal bilder som raderades
  */
 export async function deleteMarkedImages(): Promise<number> {
+  const db = getPool();
+
   // 1. Hitta bilder som varit markerade i mer än 7 dagar
   const result = await db.query(`
     SELECT id, gcs_path, news_item_db_id, created_at
@@ -107,6 +110,7 @@ export async function getImageStats(): Promise<{
   markedForDeletion: number;
   readyForDeletion: number;
 }> {
+  const db = getPool();
   const result = await db.query(`
     SELECT
       COUNT(*) as total,
