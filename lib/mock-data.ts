@@ -244,7 +244,7 @@ export const mockDb = {
     return currentDashboard.columns.find(c => c.id === id) || null
   },
 
-  createColumn: async (column: Partial<DashboardColumn>, _dashboardId?: string): Promise<DashboardColumn> => {
+  createColumn: async (column: Partial<DashboardColumn>): Promise<DashboardColumn> => {
     console.log('📦 [MOCK DB] createColumn', column)
     const newColumn: DashboardColumn = {
       id: generateId(),

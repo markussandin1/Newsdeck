@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { WeatherWidget } from './WeatherWidget';
 import { WeatherWarningModal } from './WeatherWarningModal';
-import { EnhancedDateTime } from './EnhancedDateTime';
 import { UserMenu } from './UserMenu';
 import { DatabaseStatusIndicator } from './DatabaseStatusIndicator';
 import { useWeather } from '@/lib/hooks/useWeather';

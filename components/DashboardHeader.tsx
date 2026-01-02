@@ -27,7 +27,7 @@ export function DashboardHeader({
   showDashboardDropdown,
   setShowDashboardDropdown,
   setShowCreateDashboardModal,
-  getTotalNewsCount,
+  getTotalNewsCount: _getTotalNewsCount,
   navigateToDashboard,
   onOpenNotificationSettings,
 }: DashboardHeaderProps) {

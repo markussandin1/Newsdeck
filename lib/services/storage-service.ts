@@ -80,9 +80,9 @@ export async function deleteTrafficImage(gcsPath: string): Promise<void> {
   try {
     await storage.bucket(BUCKET_NAME).file(filename).delete();
     console.log(`🗑️ Deleted image from GCS: ${filename}`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Ignorera 404-fel (bilden finns redan inte)
-    if (error?.code === 404) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 404) {
       console.log(`⚠️ Image already deleted: ${filename}`);
       return;
     }

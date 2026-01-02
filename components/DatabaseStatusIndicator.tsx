@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Database, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, CheckCircle, RefreshCw } from 'lucide-react'
 
 interface DatabaseStatus {
   connected: boolean
