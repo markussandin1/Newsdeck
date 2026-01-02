@@ -120,6 +120,37 @@ async function processImageJob(): Promise<boolean> {
       [updatedExtra, job.newsItemDbId]
     );
 
+    // CRITICAL: Also update column_data rows (denormalized cache)
+    // Users see data from column_data, not news_items!
+    await db.query(
+      `
+      UPDATE column_data
+      SET data = jsonb_set(
+        jsonb_set(
+          jsonb_set(
+            jsonb_set(
+              jsonb_set(
+                data,
+                '{trafficCamera,status}',
+                '"ready"'
+              ),
+              '{trafficCamera,currentUrl}',
+              to_jsonb($1::text)
+            ),
+            '{trafficCamera,currentTimestamp}',
+            to_jsonb($2::text)
+          ),
+          '{trafficCamera,history}',
+          $3::jsonb
+        ),
+        '{trafficCamera,error}',
+        'null'::jsonb
+      )
+      WHERE news_item_db_id = $4
+    `,
+      [gcsUrl, timestamp, JSON.stringify(cappedHistory), job.newsItemDbId]
+    );
+
     // 5. Markera jobb som klart
     await completeImageJob(job.id);
 
@@ -163,6 +194,24 @@ async function processImageJob(): Promise<boolean> {
             WHERE db_id = $2
           `,
             [updatedExtra, job.newsItemDbId]
+          );
+
+          // CRITICAL: Also update column_data rows (denormalized cache)
+          await db.query(
+            `
+            UPDATE column_data
+            SET data = jsonb_set(
+              jsonb_set(
+                data,
+                '{trafficCamera,status}',
+                '"failed"'
+              ),
+              '{trafficCamera,error}',
+              to_jsonb($1::text)
+            )
+            WHERE news_item_db_id = $2
+          `,
+            [errorMessage, job.newsItemDbId]
           );
         }
       } catch (updateError) {
