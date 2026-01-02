@@ -364,11 +364,21 @@ const normalisePayload = (body: unknown): NormalisedPayload => {
     workflowId = toOptionalTrimmed(payload.flowId)
   }
 
-  const rawItems = Array.isArray(payload.items)
-    ? (payload.items as RawNewsItem[])
-    : undefined
-  if (!rawItems) {
-    throw new IngestionError('items array is required in request body')
+  // Support both item (single object) and items (array) for flexibility
+  let rawItems: RawNewsItem[] | undefined
+
+  if (Array.isArray(payload.items)) {
+    // Backward compatible: items array
+    rawItems = payload.items as RawNewsItem[]
+  } else if (isRecord(payload.item)) {
+    // New format: single item object
+    rawItems = [payload.item as RawNewsItem]
+  } else {
+    rawItems = undefined
+  }
+
+  if (!rawItems || rawItems.length === 0) {
+    throw new IngestionError('Either items array or item object is required in request body')
   }
 
   const extra = isRecord(payload.extra) ? payload.extra : {}
