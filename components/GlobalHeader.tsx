@@ -27,6 +27,8 @@ interface GlobalHeaderProps {
   className?: string;
   /** Toggle weather widgets (skip on pages that don't need them) */
   showWeather?: boolean;
+  /** Called before navigating away (e.g., to stop polling) */
+  onNavigateAway?: () => void;
 }
 
 export function GlobalHeader({
@@ -37,6 +39,7 @@ export function GlobalHeader({
   onOpenNotificationSettings,
   className = '',
   showWeather = true,
+  onNavigateAway,
 }: GlobalHeaderProps) {
   const { weather } = useWeather();
   const { warnings } = useWeatherWarnings();
@@ -45,9 +48,11 @@ export function GlobalHeader({
 
   const handleGoToGallery = () => {
     try {
+      onNavigateAway?.();
       router.push('/gallery');
     } catch (error) {
       // Fallback to full reload if client navigation fails
+      onNavigateAway?.();
       window.location.href = '/gallery';
     }
   };

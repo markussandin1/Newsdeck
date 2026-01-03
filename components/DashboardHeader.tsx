@@ -17,6 +17,7 @@ interface DashboardHeaderProps {
   getTotalNewsCount: () => number;
   navigateToDashboard: (slug: string) => void;
   onOpenNotificationSettings?: () => void;
+  onNavigateAway?: () => void;
 }
 
 export function DashboardHeader({
@@ -30,6 +31,7 @@ export function DashboardHeader({
   getTotalNewsCount: _getTotalNewsCount,
   navigateToDashboard,
   onOpenNotificationSettings,
+  onNavigateAway,
 }: DashboardHeaderProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -140,6 +142,7 @@ export function DashboardHeader({
       dashboardId={dashboard.id}
       onLogout={handleLogout}
       onOpenNotificationSettings={onOpenNotificationSettings}
+      onNavigateAway={onNavigateAway}
     />
   );
 }

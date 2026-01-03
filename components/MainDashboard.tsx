@@ -120,7 +120,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   })
 
   // Long-polling for real-time updates (extracted to hook)
-  const { connectionStatus } = useDashboardPolling({
+  const { connectionStatus, stopAllPolling } = useDashboardPolling({
     columns: dashboard?.columns || [],
     updateColumnData,
     onNewItems: handleNewItems,
@@ -803,6 +803,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             getTotalNewsCount={getTotalNewsCount}
             navigateToDashboard={navigateToDashboard}
             onOpenNotificationSettings={() => setIsNotificationSettingsOpen(true)}
+            onNavigateAway={stopAllPolling}
           />
 
           <div className="mt-3 space-y-2 relative">
