@@ -9,6 +9,7 @@ import { UserMenu } from './UserMenu';
 import { DatabaseStatusIndicator } from './DatabaseStatusIndicator';
 import { useWeather } from '@/lib/hooks/useWeather';
 import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings';
+import { Camera } from 'lucide-react';
 
 interface GlobalHeaderProps {
   /** Content for the middle zone (page context/title area) */
@@ -50,7 +51,7 @@ export function GlobalHeader({
       <div className="px-6 py-4">
         <div className="flex items-center justify-between gap-6">
           {/* Zone 1 + 2: Tightly Grouped Left Side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* Zone 1: Brand Anchor */}
             <Link href="/dashboards" className="shrink-0">
               <div className="w-12 h-12 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity">
@@ -66,6 +67,15 @@ export function GlobalHeader({
 
             {/* Zone 2: Page Context (flexible content) */}
             {contextContent}
+
+            {/* Quick link to gallery */}
+            <Link
+              href="/gallery"
+              className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/60 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <Camera className="h-4 w-4" />
+              Trafikbilder
+            </Link>
           </div>
 
           {/* Zone 3: Weather Widget */}
