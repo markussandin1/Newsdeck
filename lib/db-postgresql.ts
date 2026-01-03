@@ -811,17 +811,31 @@ export const persistentDb = {
       for (const columnId of columnIds) {
         const items = columnData[columnId]
 
+        // Step 1: Remove old items with same source_id to prevent duplicates
+        // Collect all source_ids from incoming items (skip nulls)
+        const sourceIds = items
+          .map(item => item.id)
+          .filter(id => id != null && id !== '')
+
+        if (sourceIds.length > 0) {
+          // Delete existing column_data entries where news_items.source_id matches
+          await client.query(
+            `DELETE FROM column_data
+            WHERE column_id = $1
+            AND news_item_db_id IN (
+              SELECT db_id FROM news_items WHERE source_id = ANY($2)
+            )`,
+            [columnId, sourceIds]
+          )
+        }
+
+        // Step 2: Insert new items
         for (const item of items) {
           if (!item.dbId) {
             logger.warn('db.appendColumnDataBatch.missingDbId', { columnId, itemId: item.id })
             continue
           }
 
-          // INSERT ONLY - Do not delete existing data
-          // ON CONFLICT DO NOTHING ensures we don't duplicate if the item is already there
-          // (though typically we want to update if it exists, but for "append" logic, 
-          // we usually assume new items. However, to be safe and support updates, 
-          // let's use ON CONFLICT UPDATE)
           await client.query(
             `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
             VALUES ($1, $2, $3, $4)
