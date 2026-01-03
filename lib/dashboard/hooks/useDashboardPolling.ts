@@ -32,6 +32,8 @@ export function useDashboardPolling({
   const reconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
   const reconnectAttemptsRef = useRef<Map<string, number>>(new Map())
   const isCleaningUpRef = useRef(false)
+  const backoffRef = useRef<Map<string, number>>(new Map()) // per-column backoff (ms)
+  const isPausedRef = useRef(false)
 
   const stopPolling = useCallback((columnId: string) => {
     const controller = abortControllersRef.current.get(columnId)
@@ -48,6 +50,7 @@ export function useDashboardPolling({
 
     lastSeenTimestampsRef.current.delete(columnId)
     reconnectAttemptsRef.current.delete(columnId)
+    backoffRef.current.delete(columnId)
   }, [])
 
   const stopAllPolling = useCallback(() => {
@@ -61,12 +64,17 @@ export function useDashboardPolling({
 
     lastSeenTimestampsRef.current.clear()
     reconnectAttemptsRef.current.clear()
+    backoffRef.current.clear()
 
     setConnectionStatus('disconnected')
   }, [])
 
   const startPolling = useCallback(async (columnId: string) => {
     if (isCleaningUpRef.current) {
+      return
+    }
+
+    if (isPausedRef.current) {
       return
     }
 
@@ -84,9 +92,14 @@ export function useDashboardPolling({
     abortControllersRef.current.set(columnId, controller)
 
     setConnectionStatus('connected')
+    backoffRef.current.set(columnId, 1000) // start with 1s backoff on error
 
     // Long polling loop
     while (!isCleaningUpRef.current && !controller.signal.aborted) {
+      if (isPausedRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        continue
+      }
       try {
         const lastSeen = lastSeenTimestampsRef.current.get(columnId)
         const url = lastSeen
@@ -155,6 +168,8 @@ export function useDashboardPolling({
           })
         }
 
+        // Reset backoff on success
+        backoffRef.current.set(columnId, 1000)
         // Immediately start next poll
         setConnectionStatus('connected')
       } catch (error) {
@@ -167,8 +182,11 @@ export function useDashboardPolling({
         console.error(`LongPoll: Error for column ${columnId}`, error)
         setConnectionStatus('disconnected')
 
-        // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        // Exponential backoff on errors (caps at 30s)
+        const currentBackoff = backoffRef.current.get(columnId) ?? 1000
+        const nextBackoff = Math.min(currentBackoff * 2, 30000)
+        backoffRef.current.set(columnId, nextBackoff)
+        await new Promise(resolve => setTimeout(resolve, currentBackoff))
       }
     }
 
@@ -196,6 +214,29 @@ export function useDashboardPolling({
       stopAllPolling()
     }
   }, [columns, startPolling, stopAllPolling])
+
+  // Pause/resume when tab visibility changes to avoid hammering when hidden
+  useEffect(() => {
+    const handleVisibility = () => {
+      const hidden = document.hidden
+      isPausedRef.current = hidden
+      if (!hidden) {
+        // Resume polling by restarting loops
+        columns.forEach((column) => {
+          if (!column.isArchived) {
+            startPolling(column.id)
+          }
+        })
+      } else {
+        // Abort ongoing requests to free connections
+        abortControllersRef.current.forEach(controller => controller.abort())
+        abortControllersRef.current.clear()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [columns, startPolling])
 
   return {
     connectionStatus,
