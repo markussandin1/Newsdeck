@@ -42,6 +42,12 @@ const formatCompactTime = (timestamp: string): string => {
   }
 }
 
+const formatDistance = (distance?: number | null): string | null => {
+  if (distance == null || isNaN(distance)) return null
+  const value = distance >= 10 ? distance.toFixed(0) : distance.toFixed(1)
+  return `${value} km bort`
+}
+
 export function GalleryImageCard({ item, onClick }: GalleryImageCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
@@ -123,9 +129,19 @@ export function GalleryImageCard({ item, onClick }: GalleryImageCardProps) {
         </div>
 
         {/* Camera name */}
-        {item.trafficCamera?.name && (
-          <div className="mt-2 text-xs text-muted-foreground/80 truncate">
-            {item.trafficCamera.name}
+        {(item.trafficCamera?.name || item.trafficCamera?.distance != null) && (
+          <div className="mt-2 text-xs text-muted-foreground/80 truncate flex items-center gap-2">
+            {item.trafficCamera?.name && (
+              <span className="truncate">{item.trafficCamera.name}</span>
+            )}
+            {formatDistance(item.trafficCamera?.distance) && (
+              <>
+                {item.trafficCamera?.name && <span className="text-muted-foreground/50">•</span>}
+                <span className="whitespace-nowrap">
+                  {formatDistance(item.trafficCamera?.distance)}
+                </span>
+              </>
+            )}
           </div>
         )}
       </div>
