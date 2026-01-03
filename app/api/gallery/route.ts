@@ -23,11 +23,6 @@ export async function GET(request: NextRequest) {
     const hasMore = offset + items.length < total
     const nextOffset = hasMore ? offset + limit : null
 
-    // Cache for 1 minute (images update asynchronously via workers)
-    const headers = {
-      'Cache-Control': 'public, max-age=60, s-maxage=60',
-    }
-
     return NextResponse.json(
       {
         success: true,
@@ -36,7 +31,13 @@ export async function GET(request: NextRequest) {
         hasMore,
         nextOffset
       },
-      { headers }
+      {
+        // Private cache to avoid leaking user data via shared caches/CDNs
+        headers: {
+          'Cache-Control': 'private, max-age=60',
+          'Vary': 'Cookie'
+        }
+      }
     )
   } catch (error) {
     console.error('Error fetching gallery items:', error)

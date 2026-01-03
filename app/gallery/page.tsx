@@ -15,6 +15,7 @@ export default function GalleryPage() {
   const [offset, setOffset] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null)
 
   // Fetch user session
   useEffect(() => {
@@ -55,11 +56,13 @@ export default function GalleryPage() {
   }, [])
 
   // Load more function for infinite scroll
-  const loadMore = async () => {
+  const loadMore = async (options?: { force?: boolean }) => {
     if (isFetching || !hasMore) return
+    if (loadMoreError && !options?.force) return
 
     setIsFetching(true)
     setLoadingMore(true)
+    setLoadMoreError(null)
     try {
       const response = await fetch(`/api/gallery?limit=50&offset=${offset}`)
       const data = await response.json()
@@ -68,13 +71,20 @@ export default function GalleryPage() {
         setItems(prev => [...prev, ...data.items])
         setHasMore(data.hasMore)
         setOffset(data.nextOffset || offset)
+      } else {
+        setLoadMoreError('Kunde inte ladda fler bilder. Försök igen.')
       }
     } catch (error) {
       console.error('Failed to load more items:', error)
+      setLoadMoreError('Kunde inte ladda fler bilder. Försök igen.')
     } finally {
       setLoadingMore(false)
       setIsFetching(false)
     }
+  }
+
+  const handleRetryLoadMore = () => {
+    loadMore({ force: true })
   }
 
   const handleLogout = () => {
@@ -122,6 +132,8 @@ export default function GalleryPage() {
             onLoadMore={loadMore}
             hasMore={hasMore}
             loadingMore={loadingMore}
+            loadError={loadMoreError}
+            onRetry={handleRetryLoadMore}
           />
         )}
       </div>

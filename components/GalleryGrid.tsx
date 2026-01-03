@@ -10,6 +10,8 @@ interface GalleryGridProps {
   onLoadMore: () => void
   hasMore: boolean
   loadingMore: boolean
+  loadError?: string | null
+  onRetry?: () => void
 }
 
 export function GalleryGrid({
@@ -17,7 +19,9 @@ export function GalleryGrid({
   onItemClick,
   onLoadMore,
   hasMore,
-  loadingMore
+  loadingMore,
+  loadError,
+  onRetry
 }: GalleryGridProps) {
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
@@ -28,7 +32,7 @@ export function GalleryGrid({
     const observer = new IntersectionObserver(
       (entries) => {
         const firstEntry = entries[0]
-        if (firstEntry?.isIntersecting && hasMore && !loadingMore) {
+        if (firstEntry?.isIntersecting && hasMore && !loadingMore && !loadError) {
           onLoadMore()
         }
       },
@@ -42,7 +46,7 @@ export function GalleryGrid({
     observer.observe(loadMoreRef.current)
 
     return () => observer.disconnect()
-  }, [hasMore, loadingMore, onLoadMore])
+  }, [hasMore, loadingMore, loadError, onLoadMore])
 
   return (
     <>
@@ -66,6 +70,22 @@ export function GalleryGrid({
 
       {/* Infinite scroll trigger */}
       <div ref={loadMoreRef} className="h-4" />
+
+      {/* Error state */}
+      {loadError && (
+        <div className="text-center py-6 text-sm text-destructive space-y-2">
+          <div>{loadError}</div>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex items-center justify-center px-3 py-1.5 rounded-md border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              Försök igen
+            </button>
+          )}
+        </div>
+      )}
 
       {/* End indicator */}
       {!hasMore && items.length > 0 && (
