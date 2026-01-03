@@ -10,6 +10,7 @@ import { DatabaseStatusIndicator } from './DatabaseStatusIndicator';
 import { useWeather } from '@/lib/hooks/useWeather';
 import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings';
 import { Camera } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface GlobalHeaderProps {
   /** Content for the middle zone (page context/title area) */
@@ -37,6 +38,7 @@ export function GlobalHeader({
   const { weather } = useWeather();
   const { warnings } = useWeatherWarnings();
   const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
+  const router = useRouter();
 
   const handleLogout = () => {
     if (onLogout) {
@@ -69,13 +71,14 @@ export function GlobalHeader({
             {contextContent}
 
             {/* Quick link to gallery */}
-            <Link
-              href="/gallery"
+            <button
+              type="button"
+              onClick={() => router.push('/gallery')}
               className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/60 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <Camera className="h-4 w-4" />
               Trafikbilder
-            </Link>
+            </button>
           </div>
 
           {/* Zone 3: Weather Widget */}
