@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import { ColumnData } from '@/lib/dashboard/types'
 import { extractWorkflowId } from '@/lib/dashboard/utils'
@@ -73,6 +73,7 @@ interface MainDashboardProps {
 
 export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardSlug }: MainDashboardProps) {
   const router = useRouter()
+  const pathname = usePathname()
 
   const effectiveDashboardSlug = dashboardSlug || dashboard.slug || (dashboard.id === 'main-dashboard' ? 'main' : dashboard.id)
 
@@ -135,6 +136,13 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   // Weather data
   const { weather } = useWeather()
   const { warnings } = useWeatherWarnings()
+
+  // If route changes away from dashboard (e.g., to /gallery), stop polling immediately.
+  useEffect(() => {
+    if (pathname && !pathname.startsWith('/dashboard')) {
+      stopAllPolling()
+    }
+  }, [pathname, stopAllPolling])
 
   // Layout and mobile state management (extracted to hook)
   const {
