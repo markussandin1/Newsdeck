@@ -238,6 +238,21 @@ export function useDashboardPolling({
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [columns, startPolling])
 
+  // Hard-stop polling on full page hide/unload (navigation away)
+  useEffect(() => {
+    const handlePageHide = () => {
+      stopAllPolling()
+    }
+
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('beforeunload', handlePageHide)
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('beforeunload', handlePageHide)
+    }
+  }, [stopAllPolling])
+
   return {
     connectionStatus,
     startPolling,
