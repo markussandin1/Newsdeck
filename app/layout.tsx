@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Outfit, DM_Sans, JetBrains_Mono } from 'next/font/google'
@@ -31,13 +31,6 @@ export const metadata: Metadata = {
     apple: '/newsdeck-icon.svg',
   },
   manifest: '/manifest.json',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover', // iOS safe area support
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -46,6 +39,14 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
   themeColor: '#3b82f6',
 }
 

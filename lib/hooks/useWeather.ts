@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { WeatherData } from '@/types/weather';
 
 interface UseWeatherReturn {
@@ -21,6 +21,8 @@ export function useWeather(): UseWeatherReturn {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
 
   // Load cached weather from localStorage
   const loadCachedWeather = useCallback((): WeatherData[] | null => {
@@ -63,13 +65,17 @@ export function useWeather(): UseWeatherReturn {
   }, []);
 
   const fetchWeather = useCallback(async (silent = false) => {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
     try {
       if (!silent) {
         setLoading(true);
       }
       setError(null);
 
-      const response = await fetch('/api/weather');
+      const response = await fetch('/api/weather', { signal: controller.signal });
 
       if (!response.ok) {
         throw new Error('Failed to fetch weather data');
@@ -82,22 +88,28 @@ export function useWeather(): UseWeatherReturn {
       }
 
       const weatherData = data.weather || [];
+      if (!isMountedRef.current) return;
       setWeather(weatherData);
       setLastUpdate(new Date());
 
       // Cache the fresh data
       cacheWeather(weatherData);
     } catch (err) {
+      if (!isMountedRef.current) return;
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
       console.error('Weather fetch error:', err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
-      if (!silent) {
+      if (!silent && isMountedRef.current) {
         setLoading(false);
       }
     }
   }, [cacheWeather]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     // Try to load cached weather first for instant display
     const cachedWeather = loadCachedWeather();
 
@@ -120,6 +132,8 @@ export function useWeather(): UseWeatherReturn {
 
     // Cleanup
     return () => {
+      isMountedRef.current = false;
+      controllerRef.current?.abort();
       clearInterval(interval);
     };
   }, [fetchWeather, loadCachedWeather]);

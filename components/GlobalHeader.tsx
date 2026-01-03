@@ -25,6 +25,8 @@ interface GlobalHeaderProps {
   onOpenNotificationSettings?: () => void;
   /** Additional class names */
   className?: string;
+  /** Toggle weather widgets (skip on pages that don't need them) */
+  showWeather?: boolean;
 }
 
 export function GlobalHeader({
@@ -34,11 +36,21 @@ export function GlobalHeader({
   onLogout,
   onOpenNotificationSettings,
   className = '',
+  showWeather = true,
 }: GlobalHeaderProps) {
   const { weather } = useWeather();
   const { warnings } = useWeatherWarnings();
   const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
   const router = useRouter();
+
+  const handleGoToGallery = () => {
+    try {
+      router.push('/gallery');
+    } catch (error) {
+      // Fallback to full reload if client navigation fails
+      window.location.href = '/gallery';
+    }
+  };
 
   const handleLogout = () => {
     if (onLogout) {
@@ -71,24 +83,29 @@ export function GlobalHeader({
             {contextContent}
 
             {/* Quick link to gallery */}
-            <button
-              type="button"
-              onClick={() => router.push('/gallery')}
+            <a
+              href="/gallery"
+              onClick={(event) => {
+                event.preventDefault();
+                handleGoToGallery();
+              }}
               className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/60 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <Camera className="h-4 w-4" />
               Trafikbilder
-            </button>
+            </a>
           </div>
 
           {/* Zone 3: Weather Widget */}
-          <div className="hidden lg:flex items-center gap-6 shrink-0">
-            <WeatherWidget
-              cities={weather}
-              warnings={warnings}
-              onWarningsClick={() => setIsWarningsModalOpen(true)}
-            />
-          </div>
+          {showWeather && (
+            <div className="hidden lg:flex items-center gap-6 shrink-0">
+              <WeatherWidget
+                cities={weather}
+                warnings={warnings}
+                onWarningsClick={() => setIsWarningsModalOpen(true)}
+              />
+            </div>
+          )}
 
           {/* Zone 4: User Controls */}
           <div className="flex items-center shrink-0">
@@ -103,7 +120,7 @@ export function GlobalHeader({
       </div>
 
       {/* Weather Warnings Modal */}
-      {isWarningsModalOpen && (
+      {showWeather && isWarningsModalOpen && (
         <WeatherWarningModal
           warnings={warnings}
           onClose={() => setIsWarningsModalOpen(false)}
