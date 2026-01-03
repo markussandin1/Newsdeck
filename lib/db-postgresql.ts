@@ -316,6 +316,93 @@ export const persistentDb = {
     }
   },
 
+  getTrafficCameraItems: async (limit = 50, offset = 0) => {
+    const pool = getPool()
+
+    try {
+      const result = await pool.query(
+        `SELECT
+          db_id AS "dbId",
+          source_id AS "id",
+          workflow_id AS "workflowId",
+          source,
+          timestamp,
+          title,
+          description,
+          news_value AS "newsValue",
+          category,
+          severity,
+          location,
+          country_code AS "countryCode",
+          region_country_code AS "regionCountryCode",
+          region_code AS "regionCode",
+          municipality_country_code AS "municipalityCountryCode",
+          municipality_region_code AS "municipalityRegionCode",
+          municipality_code AS "municipalityCode",
+          created_in_db AS "createdInDb",
+          extra,
+          raw
+        FROM news_items
+        WHERE
+          extra->'trafficCamera'->>'currentUrl' IS NOT NULL
+          AND extra->'trafficCamera'->>'status' = 'ready'
+        ORDER BY timestamp DESC
+        LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      )
+
+      return result.rows.map(row => {
+        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
+        const trafficCamera = extra?.trafficCamera || null
+
+        return {
+          dbId: row.dbId,
+          id: row.id,
+          workflowId: row.workflowId,
+          source: row.source,
+          timestamp: row.timestamp,
+          title: row.title,
+          description: row.description,
+          newsValue: row.newsValue,
+          category: row.category,
+          severity: row.severity,
+          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
+          countryCode: row.countryCode,
+          regionCountryCode: row.regionCountryCode,
+          regionCode: row.regionCode,
+          municipalityCountryCode: row.municipalityCountryCode,
+          municipalityRegionCode: row.municipalityRegionCode,
+          municipalityCode: row.municipalityCode,
+          createdInDb: row.createdInDb,
+          extra,
+          trafficCamera,
+          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
+        }
+      })
+    } catch (error) {
+      logger.error('db.getTrafficCameraItems.error', { error, limit, offset })
+      throw error
+    }
+  },
+
+  getTrafficCameraCount: async () => {
+    const pool = getPool()
+
+    try {
+      const result = await pool.query(
+        `SELECT COUNT(*) AS count
+         FROM news_items
+         WHERE
+           extra->'trafficCamera'->>'currentUrl' IS NOT NULL
+           AND extra->'trafficCamera'->>'status' = 'ready'`
+      )
+      return parseInt(result.rows[0].count, 10)
+    } catch (error) {
+      logger.error('db.getTrafficCameraCount.error', { error })
+      throw error
+    }
+  },
+
   deleteNewsItem: async (dbId: string) => {
     const pool = getPool()
     const client = await pool.connect()

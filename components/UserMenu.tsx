@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Settings, LogOut, User, Sun, Moon, ChevronDown, Bell } from 'lucide-react';
+import { Settings, LogOut, User, Sun, Moon, ChevronDown, Bell, Camera } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -116,6 +116,16 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
               >
                 <Settings className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-body text-foreground">Dashboard-inställningar</span>
+              </Link>
+
+              {/* Gallery Page */}
+              <Link
+                href="/gallery"
+                onClick={() => setIsOpen(false)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors"
+              >
+                <Camera className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-body text-foreground">Trafikbilder</span>
               </Link>
 
               {/* Notification Settings */}

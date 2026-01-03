@@ -505,6 +505,36 @@ export const mockDb = {
     }
     return false
   },
+
+  getTrafficCameraItems: async (limit = 50, offset = 0): Promise<NewsItem[]> => {
+    console.log(`📦 [MOCK DB] getTrafficCameraItems: limit=${limit}, offset=${offset}`)
+    const allItems: NewsItem[] = []
+    Object.values(currentColumnData).forEach(items => {
+      allItems.push(...items)
+    })
+    // Filter items with traffic cameras
+    const trafficItems = allItems.filter(item =>
+      item.trafficCamera?.currentUrl && item.trafficCamera?.status === 'ready'
+    )
+    // Sort by timestamp
+    const sorted = trafficItems.sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )
+    // Apply pagination
+    return sorted.slice(offset, offset + limit)
+  },
+
+  getTrafficCameraCount: async (): Promise<number> => {
+    console.log('📦 [MOCK DB] getTrafficCameraCount')
+    const allItems: NewsItem[] = []
+    Object.values(currentColumnData).forEach(items => {
+      allItems.push(...items)
+    })
+    // Count items with traffic cameras
+    return allItems.filter(item =>
+      item.trafficCamera?.currentUrl && item.trafficCamera?.status === 'ready'
+    ).length
+  },
 }
 
 /**
