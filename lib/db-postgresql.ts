@@ -344,8 +344,12 @@ export const persistentDb = {
           raw
         FROM news_items
         WHERE
-          extra->'trafficCamera'->>'currentUrl' IS NOT NULL
-          AND extra->'trafficCamera'->>'status' = 'ready'
+          extra->'trafficCamera' IS NOT NULL
+          AND COALESCE(extra->'trafficCamera'->>'status', 'pending') != 'failed'
+          AND (
+            extra->'trafficCamera'->>'currentUrl' IS NOT NULL
+            OR extra->'trafficCamera'->>'photoUrl' IS NOT NULL
+          )
         ORDER BY timestamp DESC
         LIMIT $1 OFFSET $2`,
         [limit, offset]
@@ -393,8 +397,12 @@ export const persistentDb = {
         `SELECT COUNT(*) AS count
          FROM news_items
          WHERE
-           extra->'trafficCamera'->>'currentUrl' IS NOT NULL
-           AND extra->'trafficCamera'->>'status' = 'ready'`
+           extra->'trafficCamera' IS NOT NULL
+           AND COALESCE(extra->'trafficCamera'->>'status', 'pending') != 'failed'
+           AND (
+             extra->'trafficCamera'->>'currentUrl' IS NOT NULL
+             OR extra->'trafficCamera'->>'photoUrl' IS NOT NULL
+           )`
       )
       return parseInt(result.rows[0].count, 10)
     } catch (error) {

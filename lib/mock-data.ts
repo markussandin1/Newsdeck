@@ -513,9 +513,12 @@ export const mockDb = {
       allItems.push(...items)
     })
     // Filter items with traffic cameras
-    const trafficItems = allItems.filter(item =>
-      item.trafficCamera?.currentUrl && item.trafficCamera?.status === 'ready'
-    )
+    const trafficItems = allItems.filter(item => {
+      const camera = item.trafficCamera
+      if (!camera) return false
+      if (camera.status === 'failed') return false
+      return Boolean(camera.currentUrl || camera.photoUrl)
+    })
     // Sort by timestamp
     const sorted = trafficItems.sort((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -531,9 +534,12 @@ export const mockDb = {
       allItems.push(...items)
     })
     // Count items with traffic cameras
-    return allItems.filter(item =>
-      item.trafficCamera?.currentUrl && item.trafficCamera?.status === 'ready'
-    ).length
+    return allItems.filter(item => {
+      const camera = item.trafficCamera
+      if (!camera) return false
+      if (camera.status === 'failed') return false
+      return Boolean(camera.currentUrl || camera.photoUrl)
+    }).length
   },
 }
 
