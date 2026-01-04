@@ -346,10 +346,6 @@ export const persistentDb = {
         WHERE
           extra->'trafficCamera' IS NOT NULL
           AND COALESCE(extra->'trafficCamera'->>'status', 'pending') != 'failed'
-          AND (
-            extra->'trafficCamera'->>'currentUrl' IS NOT NULL
-            OR extra->'trafficCamera'->>'photoUrl' IS NOT NULL
-          )
         ORDER BY timestamp DESC
         LIMIT $1 OFFSET $2`,
         [limit, offset]
@@ -398,11 +394,7 @@ export const persistentDb = {
          FROM news_items
          WHERE
            extra->'trafficCamera' IS NOT NULL
-           AND COALESCE(extra->'trafficCamera'->>'status', 'pending') != 'failed'
-           AND (
-             extra->'trafficCamera'->>'currentUrl' IS NOT NULL
-             OR extra->'trafficCamera'->>'photoUrl' IS NOT NULL
-           )`
+           AND COALESCE(extra->'trafficCamera'->>'status', 'pending') != 'failed'`
       )
       return parseInt(result.rows[0].count, 10)
     } catch (error) {
