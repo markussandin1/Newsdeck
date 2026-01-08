@@ -39,18 +39,3 @@ jobs:
       env:
         # Mock DATABASE_URL for build
         DATABASE_URL: "postgresql://mock:mock@localhost:5432/mock"
-
-  deploy-preview:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to Vercel Preview
-      uses: amondnet/vercel-action@v25
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.ORG_ID }}
-        vercel-project-id: ${{ secrets.PROJECT_ID }}
-        scope: ${{ secrets.VERCEL_SCOPE }}
