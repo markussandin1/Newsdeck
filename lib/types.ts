@@ -147,8 +147,8 @@ export interface LocationNameMapping {
 }
 
 export interface GeoFilters {
-  regionCodes: string[];                // Valda länskoder: ['AB', 'M', 'O'] (ISO 3166-2)
-  municipalityCodes: string[];          // Valda kommunkoder: ['0180', '1280']
+  regionCodes: string[];                // Valda länskoder: ['01', '12', '25'] (SCB 2-digit codes)
+  municipalityCodes: string[];          // Valda kommunkoder: ['0180', '1280', '2584'] (SCB 4-digit codes)
   showItemsWithoutLocation: boolean;    // Visa items utan geografisk data
 }
 

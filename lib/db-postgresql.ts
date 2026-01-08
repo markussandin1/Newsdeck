@@ -1,6 +1,6 @@
 import { Pool } from 'pg'
 import { parse as parseConnectionString } from 'pg-connection-string'
-import { NewsItem, Dashboard, DashboardColumn, Country, Region, Municipality } from './types'
+import { NewsItem, Dashboard, DashboardColumn, Country, Region, Municipality, GeoFilters } from './types'
 import { logger } from './logger'
 
 // PostgreSQL connection pool
@@ -111,6 +111,75 @@ const DEFAULT_DASHBOARD: Dashboard = {
   isDefault: true,
   createdBy: 'system',
   createdByName: 'System'
+}
+
+// Helper types and functions for geographic filtering
+interface WhereClauseResult {
+  clause: string
+  params: (string[] | boolean)[]
+}
+
+/**
+ * Build WHERE clause for geographic filtering in SQL queries
+ *
+ * @param filters - Geographic filters (region and municipality codes)
+ * @param startParamIndex - Starting index for SQL parameters (e.g., 2 if $1 is already used)
+ * @returns Object with SQL clause string and parameter array
+ */
+function buildGeographicWhereClause(
+  filters: GeoFilters,
+  startParamIndex: number
+): WhereClauseResult {
+  const conditions: string[] = []
+  const params: (string[] | boolean)[] = []
+  let paramIndex = startParamIndex
+
+  const hasFilters = filters.regionCodes.length > 0 || filters.municipalityCodes.length > 0
+
+  if (!hasFilters) {
+    return { clause: '', params: [] }
+  }
+
+  const itemConditions: string[] = []
+
+  // Municipality filtering
+  if (filters.municipalityCodes.length > 0) {
+    // Direct municipality match
+    itemConditions.push(`ni.municipality_code = ANY($${paramIndex})`)
+    params.push(filters.municipalityCodes)
+    paramIndex++
+  }
+
+  // Region filtering (includes both explicit region selection AND implicit from municipalities)
+  if (filters.regionCodes.length > 0) {
+    // Region-level events (items with regionCode but NO municipalityCode)
+    itemConditions.push(
+      `(ni.region_code = ANY($${paramIndex}) AND ni.municipality_code IS NULL)`
+    )
+    params.push(filters.regionCodes)
+    paramIndex++
+  }
+
+  if (itemConditions.length === 0) {
+    return { clause: '', params: [] }
+  }
+
+  // Combine with OR
+  const locationCondition = `(${itemConditions.join(' OR ')})`
+
+  // Handle items without location codes
+  if (filters.showItemsWithoutLocation) {
+    conditions.push(
+      `(${locationCondition} OR (ni.country_code IS NULL AND ni.region_code IS NULL AND ni.municipality_code IS NULL))`
+    )
+  } else {
+    conditions.push(locationCondition)
+  }
+
+  return {
+    clause: conditions.join(' AND '),
+    params
+  }
 }
 
 export const persistentDb = {
@@ -741,23 +810,38 @@ export const persistentDb = {
     }
   },
 
-  getColumnData: async (columnId: string, limit?: number) => {
+  getColumnData: async (columnId: string, limit?: number, geoFilters?: GeoFilters) => {
     const pool = getPool()
 
     try {
+      // Build WHERE clause for geographic filtering
+      let whereClause = 'cd.column_id = $1'
+      const params: (string | number | string[] | boolean)[] = [columnId]
+      let paramIndex = 2
+
+      if (geoFilters) {
+        const geoConditions = buildGeographicWhereClause(geoFilters, paramIndex)
+        if (geoConditions.clause) {
+          whereClause += ` AND (${geoConditions.clause})`
+          params.push(...geoConditions.params)
+          paramIndex += geoConditions.params.length
+        }
+      }
+
       const query = limit
         ? `SELECT cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
            FROM column_data cd
            LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-           WHERE cd.column_id = $1
-           ORDER BY cd.created_at DESC LIMIT $2`
+           WHERE ${whereClause}
+           ORDER BY cd.created_at DESC LIMIT $${paramIndex}`
         : `SELECT cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
            FROM column_data cd
            LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-           WHERE cd.column_id = $1
+           WHERE ${whereClause}
            ORDER BY cd.created_at DESC`
 
-      const params = limit ? [columnId, limit] : [columnId]
+      if (limit) params.push(limit)
+
       const result = await pool.query(query, params)
 
       return result.rows.map(row => {
@@ -773,13 +857,13 @@ export const persistentDb = {
         }
       })
     } catch (error) {
-      logger.error('db.getColumnData.error', { error, columnId })
+      logger.error('db.getColumnData.error', { error, columnId, geoFilters })
       throw error
     }
   },
 
   // Batch column data operations (optimized for performance)
-  getColumnDataBatch: async (columnIds: string[]) => {
+  getColumnDataBatch: async (columnIds: string[], geoFilters?: GeoFilters) => {
     const pool = await getPool()
 
     try {
@@ -787,14 +871,27 @@ export const persistentDb = {
         return {}
       }
 
-      const result = await pool.query(
-        `SELECT cd.column_id, cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
-         FROM column_data cd
-         LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-         WHERE cd.column_id = ANY($1)
-         ORDER BY cd.column_id, cd.created_at DESC`,
-        [columnIds]
-      )
+      // Build WHERE clause for geographic filtering
+      let additionalWhere = ''
+      const geoParams: (string[] | boolean)[] = []
+
+      if (geoFilters) {
+        const geoConditions = buildGeographicWhereClause(geoFilters, 2) // Start at $2 since $1 is columnIds
+        if (geoConditions.clause) {
+          additionalWhere = ` AND (${geoConditions.clause})`
+          geoParams.push(...geoConditions.params)
+        }
+      }
+
+      const query = `
+        SELECT cd.column_id, cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
+        FROM column_data cd
+        LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
+        WHERE cd.column_id = ANY($1)${additionalWhere}
+        ORDER BY cd.column_id, cd.created_at DESC
+      `
+
+      const result = await pool.query(query, [columnIds, ...geoParams])
 
       // Group results by column_id
       const columnData: Record<string, NewsItem[]> = {}
@@ -823,7 +920,7 @@ export const persistentDb = {
 
       return columnData
     } catch (error) {
-      logger.error('db.getColumnDataBatch.error', { error, columnCount: columnIds.length })
+      logger.error('db.getColumnDataBatch.error', { error, columnCount: columnIds.length, geoFilters })
       throw error
     }
   },

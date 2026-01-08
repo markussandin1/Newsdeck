@@ -16,6 +16,11 @@ import { isNewsItemNew } from '@/lib/time-utils'
 
 interface UseDashboardDataProps {
   dashboard: Dashboard
+  geoFilters?: {
+    regionCodes: string[]
+    municipalityCodes: string[]
+    showItemsWithoutLocation: boolean
+  }
 }
 
 interface UseDashboardDataReturn {
@@ -34,7 +39,7 @@ interface UseDashboardDataReturn {
   updateColumnData: (updater: React.SetStateAction<ColumnData>) => void
 }
 
-export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashboardDataReturn {
+export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProps): UseDashboardDataReturn {
   const [columnData, setColumnData] = useState<ColumnData>({})
   const columnDataRef = useRef<ColumnData>({})
   const [lastUpdate, setLastUpdate] = useState(new Date())
@@ -54,10 +59,28 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
     try {
       setIsLoading(true)
       // Use the correct endpoint based on dashboard type
-      let endpoint = `/api/dashboards/${dashboard.slug}`
+      let baseEndpoint = `/api/dashboards/${dashboard.slug}`
       if (dashboard.id === 'main-dashboard') {
-        endpoint = '/api/dashboards/main-dashboard'
+        baseEndpoint = '/api/dashboards/main-dashboard'
       }
+
+      // Build query parameters for geographic filters
+      const params = new URLSearchParams()
+
+      if (geoFilters?.regionCodes) {
+        geoFilters.regionCodes.forEach(code => params.append('regionCode', code))
+      }
+
+      if (geoFilters?.municipalityCodes) {
+        geoFilters.municipalityCodes.forEach(code => params.append('municipalityCode', code))
+      }
+
+      if (geoFilters?.showItemsWithoutLocation !== undefined) {
+        params.append('showItemsWithoutLocation', String(geoFilters.showItemsWithoutLocation))
+      }
+
+      const queryString = params.toString()
+      const endpoint = queryString ? `${baseEndpoint}?${queryString}` : baseEndpoint
 
       const response = await fetch(endpoint)
       const data = await response.json() as {
@@ -170,6 +193,21 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard?.id])
+
+  /**
+   * Re-fetch data when geographic filters change
+   */
+  useEffect(() => {
+    if (dashboard?.id && geoFilters) {
+      fetchColumnData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dashboard?.id,
+    geoFilters?.regionCodes?.join(','),
+    geoFilters?.municipalityCodes?.join(','),
+    geoFilters?.showItemsWithoutLocation
+  ])
 
   return {
     // State

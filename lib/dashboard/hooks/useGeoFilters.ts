@@ -32,6 +32,7 @@ export interface UseGeoFiltersReturn {
   // Filtering
   applyFilters: (items: NewsItem[]) => NewsItem[]
   isActive: boolean
+  allRegionCodes: string[]  // Combined explicit + implicit regions for backend filtering
 }
 
 const DEFAULT_FILTERS: GeoFilters = {
@@ -141,6 +142,13 @@ export function useGeoFilters({
     })
     return regions
   }, [filters.municipalityCodes, metadata.municipalities])
+
+  // Combine explicit region selections with implicit regions from municipalities
+  // This is sent to backend to enable implicit region-level filtering
+  const allRegionCodes = useMemo(() => {
+    const combined = new Set([...filters.regionCodes, ...Array.from(regionsWithSelectedMunicipalities)])
+    return Array.from(combined)
+  }, [filters.regionCodes, regionsWithSelectedMunicipalities])
 
   // Filter actions
   const setRegionCodes = useCallback((codes: string[]) => {
@@ -309,5 +317,6 @@ export function useGeoFilters({
     clearFilters,
     applyFilters,
     isActive,
+    allRegionCodes,
   }
 }

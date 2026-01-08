@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NewsItem } from '@/lib/types'
+import { NewsItem, GeoFilters } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
@@ -9,23 +9,37 @@ export async function GET(
   try {
     const params = await context.params
     const slug = params.slug
-    
+
+    // Parse geographic filter parameters from query string
+    const { searchParams } = new URL(request.url)
+    const geoFilters: GeoFilters | undefined = (() => {
+      const regionCodes = searchParams.getAll('regionCode')
+      const municipalityCodes = searchParams.getAll('municipalityCode')
+      const showItemsWithoutLocation = searchParams.get('showItemsWithoutLocation') === 'true'
+
+      // Only create filter object if filters are active
+      if (regionCodes.length > 0 || municipalityCodes.length > 0) {
+        return { regionCodes, municipalityCodes, showItemsWithoutLocation }
+      }
+      return undefined
+    })()
+
     let dashboard
-    
+
     // Handle legacy main dashboard access
     if (slug === 'main' || slug === 'main-dashboard') {
       dashboard = await db.getMainDashboard()
     } else {
       dashboard = await db.getDashboardBySlug(slug)
     }
-    
+
     if (!dashboard) {
       return NextResponse.json(
         { error: 'Dashboard not found' },
         { status: 404 }
       )
     }
-    
+
     // Fetch column data for all columns in the dashboard
     // Limit to 500 most recent items per column for performance
     const COLUMN_ITEM_LIMIT = 500
@@ -34,7 +48,7 @@ export async function GET(
     if (dashboard.columns) {
       for (const column of dashboard.columns.filter((col: { isArchived?: boolean }) => !col.isArchived)) {
         try {
-          const items = await db.getColumnData(column.id, COLUMN_ITEM_LIMIT) || []
+          const items = await db.getColumnData(column.id, COLUMN_ITEM_LIMIT, geoFilters) || []
           columnData[column.id] = items
         } catch (error) {
           console.error(`Error fetching data for column ${column.id}:`, error)

@@ -77,6 +77,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
   const effectiveDashboardSlug = dashboardSlug || dashboard.slug || (dashboard.id === 'main-dashboard' ? 'main' : dashboard.id)
 
+  // Geographic filters (must be before useDashboardData to pass filters)
+  const geoFilters = useGeoFilters({ dashboardId: dashboard.id })
+
   // Dashboard data management (extracted to hook)
   const {
     columnData,
@@ -86,7 +89,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     fetchColumnData,
     loadArchivedColumns,
     updateColumnData,
-  } = useDashboardData({ dashboard })
+  } = useDashboardData({
+    dashboard,
+    geoFilters: geoFilters.isActive ? {
+      regionCodes: geoFilters.allRegionCodes,
+      municipalityCodes: geoFilters.filters.municipalityCodes,
+      showItemsWithoutLocation: geoFilters.filters.showItemsWithoutLocation
+    } : undefined
+  })
 
   // Notification settings management
   const {
@@ -102,9 +112,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     requestPermission: requestDesktopPermission,
     showNotification: showDesktopNotification,
   } = useDesktopNotifications()
-
-  // Geographic filters
-  const geoFilters = useGeoFilters({ dashboardId: dashboard.id })
 
   // Audio and desktop notification management
   const {
@@ -125,6 +132,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     columns: dashboard?.columns || [],
     updateColumnData,
     onNewItems: handleNewItems,
+    geoFilters: geoFilters.isActive ? {
+      regionCodes: geoFilters.allRegionCodes,
+      municipalityCodes: geoFilters.filters.municipalityCodes,
+      showItemsWithoutLocation: geoFilters.filters.showItemsWithoutLocation
+    } : undefined
   })
 
   // Poll for pending traffic camera image uploads (auto-refresh when ready)
@@ -247,10 +259,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
   const filteredColumnData = useMemo(() => {
     const hasSearchQuery = !!normalizedSearchQuery
-    const hasGeoFilters = geoFilters.isActive
 
-    // If no filters are active, return all data
-    if (!hasSearchQuery && !hasGeoFilters) {
+    // Geographic filtering now done by backend
+    // Only apply text search filter here
+    if (!hasSearchQuery) {
       return memoizedColumnData
     }
 
@@ -289,23 +301,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
     const filtered: ColumnData = {}
     Object.entries(memoizedColumnData).forEach(([columnId, items]) => {
-      let columnItems = items
-
-      // Apply search filter
-      if (hasSearchQuery) {
-        columnItems = columnItems.filter(matchesQuery)
-      }
-
-      // Apply geographic filters
-      if (hasGeoFilters) {
-        columnItems = geoFilters.applyFilters(columnItems)
-      }
-
-      filtered[columnId] = columnItems
+      filtered[columnId] = items.filter(matchesQuery)
     })
 
     return filtered
-  }, [memoizedColumnData, normalizedSearchQuery, geoFilters])
+  }, [memoizedColumnData, normalizedSearchQuery])
 
   const hasActiveSearch = normalizedSearchQuery.length > 0 || geoFilters.isActive
   const showSearchNoResults = hasActiveSearch && Object.values(filteredColumnData).every(items => items.length === 0)

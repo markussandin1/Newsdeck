@@ -7,6 +7,11 @@ interface UseDashboardPollingProps {
   columns: DashboardColumn[]
   updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void
   onNewItems?: (columnId: string, items: NewsItem[]) => void
+  geoFilters?: {
+    regionCodes: string[]
+    municipalityCodes: string[]
+    showItemsWithoutLocation: boolean
+  }
 }
 
 interface UseDashboardPollingReturn {
@@ -24,6 +29,7 @@ export function useDashboardPolling({
   columns,
   updateColumnData,
   onNewItems,
+  geoFilters,
 }: UseDashboardPollingProps): UseDashboardPollingReturn {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
 
@@ -102,11 +108,31 @@ export function useDashboardPolling({
       }
       try {
         const lastSeen = lastSeenTimestampsRef.current.get(columnId)
-        const url = lastSeen
-          ? `/api/columns/${columnId}/updates?lastSeen=${lastSeen}`
+
+        // Build query parameters
+        const params = new URLSearchParams()
+
+        if (lastSeen) {
+          params.append('lastSeen', String(lastSeen))
+        }
+
+        // Add geographic filters
+        if (geoFilters?.regionCodes) {
+          geoFilters.regionCodes.forEach(code => params.append('regionCode', code))
+        }
+        if (geoFilters?.municipalityCodes) {
+          geoFilters.municipalityCodes.forEach(code => params.append('municipalityCode', code))
+        }
+        if (geoFilters?.showItemsWithoutLocation !== undefined) {
+          params.append('showItemsWithoutLocation', String(geoFilters.showItemsWithoutLocation))
+        }
+
+        const queryString = params.toString()
+        const url = queryString
+          ? `/api/columns/${columnId}/updates?${queryString}`
           : `/api/columns/${columnId}/updates`
 
-        console.log(`LongPoll: Requesting updates for column ${columnId}`, { lastSeen })
+        console.log(`LongPoll: Requesting updates for column ${columnId}`, { lastSeen, hasGeoFilters: !!geoFilters })
 
         const response = await fetch(url, {
           signal: controller.signal,
@@ -192,7 +218,7 @@ export function useDashboardPolling({
 
     // Cleanup for this column
     abortControllersRef.current.delete(columnId)
-  }, [columns, updateColumnData, onNewItems, stopPolling])
+  }, [columns, updateColumnData, onNewItems, stopPolling, geoFilters])
 
   // Auto-start polling for all non-archived columns
   useEffect(() => {
@@ -213,7 +239,7 @@ export function useDashboardPolling({
     return () => {
       stopAllPolling()
     }
-  }, [columns, startPolling, stopAllPolling])
+  }, [columns, startPolling, stopAllPolling, geoFilters])
 
   // Pause/resume when tab visibility changes to avoid hammering when hidden
   useEffect(() => {
