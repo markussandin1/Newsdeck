@@ -80,6 +80,17 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   // Geographic filters (must be before useDashboardData to pass filters)
   const geoFilters = useGeoFilters({ dashboardId: dashboard.id })
 
+  // Memoize geoFilters object to prevent unnecessary re-renders
+  const memoizedGeoFilters = useMemo(() => ({
+    regionCodes: geoFilters.allRegionCodes,
+    municipalityCodes: geoFilters.filters.municipalityCodes,
+    showItemsWithoutLocation: geoFilters.filters.showItemsWithoutLocation
+  }), [
+    geoFilters.allRegionCodes.join(','),
+    geoFilters.filters.municipalityCodes.join(','),
+    geoFilters.filters.showItemsWithoutLocation
+  ])
+
   // Dashboard data management (extracted to hook)
   const {
     columnData,
@@ -91,11 +102,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     updateColumnData,
   } = useDashboardData({
     dashboard,
-    geoFilters: geoFilters.isActive ? {
-      regionCodes: geoFilters.allRegionCodes,
-      municipalityCodes: geoFilters.filters.municipalityCodes,
-      showItemsWithoutLocation: geoFilters.filters.showItemsWithoutLocation
-    } : undefined
+    geoFilters: memoizedGeoFilters
   })
 
   // Notification settings management
@@ -132,11 +139,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     columns: dashboard?.columns || [],
     updateColumnData,
     onNewItems: handleNewItems,
-    geoFilters: geoFilters.isActive ? {
-      regionCodes: geoFilters.allRegionCodes,
-      municipalityCodes: geoFilters.filters.municipalityCodes,
-      showItemsWithoutLocation: geoFilters.filters.showItemsWithoutLocation
-    } : undefined
+    geoFilters: memoizedGeoFilters
   })
 
   // Poll for pending traffic camera image uploads (auto-refresh when ready)

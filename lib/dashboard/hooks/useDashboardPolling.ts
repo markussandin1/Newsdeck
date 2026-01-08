@@ -7,7 +7,7 @@ interface UseDashboardPollingProps {
   columns: DashboardColumn[]
   updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void
   onNewItems?: (columnId: string, items: NewsItem[]) => void
-  geoFilters?: {
+  geoFilters: {
     regionCodes: string[]
     municipalityCodes: string[]
     showItemsWithoutLocation: boolean
@@ -117,13 +117,13 @@ export function useDashboardPolling({
         }
 
         // Add geographic filters
-        if (geoFilters?.regionCodes) {
+        if (geoFilters.regionCodes.length > 0) {
           geoFilters.regionCodes.forEach(code => params.append('regionCode', code))
         }
-        if (geoFilters?.municipalityCodes) {
+        if (geoFilters.municipalityCodes.length > 0) {
           geoFilters.municipalityCodes.forEach(code => params.append('municipalityCode', code))
         }
-        if (geoFilters?.showItemsWithoutLocation !== undefined) {
+        if (geoFilters.showItemsWithoutLocation !== undefined) {
           params.append('showItemsWithoutLocation', String(geoFilters.showItemsWithoutLocation))
         }
 

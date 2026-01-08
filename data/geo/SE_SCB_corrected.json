@@ -1,0 +1,2161 @@
+{
+  "country": "SE",
+  "subdivisions": [
+    {
+      "level": 1,
+      "code": "SE-01",
+      "name": "Stockholms län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-0114",
+      "name": "Upplands Väsby",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0115",
+      "name": "Vallentuna",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0117",
+      "name": "Österåker",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0120",
+      "name": "Värmdö",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0123",
+      "name": "Järfälla",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0125",
+      "name": "Ekerö",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0126",
+      "name": "Huddinge",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0127",
+      "name": "Botkyrka",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0128",
+      "name": "Salem",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0136",
+      "name": "Haninge",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0138",
+      "name": "Tyresö",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0139",
+      "name": "Upplands-Bro",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0140",
+      "name": "Nykvarn",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0160",
+      "name": "Täby",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0162",
+      "name": "Danderyd",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0163",
+      "name": "Sollentuna",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0180",
+      "name": "Stockholm",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0181",
+      "name": "Södertälje",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0182",
+      "name": "Nacka",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0183",
+      "name": "Sundbyberg",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0184",
+      "name": "Solna",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0186",
+      "name": "Lidingö",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0187",
+      "name": "Vaxholm",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0188",
+      "name": "Norrtälje",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0191",
+      "name": "Sigtuna",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 2,
+      "code": "SE-0192",
+      "name": "Nynäshamn",
+      "type": "municipality",
+      "parent": "SE-01"
+    },
+    {
+      "level": 1,
+      "code": "SE-03",
+      "name": "Uppsala län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-0305",
+      "name": "Håbo",
+      "type": "municipality",
+      "parent": "SE-03"
+    },
+    {
+      "level": 2,
+      "code": "SE-0319",
+      "name": "Älvkarleby",
+      "type": "municipality",
+      "parent": "SE-03"
+    },
+    {
+      "level": 2,
+      "code": "SE-0330",
+      "name": "Knivsta",
+      "type": "municipality",
+      "parent": "SE-03"
+    },
+    {
+      "level": 2,
+      "code": "SE-0331",
+      "name": "Heby",
+      "type": "municipality",
+      "parent": "SE-03"
+    },
+    {
+      "level": 2,
+      "code": "SE-0360",
+      "name": "Tierp",
+      "type": "municipality",
+      "parent": "SE-03"
+    },
+    {
+      "level": 2,
+      "code": "SE-0380",
+      "name": "Uppsala",
+      "type": "municipality",
+      "parent": "SE-03"
+    },
+    {
+      "level": 2,
+      "code": "SE-0381",
+      "name": "Enköping",
+      "type": "municipality",
+      "parent": "SE-03"
+    },
+    {
+      "level": 2,
+      "code": "SE-0382",
+      "name": "Östhammar",
+      "type": "municipality",
+      "parent": "SE-03"
+    },
+    {
+      "level": 1,
+      "code": "SE-04",
+      "name": "Södermanlands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-0428",
+      "name": "Vingåker",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 2,
+      "code": "SE-0461",
+      "name": "Gnesta",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 2,
+      "code": "SE-0480",
+      "name": "Nyköping",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 2,
+      "code": "SE-0481",
+      "name": "Oxelösund",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 2,
+      "code": "SE-0482",
+      "name": "Flen",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 2,
+      "code": "SE-0483",
+      "name": "Katrineholm",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 2,
+      "code": "SE-0484",
+      "name": "Eskilstuna",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 2,
+      "code": "SE-0486",
+      "name": "Strängnäs",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 2,
+      "code": "SE-0488",
+      "name": "Trosa",
+      "type": "municipality",
+      "parent": "SE-04"
+    },
+    {
+      "level": 1,
+      "code": "SE-05",
+      "name": "Östergötlands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-0509",
+      "name": "Ödeshög",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0512",
+      "name": "Ydre",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0513",
+      "name": "Kinda",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0560",
+      "name": "Boxholm",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0561",
+      "name": "Åtvidaberg",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0562",
+      "name": "Finspång",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0563",
+      "name": "Valdemarsvik",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0580",
+      "name": "Linköping",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0581",
+      "name": "Norrköping",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0582",
+      "name": "Söderköping",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0583",
+      "name": "Motala",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0584",
+      "name": "Vadstena",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 2,
+      "code": "SE-0586",
+      "name": "Mjölby",
+      "type": "municipality",
+      "parent": "SE-05"
+    },
+    {
+      "level": 1,
+      "code": "SE-06",
+      "name": "Jönköpings län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-0604",
+      "name": "Aneby",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0617",
+      "name": "Gnosjö",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0642",
+      "name": "Mullsjö",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0643",
+      "name": "Habo",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0662",
+      "name": "Gislaved",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0665",
+      "name": "Vaggeryd",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0680",
+      "name": "Jönköping",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0682",
+      "name": "Nässjö",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0683",
+      "name": "Värnamo",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0684",
+      "name": "Sävsjö",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0685",
+      "name": "Vetlanda",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0686",
+      "name": "Eksjö",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 2,
+      "code": "SE-0687",
+      "name": "Tranås",
+      "type": "municipality",
+      "parent": "SE-06"
+    },
+    {
+      "level": 1,
+      "code": "SE-07",
+      "name": "Kronobergs län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-0760",
+      "name": "Uppvidinge",
+      "type": "municipality",
+      "parent": "SE-07"
+    },
+    {
+      "level": 2,
+      "code": "SE-0761",
+      "name": "Lessebo",
+      "type": "municipality",
+      "parent": "SE-07"
+    },
+    {
+      "level": 2,
+      "code": "SE-0763",
+      "name": "Tingsryd",
+      "type": "municipality",
+      "parent": "SE-07"
+    },
+    {
+      "level": 2,
+      "code": "SE-0764",
+      "name": "Alvesta",
+      "type": "municipality",
+      "parent": "SE-07"
+    },
+    {
+      "level": 2,
+      "code": "SE-0765",
+      "name": "Älmhult",
+      "type": "municipality",
+      "parent": "SE-07"
+    },
+    {
+      "level": 2,
+      "code": "SE-0767",
+      "name": "Markaryd",
+      "type": "municipality",
+      "parent": "SE-07"
+    },
+    {
+      "level": 2,
+      "code": "SE-0780",
+      "name": "Växjö",
+      "type": "municipality",
+      "parent": "SE-07"
+    },
+    {
+      "level": 2,
+      "code": "SE-0781",
+      "name": "Ljungby",
+      "type": "municipality",
+      "parent": "SE-07"
+    },
+    {
+      "level": 1,
+      "code": "SE-08",
+      "name": "Kalmar län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-0821",
+      "name": "Högsby",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0834",
+      "name": "Torsås",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0840",
+      "name": "Mörbylånga",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0860",
+      "name": "Hultsfred",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0861",
+      "name": "Mönsterås",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0862",
+      "name": "Emmaboda",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0880",
+      "name": "Kalmar",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0881",
+      "name": "Nybro",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0882",
+      "name": "Oskarshamn",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0883",
+      "name": "Västervik",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0884",
+      "name": "Vimmerby",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 2,
+      "code": "SE-0885",
+      "name": "Borgholm",
+      "type": "municipality",
+      "parent": "SE-08"
+    },
+    {
+      "level": 1,
+      "code": "SE-09",
+      "name": "Gotlands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-0980",
+      "name": "Gotland",
+      "type": "municipality",
+      "parent": "SE-09"
+    },
+    {
+      "level": 1,
+      "code": "SE-10",
+      "name": "Blekinge län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-1060",
+      "name": "Olofström",
+      "type": "municipality",
+      "parent": "SE-10"
+    },
+    {
+      "level": 2,
+      "code": "SE-1080",
+      "name": "Karlskrona",
+      "type": "municipality",
+      "parent": "SE-10"
+    },
+    {
+      "level": 2,
+      "code": "SE-1081",
+      "name": "Ronneby",
+      "type": "municipality",
+      "parent": "SE-10"
+    },
+    {
+      "level": 2,
+      "code": "SE-1082",
+      "name": "Karlshamn",
+      "type": "municipality",
+      "parent": "SE-10"
+    },
+    {
+      "level": 2,
+      "code": "SE-1083",
+      "name": "Sölvesborg",
+      "type": "municipality",
+      "parent": "SE-10"
+    },
+    {
+      "level": 1,
+      "code": "SE-12",
+      "name": "Skåne län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-1214",
+      "name": "Svalöv",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1230",
+      "name": "Staffanstorp",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1231",
+      "name": "Burlöv",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1233",
+      "name": "Vellinge",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1256",
+      "name": "Östra Göinge",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1257",
+      "name": "Örkelljunga",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1260",
+      "name": "Bjuv",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1261",
+      "name": "Kävlinge",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1262",
+      "name": "Lomma",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1263",
+      "name": "Svedala",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1264",
+      "name": "Skurup",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1265",
+      "name": "Sjöbo",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1266",
+      "name": "Hörby",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1267",
+      "name": "Höör",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1270",
+      "name": "Tomelilla",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1272",
+      "name": "Bromölla",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1273",
+      "name": "Osby",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1275",
+      "name": "Perstorp",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1276",
+      "name": "Klippan",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1277",
+      "name": "Åstorp",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1278",
+      "name": "Båstad",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1280",
+      "name": "Malmö",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1281",
+      "name": "Lund",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1282",
+      "name": "Landskrona",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1283",
+      "name": "Helsingborg",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1284",
+      "name": "Höganäs",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1285",
+      "name": "Eslöv",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1286",
+      "name": "Ystad",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1287",
+      "name": "Trelleborg",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1290",
+      "name": "Kristianstad",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1291",
+      "name": "Simrishamn",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1292",
+      "name": "Ängelholm",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 2,
+      "code": "SE-1293",
+      "name": "Hässleholm",
+      "type": "municipality",
+      "parent": "SE-12"
+    },
+    {
+      "level": 1,
+      "code": "SE-13",
+      "name": "Hallands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-1315",
+      "name": "Hylte",
+      "type": "municipality",
+      "parent": "SE-13"
+    },
+    {
+      "level": 2,
+      "code": "SE-1380",
+      "name": "Halmstad",
+      "type": "municipality",
+      "parent": "SE-13"
+    },
+    {
+      "level": 2,
+      "code": "SE-1381",
+      "name": "Laholm",
+      "type": "municipality",
+      "parent": "SE-13"
+    },
+    {
+      "level": 2,
+      "code": "SE-1382",
+      "name": "Falkenberg",
+      "type": "municipality",
+      "parent": "SE-13"
+    },
+    {
+      "level": 2,
+      "code": "SE-1383",
+      "name": "Varberg",
+      "type": "municipality",
+      "parent": "SE-13"
+    },
+    {
+      "level": 2,
+      "code": "SE-1384",
+      "name": "Kungsbacka",
+      "type": "municipality",
+      "parent": "SE-13"
+    },
+    {
+      "level": 1,
+      "code": "SE-14",
+      "name": "Västra Götalands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-1401",
+      "name": "Härryda",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1402",
+      "name": "Partille",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1407",
+      "name": "Öckerö",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1415",
+      "name": "Stenungsund",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1419",
+      "name": "Tjörn",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1421",
+      "name": "Orust",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1427",
+      "name": "Sotenäs",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1430",
+      "name": "Munkedal",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1435",
+      "name": "Tanum",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1438",
+      "name": "Dals-Ed",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1439",
+      "name": "Färgelanda",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1440",
+      "name": "Ale",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1441",
+      "name": "Lerum",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1442",
+      "name": "Vårgårda",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1443",
+      "name": "Bollebygd",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1444",
+      "name": "Grästorp",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1445",
+      "name": "Essunga",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1446",
+      "name": "Karlsborg",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1447",
+      "name": "Gullspång",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1452",
+      "name": "Tranemo",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1460",
+      "name": "Bengtsfors",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1461",
+      "name": "Mellerud",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1462",
+      "name": "Lilla Edet",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1463",
+      "name": "Mark",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1465",
+      "name": "Svenljunga",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1466",
+      "name": "Herrljunga",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1470",
+      "name": "Vara",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1471",
+      "name": "Götene",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1472",
+      "name": "Tibro",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1473",
+      "name": "Töreboda",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1480",
+      "name": "Göteborg",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1481",
+      "name": "Mölndal",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1482",
+      "name": "Kungälv",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1484",
+      "name": "Lysekil",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1485",
+      "name": "Uddevalla",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1486",
+      "name": "Strömstad",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1487",
+      "name": "Vänersborg",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1488",
+      "name": "Trollhättan",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1489",
+      "name": "Alingsås",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1490",
+      "name": "Borås",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1491",
+      "name": "Ulricehamn",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1492",
+      "name": "Åmål",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1493",
+      "name": "Mariestad",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1494",
+      "name": "Lidköping",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1495",
+      "name": "Skara",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1496",
+      "name": "Skövde",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1497",
+      "name": "Hjo",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1498",
+      "name": "Tidaholm",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 2,
+      "code": "SE-1499",
+      "name": "Falköping",
+      "type": "municipality",
+      "parent": "SE-14"
+    },
+    {
+      "level": 1,
+      "code": "SE-17",
+      "name": "Värmlands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-1715",
+      "name": "Kil",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1730",
+      "name": "Eda",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1737",
+      "name": "Torsby",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1760",
+      "name": "Storfors",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1761",
+      "name": "Hammarö",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1762",
+      "name": "Munkfors",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1763",
+      "name": "Forshaga",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1764",
+      "name": "Grums",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1765",
+      "name": "Årjäng",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1766",
+      "name": "Sunne",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1780",
+      "name": "Karlstad",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1781",
+      "name": "Kristinehamn",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1782",
+      "name": "Filipstad",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1783",
+      "name": "Hagfors",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1784",
+      "name": "Arvika",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 2,
+      "code": "SE-1785",
+      "name": "Säffle",
+      "type": "municipality",
+      "parent": "SE-17"
+    },
+    {
+      "level": 1,
+      "code": "SE-18",
+      "name": "Örebro län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-1814",
+      "name": "Lekeberg",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1860",
+      "name": "Laxå",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1861",
+      "name": "Hallsberg",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1862",
+      "name": "Degerfors",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1863",
+      "name": "Hällefors",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1864",
+      "name": "Ljusnarsberg",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1880",
+      "name": "Örebro",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1881",
+      "name": "Kumla",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1882",
+      "name": "Askersund",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1883",
+      "name": "Karlskoga",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1884",
+      "name": "Nora",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 2,
+      "code": "SE-1885",
+      "name": "Lindesberg",
+      "type": "municipality",
+      "parent": "SE-18"
+    },
+    {
+      "level": 1,
+      "code": "SE-19",
+      "name": "Västmanlands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-1904",
+      "name": "Skinnskatteberg",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1907",
+      "name": "Surahammar",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1960",
+      "name": "Kungsör",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1961",
+      "name": "Hallstahammar",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1962",
+      "name": "Norberg",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1980",
+      "name": "Västerås",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1981",
+      "name": "Sala",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1982",
+      "name": "Fagersta",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1983",
+      "name": "Köping",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 2,
+      "code": "SE-1984",
+      "name": "Arboga",
+      "type": "municipality",
+      "parent": "SE-19"
+    },
+    {
+      "level": 1,
+      "code": "SE-20",
+      "name": "Dalarnas län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-2021",
+      "name": "Vansbro",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2023",
+      "name": "Malung-Sälen",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2026",
+      "name": "Gagnef",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2029",
+      "name": "Leksand",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2031",
+      "name": "Rättvik",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2034",
+      "name": "Orsa",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2039",
+      "name": "Älvdalen",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2061",
+      "name": "Smedjebacken",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2062",
+      "name": "Mora",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2080",
+      "name": "Falun",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2081",
+      "name": "Borlänge",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2082",
+      "name": "Säter",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2083",
+      "name": "Hedemora",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2084",
+      "name": "Avesta",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 2,
+      "code": "SE-2085",
+      "name": "Ludvika",
+      "type": "municipality",
+      "parent": "SE-20"
+    },
+    {
+      "level": 1,
+      "code": "SE-21",
+      "name": "Gävleborgs län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-2101",
+      "name": "Ockelbo",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2104",
+      "name": "Hofors",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2121",
+      "name": "Ovanåker",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2132",
+      "name": "Nordanstig",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2161",
+      "name": "Ljusdal",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2180",
+      "name": "Gävle",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2181",
+      "name": "Sandviken",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2182",
+      "name": "Söderhamn",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2183",
+      "name": "Bollnäs",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 2,
+      "code": "SE-2184",
+      "name": "Hudiksvall",
+      "type": "municipality",
+      "parent": "SE-21"
+    },
+    {
+      "level": 1,
+      "code": "SE-22",
+      "name": "Västernorrlands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-2260",
+      "name": "Ånge",
+      "type": "municipality",
+      "parent": "SE-22"
+    },
+    {
+      "level": 2,
+      "code": "SE-2262",
+      "name": "Timrå",
+      "type": "municipality",
+      "parent": "SE-22"
+    },
+    {
+      "level": 2,
+      "code": "SE-2280",
+      "name": "Härnösand",
+      "type": "municipality",
+      "parent": "SE-22"
+    },
+    {
+      "level": 2,
+      "code": "SE-2281",
+      "name": "Sundsvall",
+      "type": "municipality",
+      "parent": "SE-22"
+    },
+    {
+      "level": 2,
+      "code": "SE-2282",
+      "name": "Kramfors",
+      "type": "municipality",
+      "parent": "SE-22"
+    },
+    {
+      "level": 2,
+      "code": "SE-2283",
+      "name": "Sollefteå",
+      "type": "municipality",
+      "parent": "SE-22"
+    },
+    {
+      "level": 2,
+      "code": "SE-2284",
+      "name": "Örnsköldsvik",
+      "type": "municipality",
+      "parent": "SE-22"
+    },
+    {
+      "level": 1,
+      "code": "SE-23",
+      "name": "Jämtlands län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-2303",
+      "name": "Ragunda",
+      "type": "municipality",
+      "parent": "SE-23"
+    },
+    {
+      "level": 2,
+      "code": "SE-2305",
+      "name": "Bräcke",
+      "type": "municipality",
+      "parent": "SE-23"
+    },
+    {
+      "level": 2,
+      "code": "SE-2309",
+      "name": "Krokom",
+      "type": "municipality",
+      "parent": "SE-23"
+    },
+    {
+      "level": 2,
+      "code": "SE-2313",
+      "name": "Strömsund",
+      "type": "municipality",
+      "parent": "SE-23"
+    },
+    {
+      "level": 2,
+      "code": "SE-2321",
+      "name": "Åre",
+      "type": "municipality",
+      "parent": "SE-23"
+    },
+    {
+      "level": 2,
+      "code": "SE-2326",
+      "name": "Berg",
+      "type": "municipality",
+      "parent": "SE-23"
+    },
+    {
+      "level": 2,
+      "code": "SE-2361",
+      "name": "Härjedalen",
+      "type": "municipality",
+      "parent": "SE-23"
+    },
+    {
+      "level": 2,
+      "code": "SE-2380",
+      "name": "Östersund",
+      "type": "municipality",
+      "parent": "SE-23"
+    },
+    {
+      "level": 1,
+      "code": "SE-24",
+      "name": "Västerbottens län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-2401",
+      "name": "Nordmaling",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2403",
+      "name": "Bjurholm",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2404",
+      "name": "Vindeln",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2409",
+      "name": "Robertsfors",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2417",
+      "name": "Norsjö",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2418",
+      "name": "Malå",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2421",
+      "name": "Storuman",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2422",
+      "name": "Sorsele",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2425",
+      "name": "Dorotea",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2460",
+      "name": "Vännäs",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2462",
+      "name": "Vilhelmina",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2463",
+      "name": "Åsele",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2480",
+      "name": "Umeå",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2481",
+      "name": "Lycksele",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 2,
+      "code": "SE-2482",
+      "name": "Skellefteå",
+      "type": "municipality",
+      "parent": "SE-24"
+    },
+    {
+      "level": 1,
+      "code": "SE-25",
+      "name": "Norrbottens län",
+      "type": "county"
+    },
+    {
+      "level": 2,
+      "code": "SE-2505",
+      "name": "Arvidsjaur",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2506",
+      "name": "Arjeplog",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2510",
+      "name": "Jokkmokk",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2513",
+      "name": "Överkalix",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2514",
+      "name": "Kalix",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2518",
+      "name": "Övertorneå",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2521",
+      "name": "Pajala",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2523",
+      "name": "Gällivare",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2560",
+      "name": "Älvsbyn",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2580",
+      "name": "Luleå",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2581",
+      "name": "Piteå",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2582",
+      "name": "Boden",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2583",
+      "name": "Haparanda",
+      "type": "municipality",
+      "parent": "SE-25"
+    },
+    {
+      "level": 2,
+      "code": "SE-2584",
+      "name": "Kiruna",
+      "type": "municipality",
+      "parent": "SE-25"
+    }
+  ]
+}

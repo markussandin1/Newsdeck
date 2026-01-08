@@ -713,6 +713,21 @@ The import script automatically generates variants for better matching:
 - **UX improvement**: Added auto-expand for regions with matching municipalities when searching, with manual collapse tracking to respect user preferences
 - **Impact**: Users can now search for any municipality name and immediately see results with the parent region auto-expanded
 
+**Fixed 2026-01-08**: Geographic Data Corruption - Incorrect Municipality Codes
+- **Problem**: Municipality codes in `data/geo/SE_SCB.json` were incorrect for 23 out of 290 municipalities, causing wrong municipality names to appear when filtering (e.g., code 2280 showed Örnsköldsvik instead of Härnösand in Västernorrlands län)
+- **Root cause**: Source JSON file had municipalities in wrong order compared to official SCB (Statistics Sweden) municipality codes. Additionally, auto-correction logic in `lib/services/ingestion.ts` was "correcting" correct codes from Workflows with wrong codes from our database.
+- **Affected regions**: Västmanland (3 municipalities), Dalarna (13), Västernorrland (5), Västerbotten (2)
+- **Fix applied**:
+  1. Created verification script (`scripts/verify-scb-codes.mjs`) to compare our data against official SCB CSV
+  2. Generated completely new `SE_SCB_corrected.json` from official `kommunlankod_2025.csv` using `scripts/generate-scb-json-from-csv.mjs`
+  3. Created database backup before making changes
+  4. Cleaned and re-imported all geographic data using corrected JSON file
+  5. Fixed 13 existing news_items to use correct municipality codes based on municipality names (`scripts/fix-news-items-municipality-codes.mjs`)
+  6. Reverted auto-correction logic in `lib/services/ingestion.ts` - now trusts geographic codes from Workflows AI agent (they are correct!)
+- **Scripts created**: `verify-scb-codes.mjs`, `generate-scb-json-from-csv.mjs`, `fix-news-items-municipality-codes.mjs`
+- **Reference**: Official SCB codes at https://www.scb.se/hitta-statistik/regional-statistik-och-kartor/regionala-indelningar/lan-och-kommuner/lan-och-kommuner-i-kodnummerordning/
+- **Impact**: Geographic filtering now shows correct municipalities, Workflows codes are trusted (not auto-corrected), all 290 municipalities verified against official SCB data
+
 **Documentation**:
 - See `docs/geo-service-api.md` for complete API reference
 - Database migration: `db/migrations/001_geographic_metadata.sql`

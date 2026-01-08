@@ -16,7 +16,7 @@ import { isNewsItemNew } from '@/lib/time-utils'
 
 interface UseDashboardDataProps {
   dashboard: Dashboard
-  geoFilters?: {
+  geoFilters: {
     regionCodes: string[]
     municipalityCodes: string[]
     showItemsWithoutLocation: boolean
@@ -74,21 +74,22 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
       const params = new URLSearchParams()
       const currentGeoFilters = geoFiltersRef.current
 
-      if (currentGeoFilters?.regionCodes) {
+      if (currentGeoFilters.regionCodes.length > 0) {
         currentGeoFilters.regionCodes.forEach(code => params.append('regionCode', code))
       }
 
-      if (currentGeoFilters?.municipalityCodes) {
+      if (currentGeoFilters.municipalityCodes.length > 0) {
         currentGeoFilters.municipalityCodes.forEach(code => params.append('municipalityCode', code))
       }
 
-      if (currentGeoFilters?.showItemsWithoutLocation !== undefined) {
+      if (currentGeoFilters.showItemsWithoutLocation !== undefined) {
         params.append('showItemsWithoutLocation', String(currentGeoFilters.showItemsWithoutLocation))
       }
 
       const queryString = params.toString()
       const endpoint = queryString ? `${baseEndpoint}?${queryString}` : baseEndpoint
 
+      console.log('📡 Fetching column data:', endpoint)
       const response = await fetch(endpoint)
       const data = await response.json() as {
         success: boolean
@@ -205,15 +206,20 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
    * Re-fetch data when geographic filters change
    */
   useEffect(() => {
-    if (dashboard?.id && geoFilters) {
+    if (dashboard?.id) {
+      console.log('🔄 Geographic filters changed, refetching data:', {
+        regionCodes: geoFilters.regionCodes,
+        municipalityCodes: geoFilters.municipalityCodes,
+        showItemsWithoutLocation: geoFilters.showItemsWithoutLocation
+      })
       fetchColumnData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     dashboard?.id,
-    geoFilters?.regionCodes?.join(','),
-    geoFilters?.municipalityCodes?.join(','),
-    geoFilters?.showItemsWithoutLocation
+    geoFilters.regionCodes.join(','),
+    geoFilters.municipalityCodes.join(','),
+    geoFilters.showItemsWithoutLocation
   ])
 
   return {

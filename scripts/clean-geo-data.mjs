@@ -42,26 +42,30 @@ async function cleanGeoData() {
     try {
       await client.query('BEGIN');
 
-      // Step 1: Drop foreign key constraints from news_items to prevent CASCADE issues
-      console.log('🔓 Dropping foreign key constraints from news_items...');
+      // Step 1: Drop ALL foreign key constraints that reference geographic tables
+      console.log('🔓 Dropping foreign key constraints...');
       await client.query('ALTER TABLE news_items DROP CONSTRAINT IF EXISTS news_items_region_fkey');
       await client.query('ALTER TABLE news_items DROP CONSTRAINT IF EXISTS news_items_municipality_fkey');
+      await client.query('ALTER TABLE location_name_mappings DROP CONSTRAINT IF EXISTS location_name_mappings_municipality_fkey');
+      await client.query('ALTER TABLE location_name_mappings DROP CONSTRAINT IF EXISTS location_name_mappings_region_fkey');
+      await client.query('ALTER TABLE municipalities DROP CONSTRAINT IF EXISTS municipalities_region_fkey');
 
-      // Step 2: Truncate geographic tables (no CASCADE needed now)
+      // Step 2: Truncate geographic tables in dependency order
+      // (child tables first, then parents)
       console.log('🗑️  Truncating location_name_mappings...');
-      await client.query('TRUNCATE TABLE location_name_mappings');
+      await client.query('TRUNCATE TABLE location_name_mappings CASCADE');
 
       console.log('🗑️  Truncating municipalities...');
-      await client.query('TRUNCATE TABLE municipalities');
+      await client.query('TRUNCATE TABLE municipalities CASCADE');
 
       console.log('🗑️  Truncating regions...');
-      await client.query('TRUNCATE TABLE regions');
+      await client.query('TRUNCATE TABLE regions CASCADE');
 
       console.log('🗑️  Truncating countries...');
-      await client.query('TRUNCATE TABLE countries');
+      await client.query('TRUNCATE TABLE countries CASCADE');
 
       // Step 3: Recreate foreign key constraints
-      console.log('🔐 Recreating foreign key constraints on news_items...');
+      console.log('🔐 Recreating foreign key constraints...');
       await client.query(`
         ALTER TABLE news_items
           ADD CONSTRAINT news_items_region_fkey
@@ -75,6 +79,27 @@ async function cleanGeoData() {
           FOREIGN KEY (municipality_country_code, municipality_region_code, municipality_code)
           REFERENCES municipalities(country_code, region_code, code)
           ON DELETE SET NULL
+      `);
+      await client.query(`
+        ALTER TABLE location_name_mappings
+          ADD CONSTRAINT location_name_mappings_region_fkey
+          FOREIGN KEY (region_country_code, region_code)
+          REFERENCES regions(country_code, code)
+          ON DELETE CASCADE
+      `);
+      await client.query(`
+        ALTER TABLE location_name_mappings
+          ADD CONSTRAINT location_name_mappings_municipality_fkey
+          FOREIGN KEY (municipality_country_code, municipality_region_code, municipality_code)
+          REFERENCES municipalities(country_code, region_code, code)
+          ON DELETE CASCADE
+      `);
+      await client.query(`
+        ALTER TABLE municipalities
+          ADD CONSTRAINT municipalities_region_fkey
+          FOREIGN KEY (country_code, region_code)
+          REFERENCES regions(country_code, code)
+          ON DELETE CASCADE
       `);
 
       await client.query('COMMIT');
