@@ -42,10 +42,16 @@ interface UseDashboardDataReturn {
 export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProps): UseDashboardDataReturn {
   const [columnData, setColumnData] = useState<ColumnData>({})
   const columnDataRef = useRef<ColumnData>({})
+  const geoFiltersRef = useRef(geoFilters)
   const [lastUpdate, setLastUpdate] = useState(new Date())
   const [isLoading, setIsLoading] = useState(false)
   const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
   const [allDashboards, setAllDashboards] = useState<Array<Dashboard & { columnCount?: number }>>([])
+
+  // Keep ref in sync with prop
+  useEffect(() => {
+    geoFiltersRef.current = geoFilters
+  }, [geoFilters])
 
   /**
    * Fetch all column data for the current dashboard
@@ -66,17 +72,18 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
 
       // Build query parameters for geographic filters
       const params = new URLSearchParams()
+      const currentGeoFilters = geoFiltersRef.current
 
-      if (geoFilters?.regionCodes) {
-        geoFilters.regionCodes.forEach(code => params.append('regionCode', code))
+      if (currentGeoFilters?.regionCodes) {
+        currentGeoFilters.regionCodes.forEach(code => params.append('regionCode', code))
       }
 
-      if (geoFilters?.municipalityCodes) {
-        geoFilters.municipalityCodes.forEach(code => params.append('municipalityCode', code))
+      if (currentGeoFilters?.municipalityCodes) {
+        currentGeoFilters.municipalityCodes.forEach(code => params.append('municipalityCode', code))
       }
 
-      if (geoFilters?.showItemsWithoutLocation !== undefined) {
-        params.append('showItemsWithoutLocation', String(geoFilters.showItemsWithoutLocation))
+      if (currentGeoFilters?.showItemsWithoutLocation !== undefined) {
+        params.append('showItemsWithoutLocation', String(currentGeoFilters.showItemsWithoutLocation))
       }
 
       const queryString = params.toString()
