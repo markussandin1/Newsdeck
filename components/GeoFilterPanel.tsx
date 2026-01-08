@@ -74,8 +74,10 @@ export function GeoFilterPanel({ geoFilters, onClose }: GeoFilterPanelProps) {
   // Auto-expand regions with matching municipalities when searching
   useEffect(() => {
     if (!searchQuery.trim()) {
-      // Reset manually collapsed tracking when clearing search
-      setManuallyCollapsed(new Set());
+      // Reset manually collapsed tracking when clearing search (only if needed)
+      if (manuallyCollapsed.size > 0) {
+        setManuallyCollapsed(new Set());
+      }
       return;
     }
 

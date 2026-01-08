@@ -150,7 +150,9 @@ const normalizeLocationMetadata = async (
 
   if (hasCountryCode && hasRegionCode) {
     // Codes provided by AI agent - use them directly
-    // But validate that municipality code matches municipality name (async, don't block)
+    // But validate that municipality code matches municipality name
+    let correctedMunicipalityCode = hasMunicipalityCode ? location.municipalityCode : undefined
+
     if (hasMunicipalityCode && location.municipality) {
       // Validate municipality code against municipality name
       const normalizedMunicipality = location.municipality
@@ -158,42 +160,41 @@ const normalizeLocationMetadata = async (
         .replace(/\s+stad$/i, '')
         .trim()
 
-      // Async validation - don't wait for it
-      geoLookup.findByName(normalizedMunicipality)
-        .then(match => {
-          if (match && match.municipalityCode && match.municipalityCode !== location.municipalityCode) {
-            // Municipality code mismatch detected!
-            console.warn('⚠️  Municipality code mismatch from Workflows AI agent:', {
-              workflowId,
-              municipality: location.municipality,
-              providedCode: location.municipalityCode,
-              expectedCode: match.municipalityCode,
-              locationName: location.name
-            })
+      // Validation to fix incorrect codes from AI agent
+      const match = await geoLookup.findByName(normalizedMunicipality)
 
-            // Log for admin review
-            persistentDb.logUnmatchedLocation({
-              rawLocation: location,
-              failedField: 'municipalityCode_mismatch',
-              failedValue: `Provided: ${location.municipalityCode}, Expected: ${match.municipalityCode} (${location.municipality})`,
-              sourceWorkflowId: workflowId
-            }).catch(() => {
-              // Logging failures shouldn't break ingestion
-            })
-          }
+      if (match && match.municipalityCode && match.municipalityCode !== location.municipalityCode) {
+        // Municipality code mismatch detected!
+        console.warn('⚠️  Municipality code mismatch from Workflows AI agent (auto-correcting):', {
+          workflowId,
+          municipality: location.municipality,
+          providedCode: location.municipalityCode,
+          correctedCode: match.municipalityCode,
+          locationName: location.name
         })
-        .catch(() => {
-          // Validation lookup failures shouldn't break ingestion
+
+        // Use the correct code from database
+        correctedMunicipalityCode = match.municipalityCode
+
+        // Log for admin review (async, don't wait)
+        persistentDb.logUnmatchedLocation({
+          rawLocation: location,
+          failedField: 'municipalityCode_mismatch_autocorrected',
+          failedValue: `Provided: ${location.municipalityCode}, Corrected to: ${match.municipalityCode} (${location.municipality})`,
+          sourceWorkflowId: workflowId
+        }).catch(() => {
+          // Logging failures shouldn't break ingestion
         })
+      }
     }
 
     return {
       countryCode: location.countryCode,
       regionCountryCode: location.countryCode,
       regionCode: location.regionCode,
-      municipalityCountryCode: hasMunicipalityCode ? location.countryCode : undefined,
-      municipalityRegionCode: hasMunicipalityCode ? location.regionCode : undefined,
-      municipalityCode: hasMunicipalityCode ? location.municipalityCode : undefined
+      municipalityCountryCode: correctedMunicipalityCode ? location.countryCode : undefined,
+      municipalityRegionCode: correctedMunicipalityCode ? location.regionCode : undefined,
+      municipalityCode: correctedMunicipalityCode
     }
   }
 
