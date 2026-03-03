@@ -1875,6 +1875,26 @@ export const geoLookup = {
   },
 
   /**
+   * Check if a region code exists for a given country
+   * @param countryCode - ISO 3166-1 alpha-2 country code
+   * @param regionCode - SCB region code to validate
+   * @returns true if the region exists in the database
+   */
+  isValidRegionCode: async (countryCode: string, regionCode: string): Promise<boolean> => {
+    try {
+      const pool = getPool()
+      const result = await pool.query(
+        `SELECT 1 FROM regions WHERE country_code = $1 AND code = $2 LIMIT 1`,
+        [countryCode, regionCode]
+      )
+      return result.rows.length > 0
+    } catch (error) {
+      logger.error('geoLookup.isValidRegionCode.error', { error, countryCode, regionCode })
+      return false
+    }
+  },
+
+  /**
    * Find region by name
    * @param name - Region/county name to search for
    * @returns Region codes or null

@@ -149,15 +149,22 @@ const normalizeLocationMetadata = async (
   const hasMunicipalityCode = isNonEmptyString(location.municipalityCode)
 
   if (hasCountryCode && hasRegionCode) {
-    // Codes provided by AI agent - trust them directly (no auto-correction)
-    // Our database reference data is now correct, and Workflows sends accurate codes
+    // Codes provided by AI agent - validate regionCode against DB before trusting
+    // This handles national-scope events where regionCode is a placeholder like "00"
+    const regionValid = await geoLookup.isValidRegionCode(location.countryCode!, location.regionCode!)
+    if (regionValid) {
+      return {
+        countryCode: location.countryCode,
+        regionCountryCode: location.countryCode,
+        regionCode: location.regionCode,
+        municipalityCountryCode: hasMunicipalityCode ? location.countryCode : undefined,
+        municipalityRegionCode: hasMunicipalityCode ? location.regionCode : undefined,
+        municipalityCode: hasMunicipalityCode ? location.municipalityCode : undefined
+      }
+    }
+    // regionCode not found in DB (e.g. "00" = national scope) – keep countryCode only
     return {
       countryCode: location.countryCode,
-      regionCountryCode: location.countryCode,
-      regionCode: location.regionCode,
-      municipalityCountryCode: hasMunicipalityCode ? location.countryCode : undefined,
-      municipalityRegionCode: hasMunicipalityCode ? location.regionCode : undefined,
-      municipalityCode: hasMunicipalityCode ? location.municipalityCode : undefined
     }
   }
 
