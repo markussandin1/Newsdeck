@@ -1,3 +1,4 @@
+
 # Geographic Service API
 
 This document describes the geographic metadata service API for location-based filtering in Newsdeck.

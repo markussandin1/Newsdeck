@@ -3,11 +3,6 @@
 ## Bug Description
 When a user selects a geographic filter and then removes it, the dashboard should automatically reload all events without requiring a page refresh. Previously, the user had to manually refresh the page to see all events again.
 
-## Test Environment
-- URL: http://localhost:3002/dashboard/main-dashboard
-- Browser: Chrome/Firefox with console access
-- Dev server must be running: `npm run dev`
-
 ## Test Procedure
 
 ### Step 1: Initial Load

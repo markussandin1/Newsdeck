@@ -188,6 +188,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [newColumnFlowId, setNewColumnFlowId] = useState('')
   const [showWorkflowInput, setShowWorkflowInput] = useState(false)
   const [urlExtracted, setUrlExtracted] = useState(false)
+  const [createdColumnId, setCreatedColumnId] = useState<{ id: string; title: string } | null>(null)
   const [editingColumn, setEditingColumn] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -195,7 +196,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
-  const [showWorkflowHelp, setShowWorkflowHelp] = useState(false)
   const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
@@ -363,7 +363,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
         const dashboardData = await dashboardResponse.json()
         if (dashboardData.success) {
           onDashboardUpdate(dashboardData.dashboard)
-          setShowAddColumnModal(false)
+          // Visa bekräftelsesteg med kolumn-ID
+          setCreatedColumnId({ id: data.column.id, title: data.column.title })
           setNewColumnTitle('')
           setNewColumnDescription('')
           setNewColumnFlowId('')
@@ -1158,6 +1159,33 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                           e.preventDefault()
                           updateColumn(column.id, editTitle, editDescription, editFlowId)
                         }} className="space-y-3">
+                          {/* Kolumn-ID — primär status, visas överst */}
+                          <div className="p-2 bg-muted rounded-md border border-border">
+                            <label className="block text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
+                              <Copy className="h-3 w-3" />
+                              Kolumn-ID
+                            </label>
+                            <div className="flex gap-1">
+                              <input
+                                type="text"
+                                value={column.id}
+                                readOnly
+                                className="flex-1 px-2 py-1.5 text-xs bg-background border border-input rounded font-mono text-foreground"
+                              />
+                              <Button
+                                type="button"
+                                onClick={() => copyToClipboard(column.id, column.id, column.title)}
+                                size="sm"
+                                title="Kopiera kolumn-ID"
+                              >
+                                {copiedId === column.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                              </Button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Ange detta ID i din Workflow under steget &quot;Send to Newsdeck&quot;.
+                            </p>
+                          </div>
+
                           <div>
                             <label className="block text-xs font-medium text-muted-foreground mb-1">
                               Kolumnnamn *
@@ -1185,143 +1213,63 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
-                              <Copy className="h-3 w-3" />
-                              Kolumn-ID
-                            </label>
-                            <div className="flex gap-1">
-                              <input
-                                type="text"
-                                value={column.id}
-                                readOnly
-                                className="flex-1 px-2 py-1.5 text-xs bg-muted border border-input rounded font-mono text-muted-foreground"
-                              />
-                              <Button
-                                type="button"
-                                onClick={() => copyToClipboard(column.id, column.id, column.title)}
-                                size="sm"
-                                title="Kopiera kolumn-ID"
-                              >
-                                {copiedId === column.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                              </Button>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground mt-1">
-                              Skicka data direkt hit med Kolumn-ID.
-                            </p>
-                          </div>
-
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                <Link2 className="h-3 w-3" />
-                                Anslut till Workflow
-                              </label>
-                              <Button
-                                type="button"
-                                onClick={() => setShowWorkflowHelp(!showWorkflowHelp)}
-                                variant="link"
-                                size="sm"
-                                className="h-auto p-0 text-xs"
-                              >
-                                <Info className="h-3 w-3 mr-1" />
-                                Hur gör jag?
-                              </Button>
-                            </div>
-
-                            {/* Expandable help */}
-                            {showWorkflowHelp && (
-                              <div className="mb-2 p-2 bg-blue-50 rounded-md text-[10px] text-blue-800 space-y-1">
-                                <div className="font-medium flex items-center gap-1">
-                                  <Info className="h-3 w-3" />
-                                  Så här ansluter du en workflow:
-                                </div>
-                                <ol className="list-decimal list-inside space-y-0.5 ml-1">
-                                  <li>
-                                    Öppna Workflows{' '}
-                                    <a
-                                      href="https://newsdeck-389280113319.europe-west1.run.app/"
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 hover:underline font-medium"
+                          {/* Koppla mot Workflow ID — deprecated, dold som standard */}
+                          <details open={!!editFlowId} className="group">
+                            <summary className="cursor-pointer list-none flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground select-none">
+                              <Link2 className="h-3 w-3" />
+                              Koppla mot Workflow ID (deprecated)
+                            </summary>
+                            <div className="mt-2 space-y-2">
+                              {editFlowId ? (
+                                <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-md">
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                    <span className="text-emerald-600 font-medium">Ansluten</span>
+                                    <Button
+                                      type="button"
+                                      onClick={() => setEditFlowId('')}
+                                      variant="ghost"
+                                      size="sm"
+                                      className="ml-auto h-auto p-1 text-xs hover:text-destructive"
                                     >
-                                      → Öppna här
-                                    </a>
-                                  </li>
-                                  <li>Välj det workflow du vill ansluta, se till att ditt workflow har noden &quot;PostToNewsdeck&quot; i slutet av flödet.</li>
-                                  <li>Kopiera workflow-URL:en från adressfältet</li>
-                                  <li>Klistra in här nedanför</li>
-                                </ol>
-                                <div className="text-blue-600 mt-1">Vi extraherar automatiskt ID:t från URLen.</div>
-                              </div>
-                            )}
-
-                            {/* Connection status indicator */}
-                            {editFlowId ? (
-                              <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-md mb-2">
-                                <div className="flex items-center gap-2 text-xs">
-                                  <CheckCircle className="h-4 w-4 text-emerald-600" />
-                                  <span className="text-emerald-600 font-medium">Ansluten</span>
-                                  <Button
-                                    type="button"
-                                    onClick={() => setEditFlowId('')}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="ml-auto h-auto p-1 text-xs hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-1" />
-                                    Koppla från
-                                  </Button>
-                                </div>
-                                <div className="text-[10px] text-emerald-700 mt-1">
-                                  Workflow-ID: <code className="bg-white px-1 rounded">{editFlowId}</code>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-1">
-                                <input
-                                  type="text"
-                                  value={editFlowId}
-                                  onChange={(e) => setEditFlowId(e.target.value)}
-                                  onBlur={(e) => {
-                                    const extracted = extractWorkflowId(e.target.value)
-                                    setEditFlowId(extracted)
-                                    if (extracted && extracted !== e.target.value) {
-                                      setShowExtractionSuccess(true)
-                                      setTimeout(() => setShowExtractionSuccess(false), 3000)
-                                    }
-                                  }}
-                                  className="w-full px-2 py-1.5 font-body text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
-                                  placeholder="Klistra in workflow-URL från Workflows-appen"
-                                />
-                                {showExtractionSuccess && (
-                                  <div className="text-[10px] text-success flex items-center gap-1">
-                                    <Check className="h-3 w-3" />
-                                    Workflow-ID extraherat från URL
+                                      <Trash2 className="h-3 w-3 mr-1" />
+                                      Koppla från
+                                    </Button>
                                   </div>
-                                )}
-                                <div className="flex items-center gap-2">
-                                  <p className="text-[10px] text-muted-foreground flex-1">
+                                  <div className="text-[10px] text-emerald-700 mt-1">
+                                    Workflow-ID: <code className="bg-white px-1 rounded">{editFlowId}</code>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <input
+                                    type="text"
+                                    value={editFlowId}
+                                    onChange={(e) => setEditFlowId(e.target.value)}
+                                    onBlur={(e) => {
+                                      const extracted = extractWorkflowId(e.target.value)
+                                      setEditFlowId(extracted)
+                                      if (extracted && extracted !== e.target.value) {
+                                        setShowExtractionSuccess(true)
+                                        setTimeout(() => setShowExtractionSuccess(false), 3000)
+                                      }
+                                    }}
+                                    className="w-full px-2 py-1.5 font-body text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                                    placeholder="Klistra in workflow-URL från Workflows-appen"
+                                  />
+                                  {showExtractionSuccess && (
+                                    <div className="text-[10px] text-success flex items-center gap-1">
+                                      <Check className="h-3 w-3" />
+                                      Workflow-ID extraherat från URL
+                                    </div>
+                                  )}
+                                  <p className="text-[10px] text-muted-foreground">
                                     Fyll denna kolumn automatiskt med nyheter från en AI-workflow
                                   </p>
-                                  <Button
-                                    asChild
-                                    variant="link"
-                                    size="sm"
-                                    className="h-auto p-0 text-[10px] whitespace-nowrap"
-                                  >
-                                    <a
-                                      href="https://workflows-lab-iap.bnu.bn.nr/"
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      Öppna Workflows →
-                                    </a>
-                                  </Button>
                                 </div>
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          </details>
 
                           <div className="flex gap-2 pt-2 border-t border-border">
                             <Button
@@ -1435,6 +1383,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     setNewColumnDescription('')
                     setNewColumnFlowId('')
                     setUrlExtracted(false)
+                    setCreatedColumnId(null)
                   }}
                   className="text-muted-foreground hover:text-foreground text-xl"
                 >
@@ -1465,6 +1414,49 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
               </div>
 
               {!showArchivedColumns ? (
+                createdColumnId ? (
+                  // Bekräftelsesteg efter skapad kolumn
+                  <div className="space-y-4 py-2">
+                    <div className="flex items-center gap-2 text-emerald-600">
+                      <Check className="h-5 w-5" />
+                      <span className="font-medium">&quot;{createdColumnId.title}&quot; har skapats</span>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Kolumn-ID (klistra in i Workflows):
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={createdColumnId.id}
+                          readOnly
+                          className="flex-1 px-3 py-2 text-sm bg-muted border border-input rounded font-mono text-foreground"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(createdColumnId.id, createdColumnId.id, createdColumnId.title)}
+                          className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1 text-sm"
+                        >
+                          {copiedId === createdColumnId.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          Kopiera
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-2 border-t border-border">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddColumnModal(false)
+                          setCreatedColumnId(null)
+                          setShowArchivedColumns(false)
+                        }}
+                        className="flex-1 px-4 py-2 border border-input text-foreground rounded-lg hover:bg-muted text-sm"
+                      >
+                        Stäng
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                 // Create new column form
                 <form onSubmit={(e) => {
                   e.preventDefault()
@@ -1608,6 +1600,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     </button>
                   </div>
                 </form>
+                )
               ) : (
                 // Restore archived columns
                 <div className="space-y-3">

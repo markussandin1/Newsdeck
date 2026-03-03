@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
+import { verifyApiKey } from '@/lib/api-auth'
 
 export async function GET(request: NextRequest) {
   try {
+    // API-nyckel-branch för externa klienter (t.ex. Workflows)
+    if (verifyApiKey(request)) {
+      const dashboards = await db.getDashboards()
+      return NextResponse.json({
+        dashboards: dashboards
+          .filter((d: { isArchived?: boolean }) => !d.isArchived)
+          .map((d: { id: string; name: string }) => ({ id: d.id, name: d.name }))
+      })
+    }
+
     const session = await auth()
     const { searchParams } = new URL(request.url)
     const mine = searchParams.get('mine') === 'true'
