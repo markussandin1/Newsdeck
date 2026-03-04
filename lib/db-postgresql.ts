@@ -99,9 +99,11 @@ export const getPool = () => {
   return pool
 }
 
+const MAIN_DASHBOARD_ID = '00000000-0000-4000-a000-000000000001'
+
 // Default dashboard that always exists
 const DEFAULT_DASHBOARD: Dashboard = {
-  id: 'main-dashboard',
+  id: MAIN_DASHBOARD_ID,
   name: 'Huvuddashboard',
   slug: 'main',
   description: 'Din huvuddashboard för nyhetsövervakning',
@@ -613,7 +615,7 @@ export const persistentDb = {
   getDashboard: async (id: string) => {
     const pool = getPool()
 
-    if (id === 'main-dashboard') {
+    if (id === MAIN_DASHBOARD_ID || id === 'main-dashboard') {
       try {
         const result = await pool.query(
           `SELECT
@@ -669,7 +671,7 @@ export const persistentDb = {
   },
 
   getMainDashboard: async () => {
-    return await persistentDb.getDashboard('main-dashboard')
+    return await persistentDb.getDashboard(MAIN_DASHBOARD_ID)
   },
 
   getDashboardBySlug: async (slug: string) => {
@@ -732,7 +734,7 @@ export const persistentDb = {
     try {
       const existing = await persistentDb.getDashboard(id)
 
-      if (!existing && id === 'main-dashboard') {
+      if (!existing && (id === MAIN_DASHBOARD_ID || id === 'main-dashboard')) {
         const newDashboard = { ...DEFAULT_DASHBOARD, ...updates }
         await persistentDb.addDashboard(newDashboard)
         return newDashboard
