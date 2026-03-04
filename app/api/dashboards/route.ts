@@ -7,10 +7,11 @@ export async function GET(request: NextRequest) {
   try {
     // API-nyckel-branch för externa klienter (t.ex. Workflows)
     if (verifyApiKey(request)) {
+      const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       const dashboards = await db.getDashboards()
       return NextResponse.json({
         dashboards: dashboards
-          .filter((d: { isArchived?: boolean }) => !d.isArchived)
+          .filter((d: { isArchived?: boolean; id: string }) => !d.isArchived && UUID_PATTERN.test(d.id))
           .map((d: { id: string; name: string }) => ({ id: d.id, name: d.name }))
       })
     }

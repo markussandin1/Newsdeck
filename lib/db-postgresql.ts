@@ -711,7 +711,7 @@ export const persistentDb = {
     const uniqueSlug = ensureUniqueSlug(baseSlug, existingSlugs)
 
     const newDashboard: Dashboard = {
-      id: `dashboard-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: crypto.randomUUID(),
       name,
       slug: uniqueSlug,
       description,
