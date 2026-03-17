@@ -680,7 +680,7 @@ export const persistentDb = {
     try {
       const result = await pool.query(
         `SELECT
-          id, name, slug, columns, view_count as "viewCount",
+          id, name, slug, description, columns, view_count as "viewCount",
           last_viewed as "lastViewed", created_at as "createdAt"
         FROM dashboards
         WHERE slug = $1`,
@@ -865,7 +865,8 @@ export const persistentDb = {
   },
 
   // Batch column data operations (optimized for performance)
-  getColumnDataBatch: async (columnIds: string[], geoFilters?: GeoFilters) => {
+  // Uses a single SQL query with ROW_NUMBER() window function to enforce per-column limit
+  getColumnDataBatch: async (columnIds: string[], limit: number = 500, geoFilters?: GeoFilters) => {
     const pool = await getPool()
 
     try {
@@ -874,26 +875,34 @@ export const persistentDb = {
       }
 
       // Build WHERE clause for geographic filtering
+      // $1 = columnIds, $2 = limit per column, geo params start at $3
       let additionalWhere = ''
       const geoParams: (string[] | boolean)[] = []
 
       if (geoFilters) {
-        const geoConditions = buildGeographicWhereClause(geoFilters, 2) // Start at $2 since $1 is columnIds
+        const geoConditions = buildGeographicWhereClause(geoFilters, 3) // Start at $3 since $1=columnIds, $2=limit
         if (geoConditions.clause) {
           additionalWhere = ` AND (${geoConditions.clause})`
           geoParams.push(...geoConditions.params)
         }
       }
 
+      // Window function ranks rows per column by recency, then we filter to top N
       const query = `
-        SELECT cd.column_id, cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
-        FROM column_data cd
-        LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-        WHERE cd.column_id = ANY($1)${additionalWhere}
-        ORDER BY cd.column_id, cd.created_at DESC
+        SELECT column_id, data, news_item_db_id, country_code, region_code, municipality_code
+        FROM (
+          SELECT cd.column_id, cd.data, cd.news_item_db_id,
+                 ni.country_code, ni.region_code, ni.municipality_code,
+                 ROW_NUMBER() OVER (PARTITION BY cd.column_id ORDER BY cd.created_at DESC) AS rn
+          FROM column_data cd
+          LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
+          WHERE cd.column_id = ANY($1)${additionalWhere}
+        ) ranked
+        WHERE rn <= $2
+        ORDER BY column_id, rn
       `
 
-      const result = await pool.query(query, [columnIds, ...geoParams])
+      const result = await pool.query(query, [columnIds, limit, ...geoParams])
 
       // Group results by column_id
       const columnData: Record<string, NewsItem[]> = {}

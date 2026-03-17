@@ -10,8 +10,12 @@ export async function GET(
     const params = await context.params
     const slug = params.slug
 
-    // Parse geographic filter parameters from query string
+    // Parse query parameters
     const { searchParams } = new URL(request.url)
+
+    // structureOnly=true skips column data computation (used by page.tsx initial load)
+    const structureOnly = searchParams.get('structureOnly') === 'true'
+
     const geoFilters: GeoFilters | undefined = (() => {
       const regionCodes = searchParams.getAll('regionCode')
       const municipalityCodes = searchParams.getAll('municipalityCode')
@@ -42,17 +46,21 @@ export async function GET(
 
     // Fetch column data for all columns in the dashboard
     // Limit to 500 most recent items per column for performance
+    // Skipped when structureOnly=true (e.g. initial page load that only needs dashboard structure)
     const COLUMN_ITEM_LIMIT = 500
     const columnData: Record<string, NewsItem[]> = {}
 
-    if (dashboard.columns) {
-      for (const column of dashboard.columns.filter((col: { isArchived?: boolean }) => !col.isArchived)) {
+    if (!structureOnly && dashboard.columns) {
+      const activeColumns = dashboard.columns.filter((col: { isArchived?: boolean, id: string }) => !col.isArchived)
+      const columnIds = activeColumns.map((col: { id: string }) => col.id)
+      // Initialize empty arrays for all columns (in case batch fails partially)
+      columnIds.forEach((id: string) => { columnData[id] = [] })
+      if (columnIds.length > 0) {
         try {
-          const items = await db.getColumnData(column.id, COLUMN_ITEM_LIMIT, geoFilters) || []
-          columnData[column.id] = items
+          const batchData = await db.getColumnDataBatch(columnIds, COLUMN_ITEM_LIMIT, geoFilters)
+          Object.assign(columnData, batchData)
         } catch (error) {
-          console.error(`Error fetching data for column ${column.id}:`, error)
-          columnData[column.id] = []
+          console.error('Error fetching column data batch:', error)
         }
       }
     }

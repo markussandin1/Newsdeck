@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const fetchDashboard = useCallback(async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/dashboards/${slug}`)
+      const response = await fetch(`/api/dashboards/${slug}?structureOnly=true`)
       const data = await response.json()
       
       if (data.success) {

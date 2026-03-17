@@ -20,7 +20,7 @@ import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
-import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search, MapPin } from 'lucide-react'
+import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search, MapPin, Rss } from 'lucide-react'
 import { GeoFilterPanel } from './GeoFilterPanel'
 import { motion, AnimatePresence } from 'framer-motion'
 import ColumnMapButton from './ColumnMapButton'
@@ -194,6 +194,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [editDescription, setEditDescription] = useState('')
   const [editFlowId, setEditFlowId] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedFeedId, setCopiedFeedId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [showArchivedColumns, setShowArchivedColumns] = useState(false)
   const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
@@ -469,6 +470,21 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
       }, 3000)
     } catch (error) {
       console.error('Failed to copy:', error)
+    }
+  }
+
+  const copyColumnFeedUrl = async (columnId: string, columnTitle: string) => {
+    const url = `${window.location.origin}/feeds/columns/${columnId}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedFeedId(columnId)
+      setToastMessage(`Feed-URL för ${columnTitle} är kopierad`)
+      setTimeout(() => {
+        setCopiedFeedId(null)
+        setToastMessage(null)
+      }, 3000)
+    } catch (error) {
+      console.error('Failed to copy feed URL:', error)
     }
   }
 
@@ -1314,6 +1330,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                                   columnTitle={column.title}
                                 />
                               )}
+                              <Button
+                                onClick={() => copyColumnFeedUrl(column.id, column.title)}
+                                variant="ghost"
+                                size="icon"
+                                title="Kopiera feed-URL"
+                              >
+                                {copiedFeedId === column.id ? <Check className="h-4 w-4" /> : <Rss className="h-4 w-4" />}
+                              </Button>
                               <Button
                                 onClick={() => toggleColumnSound(column.id)}
                                 variant="ghost"

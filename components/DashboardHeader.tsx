@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Dashboard as DashboardType } from '@/lib/types';
 import { ConnectionStatus } from './ConnectionStatus';
 import { GlobalHeader } from './GlobalHeader';
 import { EnhancedDateTime } from './EnhancedDateTime';
+import { Rss, Check } from 'lucide-react';
 
 interface DashboardHeaderProps {
   dashboard: DashboardType;
@@ -34,6 +35,18 @@ export function DashboardHeader({
   onNavigateAway,
 }: DashboardHeaderProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [feedCopied, setFeedCopied] = useState(false);
+
+  const copyDashboardFeed = async () => {
+    const url = `${window.location.origin}/feeds/dashboards/${dashboard.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setFeedCopied(true);
+      setTimeout(() => setFeedCopied(false), 3000);
+    } catch (error) {
+      console.error('Failed to copy feed URL:', error);
+    }
+  };
 
   // Click outside to close dashboard dropdown
   useEffect(() => {
@@ -54,7 +67,8 @@ export function DashboardHeader({
 
   // Dashboard context content for Zone 2
   const dashboardContext = (
-    <div className="relative" ref={dropdownRef}>
+    <div className="flex items-center gap-2">
+      <div className="relative" ref={dropdownRef}>
       <button
         className="flex items-center gap-3 hover:bg-muted/50 rounded-lg px-4 py-2 smooth-transition"
         onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
@@ -132,6 +146,14 @@ export function DashboardHeader({
           </div>
         </div>
       )}
+    </div>
+      <button
+        onClick={copyDashboardFeed}
+        title="Kopiera feed-URL för dashboard"
+        className="p-2 rounded-lg hover:bg-muted/50 smooth-transition text-muted-foreground hover:text-foreground"
+      >
+        {feedCopied ? <Check className="w-4 h-4" /> : <Rss className="w-4 h-4" />}
+      </button>
     </div>
   );
 
