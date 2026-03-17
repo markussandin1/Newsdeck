@@ -561,14 +561,7 @@ export const persistentDb = {
         `INSERT INTO dashboards (
           id, name, slug, columns, view_count, last_viewed, created_at, created_by, created_by_name
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          slug = EXCLUDED.slug,
-          columns = EXCLUDED.columns,
-          view_count = EXCLUDED.view_count,
-          last_viewed = EXCLUDED.last_viewed,
-          created_by = EXCLUDED.created_by,
-          created_by_name = EXCLUDED.created_by_name`,
+        ON CONFLICT (id) DO NOTHING`,
         [
           dashboard.id,
           dashboard.name,

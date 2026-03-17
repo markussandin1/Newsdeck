@@ -159,27 +159,41 @@ export function useDashboardPolling({
           updateColumnData((prev) => {
             const existingItems = prev[columnId] || []
 
-            // Deduplicate using item.dbId (unique database ID) and mark as new based on age
-            const newItems = data.items
-              .filter(
-                (newItem: NewsItem) =>
-                  !existingItems.some(existing => existing.dbId === newItem.dbId)
-              )
-              .map((item: NewsItem) => ({
-                ...item,
-                isNew: isNewsItemNew(item.createdInDb)
-              }))
+            // Mark incoming items as new based on age
+            const incomingItems: NewsItem[] = data.items.map((item: NewsItem) => ({
+              ...item,
+              isNew: isNewsItemNew(item.createdInDb)
+            }))
 
-            if (newItems.length === 0) {
+            // Separate truly new items from updates to existing ones (same sourceId/URL)
+            const brandNewItems: NewsItem[] = []
+            const updatedSourceIds = new Set<string>()
+
+            for (const incomingItem of incomingItems) {
+              const isDuplicateDbId = existingItems.some(e => e.dbId === incomingItem.dbId)
+              if (isDuplicateDbId) continue // exact same DB row, skip
+
+              const existingWithSameSource = incomingItem.id
+                ? existingItems.find(e => e.id && e.id === incomingItem.id)
+                : null
+
+              if (existingWithSameSource) {
+                // Updated version of an existing article – replace it, don't duplicate
+                updatedSourceIds.add(incomingItem.id!)
+              }
+              brandNewItems.push(incomingItem)
+            }
+
+            if (brandNewItems.length === 0) {
               return prev
             }
 
-            console.log(`LongPoll: Adding ${newItems.length} deduplicated items to column ${columnId}`)
+            console.log(`LongPoll: Adding ${brandNewItems.length} deduplicated items to column ${columnId}`)
 
             // Only trigger notification if:
             // 1. This is NOT the first poll (lastSeen exists)
             // 2. There are actually new items that are "new" (< 1 minute old)
-            const recentItems = newItems.filter(item => item.isNew)
+            const recentItems = brandNewItems.filter(item => item.isNew)
             if (onNewItems && lastSeen && recentItems.length > 0) {
               console.log(`🔔 Triggering notification for column ${columnId} (${recentItems.length} recent items)`)
               onNewItems(columnId, recentItems)
@@ -187,9 +201,14 @@ export function useDashboardPolling({
               console.log(`🔇 Skipping notification for column ${columnId} (initial load)`)
             }
 
+            // Remove old versions of updated articles, then prepend new/updated items
+            const filteredExisting = updatedSourceIds.size > 0
+              ? existingItems.filter(e => !e.id || !updatedSourceIds.has(e.id))
+              : existingItems
+
             return {
               ...prev,
-              [columnId]: [...newItems, ...existingItems]
+              [columnId]: [...brandNewItems, ...filteredExisting]
             }
           })
         }
