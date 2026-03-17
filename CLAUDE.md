@@ -240,6 +240,12 @@ gcloud sql backups restore BACKUP_ID --backup-instance=newsdeck-db
 
 ### Important Database Constraints
 
+**⚠️ CRITICAL: `addDashboard` uses ON CONFLICT DO NOTHING**
+
+The `addDashboard` function in `lib/db-postgresql.ts` uses `ON CONFLICT (id) DO NOTHING`. This means calling it for an existing dashboard is a no-op. Use `updateDashboard` to modify existing dashboards.
+
+**Historical note (2026-03-17)**: Previously used `ON CONFLICT DO UPDATE SET columns = EXCLUDED.columns` which caused main dashboard columns to be wiped when DEFAULT_DASHBOARD (with `columns: []`) was inserted on conflict. Fixed in commit `bb4fe99`.
+
 **⚠️ CRITICAL: `source_id` is NOT globally unique!**
 
 The `source_id` field comes from external sources and is NOT guaranteed to be unique:
