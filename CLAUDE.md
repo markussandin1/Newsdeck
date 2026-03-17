@@ -125,10 +125,20 @@ interface NewsItem {
 **API Routes** (`app/api/`):
 - `/api/columns` - Column management (CRUD)
 - `/api/dashboards` - Dashboard management (returns max 500 most recent items per column)
+  - `?structureOnly=true` - Skip column data, return only dashboard structure (used by initial page load)
 - `/api/news-items` - NewsItem storage and retrieval
 - `/api/geo` - Geographic metadata API (countries, regions, municipalities)
 - `/api/admin/location-cache` - Location cache management (POST to refresh, GET for stats)
 - `/api/admin/location-mappings` - Location name mappings (GET unmatched, POST to create)
+
+**Atom Feed Routes** (`app/feeds/`):
+- `/feeds/columns/[id]` - Atom 1.0-feed med 50 senaste items från en kolumn
+- `/feeds/dashboards/[slug]` - Atom 1.0-feed med 50 senaste items från hela dashboardet (alla kolumner sammanslagda)
+- Publika routes, ingen autentisering krävs
+- Cache-Control: `public, max-age=60`
+- Implementeras via npm-paketet `feed`
+- Hjälpbibliotek: `lib/feeds/atom.ts`
+- Feed-ikoner (Rss) i kolumn-header och dashboard-header kopierar URL till clipboard
 
 **Geographic Filtering System** (added 2025-12-29):
 - **Database Schema**: 5 new reference tables for geographic metadata

@@ -680,7 +680,7 @@ export const persistentDb = {
     try {
       const result = await pool.query(
         `SELECT
-          id, name, slug, columns, view_count as "viewCount",
+          id, name, slug, description, columns, view_count as "viewCount",
           last_viewed as "lastViewed", created_at as "createdAt"
         FROM dashboards
         WHERE slug = $1`,
