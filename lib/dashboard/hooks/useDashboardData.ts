@@ -191,11 +191,11 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
   }, [])
 
   /**
-   * Initial data load when dashboard changes
+   * Load dashboard structure (archived columns, all dashboards) when dashboard changes.
+   * Does NOT fetch column data here – that is handled by the effect below.
    */
   useEffect(() => {
     if (dashboard?.id) {
-      fetchColumnData()
       loadArchivedColumns()
       loadAllDashboards()
     }
@@ -203,15 +203,12 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
   }, [dashboard?.id])
 
   /**
-   * Re-fetch data when geographic filters change
+   * Fetch column data on initial mount and whenever geographic filters change.
+   * Only one fetchColumnData() call is triggered at a time, preventing the
+   * race condition where two concurrent calls overwrite each other's results.
    */
   useEffect(() => {
     if (dashboard?.id) {
-      console.log('🔄 Geographic filters changed, refetching data:', {
-        regionCodes: geoFilters.regionCodes,
-        municipalityCodes: geoFilters.municipalityCodes,
-        showItemsWithoutLocation: geoFilters.showItemsWithoutLocation
-      })
       fetchColumnData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

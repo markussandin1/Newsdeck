@@ -26,13 +26,16 @@ export async function GET(request: NextRequest) {
     const columnData: Record<string, NewsItem[]> = {}
 
     if (dashboard.columns) {
-      for (const column of dashboard.columns) {
+      const activeColumns = dashboard.columns.filter((col: { isArchived?: boolean, id: string }) => !col.isArchived)
+      const columnIds = activeColumns.map((col: { id: string }) => col.id)
+      // Initialize empty arrays for all columns (in case batch fails partially)
+      columnIds.forEach((id: string) => { columnData[id] = [] })
+      if (columnIds.length > 0) {
         try {
-          const items = await db.getColumnData(column.id, COLUMN_ITEM_LIMIT, geoFilters) || []
-          columnData[column.id] = items
+          const batchData = await db.getColumnDataBatch(columnIds, COLUMN_ITEM_LIMIT, geoFilters)
+          Object.assign(columnData, batchData)
         } catch (error) {
-          console.error(`Error fetching data for column ${column.id}:`, error)
-          columnData[column.id] = []
+          console.error('Error fetching column data batch:', error)
         }
       }
     }
