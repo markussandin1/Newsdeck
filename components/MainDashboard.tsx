@@ -23,14 +23,13 @@ import { Badge } from './ui/badge'
 import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search, MapPin, Rss } from 'lucide-react'
 import { GeoFilterPanel } from './GeoFilterPanel'
 import { motion, AnimatePresence } from 'framer-motion'
-import ColumnMapButton from './ColumnMapButton'
 import { DashboardHeader } from './DashboardHeader'
-import { WeatherCycle } from './WeatherCycle'
-import { WeatherWarningBanner } from './WeatherWarningBanner'
-import { WeatherWarningModal } from './WeatherWarningModal'
+// import { WeatherCycle } from './WeatherCycle'
+// import { WeatherWarningBanner } from './WeatherWarningBanner'
+// import { WeatherWarningModal } from './WeatherWarningModal'
 import { NotificationSettingsModal } from './NotificationSettingsModal'
-import { useWeather } from '@/lib/hooks/useWeather'
-import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings'
+// import { useWeather } from '@/lib/hooks/useWeather'
+// import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings'
 
 interface DashboardSearchInputProps {
   value: string
@@ -74,8 +73,6 @@ interface MainDashboardProps {
 export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardSlug }: MainDashboardProps) {
   const router = useRouter()
   const pathname = usePathname()
-
-  const effectiveDashboardSlug = dashboardSlug || dashboard.slug || (dashboard.id === 'main-dashboard' ? 'main' : dashboard.id)
 
   // Geographic filters (must be before useDashboardData to pass filters)
   const geoFilters = useGeoFilters({ dashboardId: dashboard.id })
@@ -149,8 +146,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   })
 
   // Weather data
-  const { weather } = useWeather()
-  const { warnings } = useWeatherWarnings()
+  // const { weather } = useWeather()
+  // const { warnings } = useWeatherWarnings()
 
   // If route changes away from dashboard (e.g., to /gallery), stop polling immediately.
   useEffect(() => {
@@ -207,10 +204,11 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false)
+  // const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false)
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false)
   const [showGeoFilterPanel, setShowGeoFilterPanel] = useState(false)
   const [showSearchInput, setShowSearchInput] = useState(false)
+  const [openColumnMenuId, setOpenColumnMenuId] = useState<string | null>(null)
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -235,6 +233,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     }
     fetchSession()
   }, [])
+
+  // Close column menu on click outside
+  useEffect(() => {
+    if (!openColumnMenuId) return
+    const handleClickOutside = () => setOpenColumnMenuId(null)
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openColumnMenuId])
 
   // Simple approach: Just don't recreate columns unnecessarily
 
@@ -803,19 +809,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
               </div>
 
               {/* Weather Warning Banner - Mobile */}
-              {warnings.length > 0 && (
+              {/* {warnings.length > 0 && (
                 <div className="lg:hidden">
                   <WeatherWarningBanner
                     warnings={warnings}
                     onClick={() => setIsWarningsModalOpen(true)}
                   />
                 </div>
-              )}
+              )} */}
 
               {/* Weather Display - Mobile */}
-              <div className="lg:hidden flex justify-center">
+              {/* <div className="lg:hidden flex justify-center">
                 <WeatherCycle cities={weather} className="max-w-[280px]" />
-              </div>
+              </div> */}
             </div>
           ) : null}
 
@@ -834,7 +840,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             onNavigateAway={stopAllPolling}
           />
 
-          <div className="mt-3 space-y-2 relative">
+          <div className="mt-2 space-y-1 relative">
             <div className="flex gap-2 items-center">
               {showSearchInput ? (
                 <div className="flex-1 flex gap-2 animate-in fade-in slide-in-from-right-2">
@@ -847,7 +853,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 <>
                   <button
                     onClick={() => setShowGeoFilterPanel(!showGeoFilterPanel)}
-                    className={`flex-1 px-3 py-2 rounded-lg border transition-colors flex items-center justify-between group ${
+                    className={`flex-1 px-3 py-1.5 rounded-lg border transition-colors flex items-center justify-between group ${
                       geoFilters.isActive
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background border-input hover:bg-muted'
@@ -890,7 +896,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
           {/* Active Geo Filters Badges */}
           {geoFilters.isActive && (
-            <div className="flex flex-wrap gap-2 mt-2 pb-2">
+            <div className="flex flex-wrap gap-2 mt-1 pb-1">
               {geoFilters.filters.regionCodes.map(code => {
                 const region = geoFilters.metadata.regions.find(r => r.code === code)
                 return (
@@ -1322,42 +1328,55 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                             <h3 className="font-display font-semibold text-foreground">
                               {column.title}
                             </h3>
-                            <div className="flex items-center gap-1">
-                              {effectiveDashboardSlug && (
-                                <ColumnMapButton
-                                  dashboardSlug={effectiveDashboardSlug}
-                                  columnId={column.id}
-                                  columnTitle={column.title}
-                                />
+                            <div className="relative">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Fler alternativ"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenColumnMenuId(openColumnMenuId === column.id ? null : column.id)
+                                }}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+
+                              {openColumnMenuId === column.id && (
+                                <div
+                                  className="absolute right-0 top-full mt-1 w-52 glass rounded-lg shadow-soft-lg border border-border py-1 z-50"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border/50">
+                                    {columnItems.length} händelser
+                                  </div>
+                                  <button
+                                    onClick={() => toggleColumnSound(column.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted smooth-transition text-left"
+                                  >
+                                    {isColumnSoundMuted(column.id)
+                                      ? <VolumeX className="h-4 w-4 text-muted-foreground" />
+                                      : <Volume2 className="h-4 w-4 text-muted-foreground" />}
+                                    {isColumnSoundMuted(column.id) ? 'Aktivera ljud' : 'Stäng av ljud'}
+                                  </button>
+                                  <button
+                                    onClick={() => { copyColumnFeedUrl(column.id, column.title); setOpenColumnMenuId(null) }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted smooth-transition text-left"
+                                  >
+                                    {copiedFeedId === column.id
+                                      ? <Check className="h-4 w-4 text-muted-foreground" />
+                                      : <Rss className="h-4 w-4 text-muted-foreground" />}
+                                    {copiedFeedId === column.id ? 'Kopierat!' : 'Kopiera feed-URL'}
+                                  </button>
+                                  <button
+                                    onClick={() => { startEditing(column); setOpenColumnMenuId(null) }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted smooth-transition text-left"
+                                  >
+                                    <Settings className="h-4 w-4 text-muted-foreground" />
+                                    Kolumninställningar
+                                  </button>
+                                </div>
                               )}
-                              <Button
-                                onClick={() => copyColumnFeedUrl(column.id, column.title)}
-                                variant="ghost"
-                                size="icon"
-                                title="Kopiera feed-URL"
-                              >
-                                {copiedFeedId === column.id ? <Check className="h-4 w-4" /> : <Rss className="h-4 w-4" />}
-                              </Button>
-                              <Button
-                                onClick={() => toggleColumnSound(column.id)}
-                                variant="ghost"
-                                size="icon"
-                                title={isColumnSoundMuted(column.id) ? "Ljud av - Klicka för att aktivera" : "Ljud på - Klicka för att stänga av"}
-                              >
-                                {isColumnSoundMuted(column.id) ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                              </Button>
-                              <Button
-                                onClick={() => startEditing(column)}
-                                variant="ghost"
-                                size="icon"
-                                title="Inställningar"
-                              >
-                                <Settings className="h-4 w-4" />
-                              </Button>
                             </div>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {columnItems.length} händelser
                           </div>
                         </div>
                       </div>
@@ -2143,12 +2162,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
       </AnimatePresence>
 
       {/* Weather Warnings Modal */}
-      {isWarningsModalOpen && (
+      {/* {isWarningsModalOpen && (
         <WeatherWarningModal
           warnings={warnings}
           onClose={() => setIsWarningsModalOpen(false)}
         />
-      )}
+      )} */}
 
       {/* Notification Settings Modal */}
       {isNotificationSettingsOpen && (

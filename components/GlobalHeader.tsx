@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { WeatherWidget } from './WeatherWidget';
-import { WeatherWarningModal } from './WeatherWarningModal';
+// import { WeatherWidget } from './WeatherWidget';
+// import { WeatherWarningModal } from './WeatherWarningModal';
 import { UserMenu } from './UserMenu';
 import { DatabaseStatusIndicator } from './DatabaseStatusIndicator';
-import { useWeather } from '@/lib/hooks/useWeather';
-import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings';
+// import { useWeather } from '@/lib/hooks/useWeather';
+// import { useWeatherWarnings } from '@/lib/hooks/useWeatherWarnings';
 import { Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -38,12 +38,12 @@ export function GlobalHeader({
   onLogout,
   onOpenNotificationSettings,
   className = '',
-  showWeather = true,
+  // showWeather = true,
   onNavigateAway,
 }: GlobalHeaderProps) {
-  const { weather } = useWeather();
-  const { warnings } = useWeatherWarnings();
-  const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
+  // const { weather } = useWeather();
+  // const { warnings } = useWeatherWarnings();
+  // const [isWarningsModalOpen, setIsWarningsModalOpen] = useState(false);
   const router = useRouter();
 
   const handleGoToGallery = () => {
@@ -67,7 +67,7 @@ export function GlobalHeader({
 
   return (
     <div className={`glass border-b border-border sticky top-0 z-50 hidden lg:block ${className}`}>
-      <div className="px-6 py-4">
+      <div className="px-6 py-3">
         <div className="flex items-center justify-between gap-6">
           {/* Zone 1 + 2: Tightly Grouped Left Side */}
           <div className="flex items-center gap-3">
@@ -102,7 +102,7 @@ export function GlobalHeader({
           </div>
 
           {/* Zone 3: Weather Widget */}
-          {showWeather && (
+          {/* {showWeather && (
             <div className="hidden lg:flex items-center gap-6 shrink-0">
               <WeatherWidget
                 cities={weather}
@@ -110,7 +110,7 @@ export function GlobalHeader({
                 onWarningsClick={() => setIsWarningsModalOpen(true)}
               />
             </div>
-          )}
+          )} */}
 
           {/* Zone 4: User Controls */}
           <div className="flex items-center shrink-0">
@@ -125,12 +125,12 @@ export function GlobalHeader({
       </div>
 
       {/* Weather Warnings Modal */}
-      {showWeather && isWarningsModalOpen && (
+      {/* {showWeather && isWarningsModalOpen && (
         <WeatherWarningModal
           warnings={warnings}
           onClose={() => setIsWarningsModalOpen(false)}
         />
-      )}
+      )} */}
 
       {/* Database Status Indicator (development only) */}
       {process.env.NODE_ENV === 'development' && <DatabaseStatusIndicator />}
