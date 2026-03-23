@@ -238,8 +238,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   useEffect(() => {
     if (!openColumnMenuId) return
     const handleClickOutside = () => setOpenColumnMenuId(null)
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
   }, [openColumnMenuId])
 
   // Simple approach: Just don't recreate columns unnecessarily
@@ -1344,7 +1344,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                               {openColumnMenuId === column.id && (
                                 <div
                                   className="absolute right-0 top-full mt-1 w-52 bg-popover rounded-lg shadow-lg border border-border py-1 z-50"
-                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border/50">
                                     {columnItems.length} händelser
