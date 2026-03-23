@@ -465,7 +465,7 @@ export const ingestNewsItems = async (
     return {
       id: toOptionalTrimmed(item.id), // Optional source ID
       dbId: uuidv4(),
-      workflowId: workflowId,
+      workflowId: resolvedWorkflowId,
       flowId: toOptionalTrimmed(item.flowId) ?? workflowId,
       source: isNonEmptyString(item.source) ? item.source : 'workflows',
       url: resolveUrl(item),
