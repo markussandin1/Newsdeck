@@ -144,7 +144,9 @@ const normalizeLocationMetadata = async (
 
   // Check if location already has geographic codes from Workflows AI agent
   // If codes are present, trust them and skip fuzzy matching
-  const hasCountryCode = isNonEmptyString(location.countryCode)
+  const isSingleCountryCode = (code: unknown): code is string =>
+    isNonEmptyString(code) && /^[A-Z]{2}$/.test((code as string).trim())
+  const hasCountryCode = isSingleCountryCode(location.countryCode)
   const hasRegionCode = isNonEmptyString(location.regionCode)
   const hasMunicipalityCode = isNonEmptyString(location.municipalityCode)
 
@@ -438,7 +440,7 @@ export const ingestNewsItems = async (
       const [lat, lon] = coordinates
       try {
         // 1. Find nearest camera in local DB (fast spatial lookup)
-        const camera = await trafficCameraService.findNearestCamera(lat, lon, 10) // 10km radius
+        const camera = await trafficCameraService.findNearestCamera(lat, lon, 3) // 3km radius
         
         if (camera) {
           // 2. Fetch live data from Trafikverket to get the exact snapshot at this moment
@@ -464,7 +466,7 @@ export const ingestNewsItems = async (
     return {
       id: toOptionalTrimmed(item.id), // Optional source ID
       dbId: uuidv4(),
-      workflowId: resolvedWorkflowId,
+      workflowId: workflowId,
       flowId: toOptionalTrimmed(item.flowId) ?? workflowId,
       source: isNonEmptyString(item.source) ? item.source : 'workflows',
       url: resolveUrl(item),
