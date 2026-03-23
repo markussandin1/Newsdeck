@@ -115,7 +115,57 @@ const DEFAULT_DASHBOARD: Dashboard = {
   createdByName: 'System'
 }
 
-// Helper types and functions for geographic filtering
+// ─── Batch insert helpers ─────────────────────────────────────────────────────
+
+/**
+ * Result from buildBatchInsert – ready to pass to client.query().
+ */
+interface BatchInsertResult {
+  text: string
+  values: unknown[]
+}
+
+/**
+ * Build a single parameterised multi-row VALUES clause.
+ *
+ * @param rows        - Array of value arrays. Each inner array is one row.
+ * @param chunkSize   - Max rows per query chunk (default 1 000, keeps us well
+ *                      under PostgreSQL's 65 535 parameter limit).
+ * @returns Array of {text, values} objects, one per chunk. Usually just one.
+ *
+ * @example
+ *   const chunks = buildBatchInsert([
+ *     ['col1', 'dbId1', '{}', now],
+ *     ['col2', 'dbId2', '{}', now],
+ *   ])
+ *   for (const { text, values } of chunks) {
+ *     await client.query(text, values)
+ *   }
+ */
+function buildBatchInsert(
+  rows: unknown[][],
+  chunkSize = 1_000
+): BatchInsertResult[] {
+  if (rows.length === 0) return []
+
+  const cols = rows[0].length
+  const chunks: BatchInsertResult[] = []
+
+  for (let start = 0; start < rows.length; start += chunkSize) {
+    const chunk = rows.slice(start, start + chunkSize)
+    const valuePlaceholders = chunk
+      .map((_, rowIdx) =>
+        `(${Array.from({ length: cols }, (_, colIdx) => `$${rowIdx * cols + colIdx + 1}`).join(', ')})`
+      )
+      .join(', ')
+    const values = chunk.flat()
+    chunks.push({ text: valuePlaceholders, values })
+  }
+
+  return chunks
+}
+
+// ─── Helper types and functions for geographic filtering ──────────────────────
 interface WhereClauseResult {
   clause: string
   params: (string[] | boolean)[]
@@ -248,44 +298,55 @@ export const persistentDb = {
         createdInDb: item.createdInDb || new Date().toISOString()
       }))
 
-      const insertedItems = []
+      // Build all rows as a flat array for a single batch INSERT
+      const rows = itemsWithTimestamp.map(item => [
+        item.id || null,  // Original source ID (can be null)
+        item.workflowId,
+        item.source,
+        item.timestamp,
+        item.title,
+        item.description || null,
+        item.newsValue,
+        item.category || null,
+        item.severity || null,
+        JSON.stringify(item.location || {}),
+        JSON.stringify({ ...(item.extra || {}), trafficCamera: item.trafficCamera }),
+        JSON.stringify(item.raw || {}),
+        item.createdInDb,
+        item.countryCode || null,
+        item.regionCountryCode || null,
+        item.regionCode || null,
+        item.municipalityCountryCode || null,
+        item.municipalityRegionCode || null,
+        item.municipalityCode || null,
+      ])
 
-      for (const item of itemsWithTimestamp) {
+      // Process in chunks to stay within PostgreSQL's 65 535 parameter limit
+      // (19 params per row → chunks of 1 000 rows = 19 000 params max)
+      const chunks = buildBatchInsert(rows)
+      const insertedItems: typeof itemsWithTimestamp = []
+      let itemOffset = 0
+
+      for (const chunk of chunks) {
         const result = await client.query(
           `INSERT INTO news_items (
             source_id, workflow_id, source, timestamp, title, description,
             news_value, category, severity, location, extra, raw, created_in_db,
             country_code, region_country_code, region_code,
             municipality_country_code, municipality_region_code, municipality_code
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          ) VALUES ${chunk.text}
           RETURNING db_id`,
-          [
-            item.id || null,  // Original source ID (can be null)
-            item.workflowId,
-            item.source,
-            item.timestamp,
-            item.title,
-            item.description || null,
-            item.newsValue,
-            item.category || null,
-            item.severity || null,
-            JSON.stringify(item.location || {}),
-            JSON.stringify({ ...(item.extra || {}), trafficCamera: item.trafficCamera }),
-            JSON.stringify(item.raw || {}),
-            item.createdInDb,
-            item.countryCode || null,
-            item.regionCountryCode || null,
-            item.regionCode || null,
-            item.municipalityCountryCode || null,
-            item.municipalityRegionCode || null,
-            item.municipalityCode || null
-          ]
+          chunk.values
         )
 
-        insertedItems.push({
-          ...item,
-          dbId: result.rows[0].db_id
-        })
+        // Map returned db_ids back to items by positional order
+        for (let i = 0; i < result.rows.length; i++) {
+          insertedItems.push({
+            ...itemsWithTimestamp[itemOffset + i],
+            dbId: result.rows[i].db_id
+          })
+        }
+        itemOffset += result.rows.length
       }
 
       await client.query('COMMIT')
@@ -778,20 +839,26 @@ export const persistentDb = {
         [columnId]
       )
 
-      // Insert new items with foreign key to news_items
+      // Build rows for a single batch INSERT
+      const now = new Date().toISOString()
+      const rows: unknown[][] = []
       for (const item of items) {
         if (!item.dbId) {
           logger.warn('db.setColumnData.missingDbId', { itemId: item.id })
           continue
         }
+        rows.push([columnId, item.dbId, JSON.stringify(item), now])
+      }
 
+      const chunks = buildBatchInsert(rows)
+      for (const chunk of chunks) {
         await client.query(
           `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
-          VALUES ($1, $2, $3, $4)
+          VALUES ${chunk.text}
           ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
             data = EXCLUDED.data,
             created_at = EXCLUDED.created_at`,
-          [columnId, item.dbId, JSON.stringify(item), new Date().toISOString()]
+          chunk.values
         )
       }
 
@@ -948,27 +1015,33 @@ export const persistentDb = {
         [columnIds]
       )
 
-      // Insert all items for all columns
+      // Build all rows across all columns for a single batch INSERT
       const now = new Date().toISOString()
+      const rows: unknown[][] = []
 
       for (const columnId of columnIds) {
         const items = columnData[columnId]
-
         for (const item of items) {
           if (!item.dbId) {
             logger.warn('db.setColumnDataBatch.missingDbId', { columnId, itemId: item.id })
             continue
           }
-
-          await client.query(
-            `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
-              data = EXCLUDED.data,
-              created_at = EXCLUDED.created_at`,
-            [columnId, item.dbId, JSON.stringify(item), now]
-          )
+          rows.push([columnId, item.dbId, JSON.stringify(item), now])
         }
+      }
+
+      // One (or a few) queries instead of N×M individual inserts
+      // (4 params per row → chunks of 1 000 rows = 4 000 params max)
+      const chunks = buildBatchInsert(rows)
+      for (const chunk of chunks) {
+        await client.query(
+          `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
+          VALUES ${chunk.text}
+          ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
+            data = EXCLUDED.data,
+            created_at = EXCLUDED.created_at`,
+          chunk.values
+        )
       }
 
       await client.query('COMMIT')
@@ -995,31 +1068,36 @@ export const persistentDb = {
 
       await client.query('BEGIN')
 
+      // Build all rows across all columns for a single batch INSERT
       const now = new Date().toISOString()
-      let totalInserted = 0
+      const rows: unknown[][] = []
 
       for (const columnId of columnIds) {
         const items = columnData[columnId]
-
-        // Insert new items
         for (const item of items) {
           if (!item.dbId) {
             logger.warn('db.appendColumnDataBatch.missingDbId', { columnId, itemId: item.id })
             continue
           }
-
-          await client.query(
-            `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
-              data = EXCLUDED.data,
-              created_at = EXCLUDED.created_at`,
-            [columnId, item.dbId, JSON.stringify(item), now]
-          )
-          totalInserted++
+          rows.push([columnId, item.dbId, JSON.stringify(item), now])
         }
       }
 
+      // One (or a few) queries instead of N×M individual inserts
+      // (4 params per row → chunks of 1 000 rows = 4 000 params max)
+      const chunks = buildBatchInsert(rows)
+      for (const chunk of chunks) {
+        await client.query(
+          `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
+          VALUES ${chunk.text}
+          ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
+            data = EXCLUDED.data,
+            created_at = EXCLUDED.created_at`,
+          chunk.values
+        )
+      }
+
+      const totalInserted = rows.length
       await client.query('COMMIT')
       logger.info('db.appendColumnDataBatch.success', { columnCount: columnIds.length, totalInserted })
     } catch (error) {
