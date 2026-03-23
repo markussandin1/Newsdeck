@@ -30,6 +30,11 @@ export interface NewsItem {
     countryCode?: string;        // ISO 3166-1 alpha-2: 'SE' (provided by AI)
     regionCode?: string;         // SCB län code (2-digit): '01', '23', etc. (provided by AI)
     municipalityCode?: string;   // SCB kommun code (4-digit): '0180', etc. (provided by AI, nullable)
+    // Bonnier News geo-service UUIDs (new format from Workflows)
+    regionGeoId?: string;        // Bonnier geo-service UUID för region, t.ex. "6ecee557-533f-3e42-ab62-b14069d5383d"
+    regionName?: string;         // Regionnamn från geo-service, t.ex. "Dalarnas län"
+    municipalityGeoId?: string;  // Bonnier geo-service UUID för kommun, t.ex. "dce8b329-1d6d-3437-9a4d-449eef2f65b1"
+    municipalityName?: string;   // Kommunnamn från geo-service, t.ex. "Mora kommun"
   };
 
   // Normaliserade geografiska koder (från reference tables)

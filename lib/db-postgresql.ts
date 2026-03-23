@@ -319,10 +319,14 @@ export const persistentDb = {
         item.municipalityCountryCode || null,
         item.municipalityRegionCode || null,
         item.municipalityCode || null,
+        item.location?.regionGeoId || null,
+        item.location?.regionName || null,
+        item.location?.municipalityGeoId || null,
+        item.location?.municipalityName || null,
       ])
 
       // Process in chunks to stay within PostgreSQL's 65 535 parameter limit
-      // (19 params per row → chunks of 1 000 rows = 19 000 params max)
+      // (23 params per row → chunks of 1 000 rows = 23 000 params max)
       const chunks = buildBatchInsert(rows)
       const insertedItems: typeof itemsWithTimestamp = []
       let itemOffset = 0
@@ -333,7 +337,8 @@ export const persistentDb = {
             source_id, workflow_id, source, timestamp, title, description,
             news_value, category, severity, location, extra, raw, created_in_db,
             country_code, region_country_code, region_code,
-            municipality_country_code, municipality_region_code, municipality_code
+            municipality_country_code, municipality_region_code, municipality_code,
+            region_geo_id, region_name, municipality_geo_id, municipality_name
           ) VALUES ${chunk.text}
           RETURNING db_id`,
           chunk.values
@@ -891,12 +896,16 @@ export const persistentDb = {
       }
 
       const query = limit
-        ? `SELECT cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
+        ? `SELECT cd.data, cd.news_item_db_id,
+                  ni.country_code, ni.region_code, ni.municipality_code,
+                  ni.region_geo_id, ni.region_name, ni.municipality_geo_id, ni.municipality_name
            FROM column_data cd
            LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
            WHERE ${whereClause}
            ORDER BY cd.created_at DESC LIMIT $${paramIndex}`
-        : `SELECT cd.data, cd.news_item_db_id, ni.country_code, ni.region_code, ni.municipality_code
+        : `SELECT cd.data, cd.news_item_db_id,
+                  ni.country_code, ni.region_code, ni.municipality_code,
+                  ni.region_geo_id, ni.region_name, ni.municipality_geo_id, ni.municipality_name
            FROM column_data cd
            LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
            WHERE ${whereClause}
@@ -910,12 +919,20 @@ export const persistentDb = {
         const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
         // CRITICAL FIX: Ensure dbId and geographic codes are always set from the database
         // This prevents items from being lost during re-ingestion and ensures filters work correctly
+        const location = data.location ? {
+          ...data.location,
+          regionGeoId: row.region_geo_id || data.location.regionGeoId,
+          regionName: row.region_name || data.location.regionName,
+          municipalityGeoId: row.municipality_geo_id || data.location.municipalityGeoId,
+          municipalityName: row.municipality_name || data.location.municipalityName,
+        } : data.location
         return {
           ...data,
           dbId: row.news_item_db_id,
           countryCode: row.country_code || data.countryCode,
           regionCode: row.region_code || data.regionCode,
-          municipalityCode: row.municipality_code || data.municipalityCode
+          municipalityCode: row.municipality_code || data.municipalityCode,
+          location,
         }
       })
     } catch (error) {
@@ -949,10 +966,12 @@ export const persistentDb = {
 
       // Window function ranks rows per column by recency, then we filter to top N
       const query = `
-        SELECT column_id, data, news_item_db_id, country_code, region_code, municipality_code
+        SELECT column_id, data, news_item_db_id, country_code, region_code, municipality_code,
+               region_geo_id, region_name, municipality_geo_id, municipality_name
         FROM (
           SELECT cd.column_id, cd.data, cd.news_item_db_id,
                  ni.country_code, ni.region_code, ni.municipality_code,
+                 ni.region_geo_id, ni.region_name, ni.municipality_geo_id, ni.municipality_name,
                  ROW_NUMBER() OVER (PARTITION BY cd.column_id ORDER BY cd.created_at DESC) AS rn
           FROM column_data cd
           LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
@@ -980,12 +999,20 @@ export const persistentDb = {
         }
         // CRITICAL FIX: Ensure dbId and geographic codes are always set from the database
         // This prevents items from being lost during re-ingestion and ensures filters work correctly
+        const location = data.location ? {
+          ...data.location,
+          regionGeoId: row.region_geo_id || data.location.regionGeoId,
+          regionName: row.region_name || data.location.regionName,
+          municipalityGeoId: row.municipality_geo_id || data.location.municipalityGeoId,
+          municipalityName: row.municipality_name || data.location.municipalityName,
+        } : data.location
         columnData[row.column_id].push({
           ...data,
           dbId: row.news_item_db_id,
           countryCode: row.country_code || data.countryCode,
           regionCode: row.region_code || data.regionCode,
-          municipalityCode: row.municipality_code || data.municipalityCode
+          municipalityCode: row.municipality_code || data.municipalityCode,
+          location,
         })
       })
 

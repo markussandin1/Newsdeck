@@ -12,7 +12,6 @@ import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotificat
 import { useNotificationSettings } from '@/lib/dashboard/hooks/useNotificationSettings'
 import { useDesktopNotifications } from '@/lib/dashboard/hooks/useDesktopNotifications'
 import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
-import { useGeoFilters } from '@/lib/dashboard/hooks/useGeoFilters'
 import { useColumnOperations } from '@/lib/dashboard/hooks/useColumnOperations'
 import { useClipboard } from '@/lib/dashboard/hooks/useClipboard'
 import { ThemeToggle } from './theme-toggle'
@@ -40,18 +39,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const router = useRouter()
   const pathname = usePathname()
 
-  // Geographic filters
-  const geoFilters = useGeoFilters({ dashboardId: dashboard.id })
-
-  const memoizedGeoFilters = useMemo(() => ({
-    regionCodes: geoFilters.allRegionCodes,
-    municipalityCodes: geoFilters.filters.municipalityCodes,
-    showItemsWithoutLocation: geoFilters.filters.showItemsWithoutLocation
-  }), [
-    geoFilters.allRegionCodes.join(','),
-    geoFilters.filters.municipalityCodes.join(','),
-    geoFilters.filters.showItemsWithoutLocation
-  ])
+  // Empty geo filters (geo filtering removed – replaced by geo-service UUID fields)
+  const emptyGeoFilters = useMemo(() => ({
+    regionCodes: [] as string[],
+    municipalityCodes: [] as string[],
+    showItemsWithoutLocation: true
+  }), [])
 
   // Dashboard data management
   const {
@@ -64,7 +57,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     updateColumnData,
   } = useDashboardData({
     dashboard,
-    geoFilters: memoizedGeoFilters
+    geoFilters: emptyGeoFilters
   })
 
   // Notification settings
@@ -98,7 +91,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     columns: dashboard?.columns || [],
     updateColumnData,
     onNewItems: handleNewItems,
-    geoFilters: memoizedGeoFilters
+    geoFilters: emptyGeoFilters
   })
 
   usePendingImagePolling({
@@ -178,7 +171,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false)
-  const [showGeoFilterPanel, setShowGeoFilterPanel] = useState(false)
   const [showSearchInput, setShowSearchInput] = useState(false)
   const [openColumnMenuId, setOpenColumnMenuId] = useState<string | null>(null)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
@@ -240,10 +232,18 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
     const matchesQuery = (item: NewsItemType) => {
       const locationText = item.location
-        ? [item.location.country, item.location.county, item.location.municipality, item.location.area, item.location.street, item.location.name]
-            .filter(Boolean).join(' ').toLowerCase()
+        ? [
+            item.location.country,
+            item.location.county,
+            item.location.municipality,
+            item.location.area,
+            item.location.street,
+            item.location.name,
+            item.location.regionName,
+            item.location.municipalityName,
+          ].filter(Boolean).join(' ').toLowerCase()
         : ''
-      const searchableText = [item.title, item.description, item.source, item.category]
+      const searchableText = [item.title, item.description, item.source, item.category, item.severity]
         .filter(Boolean).join(' ').toLowerCase()
       const combined = `${searchableText} ${locationText}`.trim()
       return combined ? combined.includes(normalizedSearchQuery) : false
@@ -256,8 +256,8 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     return filtered
   }, [memoizedColumnData, normalizedSearchQuery])
 
-  const hasActiveSearch = normalizedSearchQuery.length > 0 || geoFilters.isActive
-  const showSearchNoResults = hasActiveSearch && Object.values(filteredColumnData).every(items => items.length === 0)
+  const hasActiveSearch = normalizedSearchQuery.length > 0
+  const showSearchNoResults = hasActiveSearch && normalizedSearchQuery.length > 0 && Object.values(filteredColumnData).every(items => items.length === 0)
 
   const isColumnSoundMuted = useCallback((columnId: string): boolean => {
     return !getColumnSettings(columnId).soundEnabled
@@ -424,12 +424,9 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
           <DashboardFilterBar
             searchQuery={searchQuery}
             showSearchInput={showSearchInput}
-            showGeoFilterPanel={showGeoFilterPanel}
-            geoFilters={geoFilters}
             hasActiveSearch={hasActiveSearch && !showSearchNoResults}
             onSearchChange={setSearchQuery}
             onToggleSearchInput={setShowSearchInput}
-            onToggleGeoFilterPanel={setShowGeoFilterPanel}
           />
         </div>
       </div>
@@ -438,23 +435,17 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
       {showSearchNoResults && (
         <div className="bg-amber-50 border-y border-amber-200 text-amber-800 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            {searchQuery && geoFilters.isActive && (
-              <>Inga händelser matchar &quot;{searchQuery}&quot; med valda geografiska filter.</>
-            )}
-            {searchQuery && !geoFilters.isActive && (
+            {searchQuery && (
               <>Inga händelser matchar &quot;{searchQuery}&quot;.</>
-            )}
-            {!searchQuery && geoFilters.isActive && (
-              <>Inga händelser matchar valda geografiska filter.</>
             )}
           </div>
           <button
             type="button"
-            onClick={() => { setSearchQuery(''); geoFilters.clearFilters() }}
+            onClick={() => setSearchQuery('')}
             className="inline-flex items-center gap-2 text-sm font-medium text-amber-900 hover:underline"
           >
             <X className="h-4 w-4" />
-            Rensa alla filter
+            Rensa filter
           </button>
         </div>
       )}
@@ -493,7 +484,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.2}
-                onDragEnd={(e, info) => {
+                onDragEnd={(_e, info) => {
                   const threshold = 50
                   const velocity = info.velocity.x
                   if (info.offset.x > threshold || velocity > 500) prevColumn()
