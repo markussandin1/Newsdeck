@@ -107,15 +107,23 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
           const existingItems = columnDataRef.current[columnId] || []
           const existingByDbId = new Map(existingItems.map(item => [item.dbId, item]))
 
-          const merged = newItems.map(item => {
-            const existing = item.dbId ? existingByDbId.get(item.dbId) : undefined
-            return existing ?? { ...item, isNew: isNewsItemNew(item.createdInDb) }
-          })
-
           const incomingDbIds = new Set(newItems.map(i => i.dbId).filter(Boolean))
           const pollingOnlyItems = existingItems.filter(
             item => item.dbId && !incomingDbIds.has(item.dbId)
           )
+
+          // If polling has a newer version of an item (same source_id, different dbId),
+          // skip the stale fetch version to avoid showing duplicates
+          const pollingOnlySourceIds = new Set(
+            pollingOnlyItems.map(i => i.id).filter(Boolean)
+          )
+
+          const merged = newItems
+            .filter(item => !item.id || !pollingOnlySourceIds.has(item.id))
+            .map(item => {
+              const existing = item.dbId ? existingByDbId.get(item.dbId) : undefined
+              return existing ?? { ...item, isNew: isNewsItemNew(item.createdInDb) }
+            })
 
           mergedData[columnId] = [...pollingOnlyItems, ...merged]
         })
