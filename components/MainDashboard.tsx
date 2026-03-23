@@ -20,7 +20,7 @@ import NewsItem from './NewsItem'
 import NewsItemModal from './NewsItemModal'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
-import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search, MapPin, Rss } from 'lucide-react'
+import { Settings, X, Copy, Info, Check, Save, Archive, Trash2, Link2, CheckCircle, Volume2, VolumeX, Menu, MoreVertical, ChevronLeft, ChevronRight, Search, MapPin, Rss, Globe2 } from 'lucide-react'
 import { GeoFilterPanel } from './GeoFilterPanel'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DashboardHeader } from './DashboardHeader'
@@ -1367,6 +1367,14 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                                       : <Rss className="h-4 w-4 text-muted-foreground" />}
                                     {copiedFeedId === column.id ? 'Kopierat!' : 'Kopiera feed-URL'}
                                   </button>
+                                  <Link
+                                    href={`/dashboard/${dashboardSlug || dashboard.slug}/columns/${column.id}/map`}
+                                    onClick={() => setOpenColumnMenuId(null)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted smooth-transition"
+                                  >
+                                    <Globe2 className="h-4 w-4 text-muted-foreground" />
+                                    Visa karta
+                                  </Link>
                                   <button
                                     onClick={() => { startEditing(column); setOpenColumnMenuId(null) }}
                                     className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted smooth-transition text-left"
