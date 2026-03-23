@@ -1142,7 +1142,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                     }`}
                 >
                   {/* Static header with drag handle */}
-                  <div className="glass border-b border-border bg-muted/20 p-4 rounded-t-xl relative">
+                  <div className={`glass border-b border-border bg-muted/20 p-4 rounded-t-xl relative ${openColumnMenuId === column.id ? 'z-50' : ''}`}>
                     {/* Drag handle */}
                     <div
                       draggable
