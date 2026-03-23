@@ -133,8 +133,6 @@ interface NewsItem {
   - `?structureOnly=true` - Skip column data, return only dashboard structure (used by initial page load)
 - `/api/news-items` - NewsItem storage and retrieval (intern användning)
 - `/api/geo` - Geographic metadata API (countries, regions, municipalities)
-- `/api/admin/location-cache` - Location cache management (POST to refresh, GET for stats)
-- `/api/admin/location-mappings` - Location name mappings (GET unmatched, POST to create)
 
 **Atom Feed Routes** (`app/feeds/`):
 - `/feeds/columns/[id]` - Atom 1.0-feed med 50 senaste items från en kolumn
@@ -146,23 +144,15 @@ interface NewsItem {
 - Feed-ikoner (Rss) i kolumn-header och dashboard-header kopierar URL till clipboard
 
 **Geographic Filtering System** (added 2025-12-29):
-- **Database Schema**: 5 new reference tables for geographic metadata
+- **Database Schema**: 3 reference tables for geographic metadata
   - `countries` - ISO country codes (e.g., 'SE' for Sweden)
   - `regions` - Swedish counties (län) with SCB codes (e.g., '01' = Stockholm)
   - `municipalities` - Swedish municipalities (kommuner) with SCB codes
-  - `location_name_mappings` - Fuzzy matching variants (e.g., "stockholm" → "0180")
-  - `location_normalization_logs` - Tracks unmatched locations for data quality
-- **Location Cache** (`lib/services/location-cache.ts`):
-  - Zero-latency in-memory lookups during ingestion
-  - Automatically loaded on server startup via `instrumentation.ts`
-  - Refresh via POST /api/admin/location-cache
 - **Ingestion Pipeline** (`lib/services/ingestion.ts`):
   - Tar emot `columnId` (primärt) eller `workflowId` (bakåtkompatibilitet)
-  - Om `location.countryCode` + `location.regionCode` ges och valideras → används direkt
-  - `countryCode` måste vara enskild 2-bokstavs ISO-kod; ogiltiga/multi-country ignoreras
-  - Falls back till fuzzy matching på `location.name`/`county` om koder saknas
-  - Populerar `countryCode`, `regionCode`, `municipalityCode` på `NewsItem`
-  - Loggar ej matchade platser asynkront (blockerar ej)
+  - Litar på att Workflows sätter geo-koder i förväg (countryCode, regionCode, municipalityCode)
+  - Validerar format: countryCode = 2-bokstavs ISO, regionCode = 2-siffrig SCB, municipalityCode = 4-siffrig SCB
+  - Loggar warning vid ogiltigt format men kraschar inte — location.name sparas ändå i JSONB
 - **Frontend Components**:
   - `lib/dashboard/hooks/useGeoFilters.ts` - Filter state management with localStorage
   - `components/GeoFilterPanel.tsx` - Collapsible filter UI with region/municipality selection
@@ -524,8 +514,6 @@ interface NotificationSettings {
 **Location-Based Filtering** (added 2025-12-29):
 - Multi-country support with ISO 3166-2 codes
 - Hierarchical data: countries → regions (län) → municipalities (kommuner)
-- In-memory cache for fast location lookups during ingestion
-- Automatic location normalization for incoming news items
 - Frontend filter panel for geographic filtering
 
 **Data Model**:
@@ -537,14 +525,14 @@ interface Country {
 
 interface Region {
   countryCode: string;   // "SE"
-  code: string;          // ISO 3166-2 without prefix (e.g., "AB" for SE-AB)
+  code: string;          // SCB 2-siffrig (e.g., "01" for Stockholm)
   name: string;          // "Stockholms län"
   nameShort?: string;    // "Stockholm"
 }
 
 interface Municipality {
   countryCode: string;   // "SE"
-  regionCode: string;    // "AB"
+  regionCode: string;    // "01"
   code: string;          // "0114"
   name: string;          // "Upplands Väsby"
 }
@@ -553,115 +541,25 @@ interface Municipality {
 **API Endpoints**:
 - `GET /api/geo` - Returns all geographic metadata (21 regions, 290 municipalities for Sweden)
 - `GET /api/geo?type=regions&countryCode=SE` - Returns regions for a country
-- `GET /api/geo?type=municipalities&countryCode=SE&regionCode=AB` - Returns municipalities
-- `POST /api/admin/location-cache` - Refreshes in-memory cache (after imports)
+- `GET /api/geo?type=municipalities&countryCode=SE&regionCode=01` - Returns municipalities
 
 **Cache Settings**:
 - Browser cache: 5 minutes (`max-age=300`)
 - CDN cache: 5 minutes
-- Rate limit: 100 requests/minute per IP
-
-**Data Import**:
-
-Add new countries by creating JSON files in `data/geo/` and running the import script:
-
-```bash
-# Import geographic data from structured JSON
-node scripts/import-geo-data.mjs data/geo/SE.json
-
-# Clean all geographic data (use with caution!)
-node scripts/clean-geo-data.mjs
-```
-
-**JSON Format for Geographic Data**:
-```json
-{
-  "country": "SE",
-  "subdivisions": [
-    {
-      "level": 1,
-      "code": "SE-AB",
-      "name": "Stockholms län",
-      "type": "county"
-    },
-    {
-      "level": 2,
-      "code": "SE-0114",
-      "name": "Upplands Väsby",
-      "type": "municipality",
-      "parent": "SE-AB"
-    }
-  ]
-}
-```
-
-**Code Format Conventions**:
-- **JSON files:** Use full ISO codes with country prefix (e.g., `"SE-AB"`, `"SE-0114"`)
-- **Database:** Stores codes without country prefix (e.g., `"AB"`, `"0114"`) with separate `country_code` column
-- **API responses:** Returns codes without prefix, country code as separate field
-
-**Location Normalization**:
-
-During news item ingestion (`lib/services/ingestion.ts`), locations are automatically normalized:
-1. Raw location data arrives (e.g., `{name: "Stockholm"}`)
-2. Location cache performs fuzzy lookup using name variants
-3. Best match selected based on priority (exact > fuzzy)
-4. News item enriched with normalized codes:
-   ```typescript
-   {
-     countryCode: "SE",
-     regionCode: "AB",
-     municipalityCode: null  // if only region matched
-   }
-   ```
-
-**Name Variant Generation**:
-
-The import script automatically generates variants for better matching:
-- **Regions:** "Stockholms län" → ["Stockholm", "Stockholms", "Sthlm"]
-- **Municipalities:** "Upplands Väsby" → ["Väsby", "Upplands Vasby", "Vasby"]
-- **ASCII variants:** "Örnsköldsvik" → ["Ornskoldsvik"]
 
 **Database Schema**:
 - `countries` - Country reference data
-- `regions` - Regions/counties with ISO 3166-2 codes
+- `regions` - Regions/counties with SCB codes
 - `municipalities` - Municipalities with parent region references
-- `location_name_mappings` - Fuzzy name matching (506 variants for Sweden)
-- `location_normalization_logs` - Failed lookup tracking for data quality
+- Database migration: `db/migrations/001_geographic_metadata.sql`
 
 **Frontend Components**:
 - `lib/dashboard/hooks/useGeoFilters.ts` - Filter state management with localStorage persistence
 - `components/GeoFilterPanel.tsx` - UI with search, expandable regions, municipality checkboxes
 - `components/MainDashboard.tsx` - Integrated with existing text search filters
 
-**Known Issues & Fixes**:
-
-**Fixed 2025-12-30**: Geographic filter showing items from unrelated regions
-- **Problem**: When selecting Stockholm municipality, items from Eskilstuna, Helsingborg, etc. were still visible
-- **Root cause**: Many news items could not be normalized (e.g., `location.name = "Helsingborg"` without proper `location.municipality` or `location.county`), resulting in `undefined` geographic codes. The filter defaulted to showing these un-normalized items (`showItemsWithoutLocation: true`), causing them to appear even when filtering by specific municipality.
-- **Fix**: Changed default `showItemsWithoutLocation` to `false` in `useGeoFilters.ts`. Added migration for existing localStorage data to force this setting to `false`.
-- **Impact**: Now when filtering by municipality/region, only items with properly normalized location codes are shown. Users can manually enable "Visa utan plats" toggle if needed.
-
-**Improved 2025-12-30**: Smart implicit region-level filtering
-- **Feature**: Region-level events now automatically show when ANY municipality in that region is selected
-- **Example**: When selecting any Stockholm municipality (e.g., only Botkyrka), events that only have `regionCode: "01"` (Stockholm län) but no specific municipality are included
-- **Use case**: Events that affect entire regions (e.g., "Snöoväder i Stockholm län") are now visible even when filtering by specific municipalities
-- **Implementation**: Uses memoized `regionsWithSelectedMunicipalities` Set for O(1) lookup performance in `lib/dashboard/hooks/useGeoFilters.ts`
-
-**Fixed 2025-12-31**: Geographic filter search not finding municipalities
-- **Problem**: Searching for municipalities like "Västerås" showed "Inga resultat" even though the municipality exists
-- **Root cause**: Search logic only checked region names, not municipality names (`GeoFilterPanel.tsx:47-52`)
-- **Fix**: Updated `filteredRegions` useMemo to also include regions containing matching municipalities
-- **UX improvement**: Added auto-expand for regions with matching municipalities when searching, with manual collapse tracking to respect user preferences
-- **Impact**: Users can now search for any municipality name and immediately see results with the parent region auto-expanded
-
-**Documentation**:
-- See `docs/geo-service-api.md` for complete API reference
-- Database migration: `db/migrations/001_geographic_metadata.sql`
-
 **Current Data**:
 - ✅ Sweden (SE): 21 regions, 290 municipalities
-- 🔜 Norway, Denmark, Finland (prepared architecture)
 
 ## Current Status
 
@@ -676,5 +574,4 @@ The application is a **production-ready system** with:
 - ✅ Configurable audio/desktop notifications per column and globally
 - ✅ PWA support for better notification UX
 - ✅ Geographic filtering with multi-country support (ISO 3166-2)
-- ✅ Automatic location normalization for incoming news
 
