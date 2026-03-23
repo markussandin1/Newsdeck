@@ -12,9 +12,12 @@ interface PendingRequest {
   columnId: string
 }
 
+/** Callback type for SSE subscribers */
+type ColumnCallback = (columnId: string, items: NewsItem[]) => void
+
 /**
  * In-memory queue for news updates per column
- * Used for long-polling to deliver real-time updates
+ * Used for long-polling and SSE to deliver real-time updates
  */
 class EventQueue {
   // Queue of updates per column (FIFO)
@@ -22,6 +25,9 @@ class EventQueue {
 
   // Pending long-poll requests waiting for updates
   private pendingRequests: Map<string, PendingRequest[]> = new Map()
+
+  // SSE subscribers: subscriptionId -> { columnIds, callback }
+  private subscribers: Map<string, { columnIds: Set<string>; callback: ColumnCallback }> = new Map()
 
   // Max items to keep in queue per column
   private readonly MAX_QUEUE_SIZE = 100
@@ -57,6 +63,9 @@ class EventQueue {
 
       // Notify pending requests for this column
       this.notifyPendingRequests(columnId, items)
+
+      // Notify SSE subscribers for this column
+      this.notifySubscribers(columnId, items)
     }
   }
 
@@ -179,12 +188,47 @@ class EventQueue {
   }
 
   /**
+   * Subscribe to updates for multiple columns (SSE model).
+   * Returns a subscription ID that can be used to unsubscribe.
+   */
+  subscribe(columnIds: string[], callback: ColumnCallback): string {
+    const id = `sub_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    this.subscribers.set(id, { columnIds: new Set(columnIds), callback })
+    logger.debug('eventQueue.subscribe', { id, columnCount: columnIds.length })
+    return id
+  }
+
+  /**
+   * Unsubscribe from SSE updates.
+   */
+  unsubscribe(subscriptionId: string): void {
+    this.subscribers.delete(subscriptionId)
+    logger.debug('eventQueue.unsubscribe', { id: subscriptionId })
+  }
+
+  /**
+   * Notify all SSE subscribers listening to a specific column.
+   */
+  private notifySubscribers(columnId: string, items: NewsItem[]): void {
+    for (const sub of Array.from(this.subscribers.values())) {
+      if (sub.columnIds.has(columnId)) {
+        try {
+          sub.callback(columnId, items)
+        } catch {
+          // Subscriber may have closed; errors are handled in the SSE route
+        }
+      }
+    }
+  }
+
+  /**
    * Get stats for monitoring
    */
   getStats(): {
     queuedColumns: number
     totalQueuedItems: number
     pendingRequests: number
+    sseSubscribers: number
   } {
     let totalItems = 0
     for (const queue of Array.from(this.queues.values())) {
@@ -199,7 +243,8 @@ class EventQueue {
     return {
       queuedColumns: this.queues.size,
       totalQueuedItems: totalItems,
-      pendingRequests: totalPending
+      pendingRequests: totalPending,
+      sseSubscribers: this.subscribers.size
     }
   }
 
