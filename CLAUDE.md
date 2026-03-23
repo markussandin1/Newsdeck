@@ -95,20 +95,24 @@ Cloud SQL Production DB (europe-west1)
 ### Core Data Model
 ```typescript
 interface NewsItem {
-  id: string;
-  workflowId: string;
+  id?: string;           // Källans eget ID (valfritt, ej unikt)
+  dbId: string;          // UUID, unikt i databasen
+  workflowId: string;    // columnId eller workflowId (internt fält)
   source: string;
-  timestamp: string; // ISO 8601
+  timestamp: string;     // ISO 8601
   title: string;
   description?: string;
-  newsValue: 1 | 2 | 3 | 4 | 5; // 5 = highest priority
+  newsValue: number;     // 1–5, 5 = högst prioritet
   category?: string;
-  severity?: "critical" | "high" | "medium" | "low" | null;
+  severity?: string | null; // Fri textsträng, ingen enum-validering
   location?: {
-    municipality?: string;
-    county?: string;
     name?: string;
-    coordinates?: [number, number];
+    county?: string;
+    municipality?: string;
+    coordinates?: number[];
+    countryCode?: string;   // ISO 3166-1 alpha-2, t.ex. "SE"
+    regionCode?: string;    // SCB 2-siffrig, t.ex. "01"
+    municipalityCode?: string; // SCB 4-siffrig, t.ex. "0180"
   };
   extra?: Record<string, any>;
   raw?: any;
@@ -123,10 +127,11 @@ interface NewsItem {
 - Falls back to in-memory storage when DATABASE_URL unavailable (development only)
 
 **API Routes** (`app/api/`):
-- `/api/columns` - Column management (CRUD)
+- `/api/workflows` - **Primärt ingestion-API** (POST med columnId eller workflowId, kräver API-nyckel)
+- `/api/columns` - Column management (CRUD); GET är publik, POST är borttagen (använd /api/workflows)
 - `/api/dashboards` - Dashboard management (returns max 500 most recent items per column)
   - `?structureOnly=true` - Skip column data, return only dashboard structure (used by initial page load)
-- `/api/news-items` - NewsItem storage and retrieval
+- `/api/news-items` - NewsItem storage and retrieval (intern användning)
 - `/api/geo` - Geographic metadata API (countries, regions, municipalities)
 - `/api/admin/location-cache` - Location cache management (POST to refresh, GET for stats)
 - `/api/admin/location-mappings` - Location name mappings (GET unmatched, POST to create)
@@ -152,13 +157,12 @@ interface NewsItem {
   - Automatically loaded on server startup via `instrumentation.ts`
   - Refresh via POST /api/admin/location-cache
 - **Ingestion Pipeline** (`lib/services/ingestion.ts`):
-  - **NEW (2025-12-30)**: Prioritizes geographic codes from Workflows AI agent
-    - If `location.countryCode` and `location.regionCode` are provided, uses them directly
-    - Skips fuzzy matching when codes are present (faster, more accurate)
-    - Falls back to fuzzy matching only when codes are null/missing
-  - Normalizes location metadata synchronously during ingestion (fallback mode)
-  - Populates `countryCode`, `regionCode`, `municipalityCode` on `NewsItem`
-  - Logs unmatched locations asynchronously (non-blocking)
+  - Tar emot `columnId` (primärt) eller `workflowId` (bakåtkompatibilitet)
+  - Om `location.countryCode` + `location.regionCode` ges och valideras → används direkt
+  - `countryCode` måste vara enskild 2-bokstavs ISO-kod; ogiltiga/multi-country ignoreras
+  - Falls back till fuzzy matching på `location.name`/`county` om koder saknas
+  - Populerar `countryCode`, `regionCode`, `municipalityCode` på `NewsItem`
+  - Loggar ej matchade platser asynkront (blockerar ej)
 - **Frontend Components**:
   - `lib/dashboard/hooks/useGeoFilters.ts` - Filter state management with localStorage
   - `components/GeoFilterPanel.tsx` - Collapsible filter UI with region/municipality selection
@@ -386,20 +390,52 @@ return {
 
 ## External Integration
 
-**API Endpoints** for workflow integration:
-- `POST /api/columns/{id}` - Add news items to column
-- `GET /api/columns/{id}` - Retrieve column data
-- Compatible with n8n, Zapier, and custom workflows
+### Primärt API — Post till kolumn (rekommenderat)
 
-**Event Schema** (for Workflows application):
-- Schema location: `docs/schemas/workflows-event-schema.json`
-- **NEW (2025-12-30)**: Location object now supports direct geographic codes:
-  - `location.countryCode` (required): ISO 3166-1 alpha-2 (e.g., "SE")
-  - `location.regionCode` (required): SCB län code, 2-digit numeric (e.g., "01" for Stockholm, "23" for Jämtland)
-  - `location.municipalityCode` (nullable): SCB kommun code, 4-digit numeric (e.g., "0180" for Stockholm)
-- **Code Format**: Uses official SCB (Statistics Sweden) numeric codes, NOT ISO 3166-2 letter codes
-- When AI agent provides these codes, Newsdeck trusts them directly (no fuzzy matching)
-- If codes are null/missing, falls back to fuzzy matching on text fields
+Standardsättet att skicka in nyheter är att posta direkt till ett kolumn-ID via `/api/workflows`:
+
+```json
+POST /api/workflows
+{
+  "columnId": "1a5465c1-1fa8-4bc0-9fb2-dfb396a64d5a",
+  "item": {
+    "id": "valfritt-källid",
+    "title": "Rubrik",
+    "source": "Källnamn",
+    "category": "brand",
+    "severity": "Valfri sträng eller null",
+    "newsValue": 3,
+    "timestamp": "2026-03-23T10:30:00Z",
+    "description": "Beskrivning",
+    "location": {
+      "name": "Platsnamn",
+      "county": "Västerbottens län",
+      "countryCode": "SE",
+      "regionCode": "24",
+      "coordinates": [64.3, 21.1]
+    }
+  },
+  "extra": {}
+}
+```
+
+- Kolumn-ID hittas i kolumnens inställningar i UI:t
+- Kräver API-nyckel i `Authorization: Bearer <key>`-header
+- `severity` är en fri textsträng (inga enum-krav)
+- `countryCode` måste vara en enskild 2-bokstavs ISO-kod (t.ex. `"SE"`) — multi-country sparas utan geokod
+- Retroaktiv routing via `workflowId` stöds fortfarande för bakåtkompatibilitet men fasas ut
+
+**GET /api/columns/{id}** - Hämta kolumndata (publik, ingen auth)
+
+### Bakåtkompatibilitet — workflowId-routing (fasas ut)
+
+Äldre integreringar kan skicka `workflowId` istället för `columnId`. Systemet matchar då mot kolumner vars `flowId` stämmer överens. Stödet finns kvar men ny kod ska alltid använda `columnId` direkt.
+
+**Event Schema**:
+- `location.countryCode`: ISO 3166-1 alpha-2, måste vara enskild kod (t.ex. `"SE"`)
+- `location.regionCode`: SCB länskod, 2-siffrig (t.ex. `"01"` Stockholm, `"24"` Västerbotten)
+- `location.municipalityCode`: SCB kommunkod, 4-siffrig (t.ex. `"0180"`)
+- Okända/ogiltiga geokoder ignoreras utan krasch — location.name sparas ändå i JSONB
 
 ## Header Architecture
 
