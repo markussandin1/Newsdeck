@@ -164,10 +164,9 @@ const normalizeLocationMetadata = async (
         municipalityCode: hasMunicipalityCode ? location.municipalityCode : undefined
       }
     }
-    // regionCode not found in DB (e.g. "00" = national scope) – keep countryCode only
-    return {
-      countryCode: location.countryCode,
-    }
+    // regionCode not found in DB (e.g. "00" = national scope, or unknown country).
+    // Don't store countryCode — it may not exist in the countries FK table.
+    return {}
   }
 
   // Fall back to fuzzy matching if codes not provided
