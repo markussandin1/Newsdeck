@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import { ColumnData } from '@/lib/dashboard/types'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
-import { useDashboardPolling } from '@/lib/dashboard/hooks/useDashboardPolling'
+import { useDashboardStream } from '@/lib/dashboard/hooks/useDashboardStream'
 import { usePendingImagePolling } from '@/lib/dashboard/hooks/usePendingImagePolling'
 import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
 import { useNotificationSettings } from '@/lib/dashboard/hooks/useNotificationSettings'
@@ -94,7 +94,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     columns: dashboard?.columns || [],
   })
 
-  const { connectionStatus, stopAllPolling } = useDashboardPolling({
+  const { connectionStatus, stopAllPolling } = useDashboardStream({
     columns: dashboard?.columns || [],
     updateColumnData,
     onNewItems: handleNewItems,
