@@ -1343,7 +1343,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
                               {openColumnMenuId === column.id && (
                                 <div
-                                  className="absolute right-0 top-full mt-1 w-52 glass rounded-lg shadow-soft-lg border border-border py-1 z-50"
+                                  className="absolute right-0 top-full mt-1 w-52 bg-popover rounded-lg shadow-lg border border-border py-1 z-50"
                                   onMouseDown={(e) => e.stopPropagation()}
                                 >
                                   <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border/50">
