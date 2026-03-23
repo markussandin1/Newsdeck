@@ -49,7 +49,7 @@ async function postRestoreRecovery() {
       const tableCheck = await client.query(`
         SELECT table_name FROM information_schema.tables
         WHERE table_schema = 'public'
-        AND table_name IN ('countries', 'regions', 'municipalities', 'location_name_mappings')
+        AND table_name IN ('countries', 'regions', 'municipalities')
         ORDER BY table_name
       `);
 

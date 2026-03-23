@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid'
 import type { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 import { newsdeckPubSub } from '@/lib/pubsub'
 import { eventQueue } from '@/lib/event-queue'
-import { persistentDb, geoLookup } from '@/lib/db-postgresql'
 import { trafficCameraService } from './traffic-camera-service'
 import { queueImageUpload } from './image-queue-service'
 
@@ -115,178 +114,60 @@ const normalizeCoordinates = (coords: unknown): number[] | undefined => {
 }
 
 /**
- * Normalize location metadata using in-memory cache
+ * Validate and extract location codes from incoming payload.
  *
- * This function attempts to match location strings (country, county, municipality)
- * to normalized geographic codes using the location cache. It tries matching in
- * order of specificity: municipality -> county -> country.
- *
- * IMPORTANT: This function will wait for the location cache to load if it's not ready.
- * This ensures that all news items get properly normalized geographic codes, even if
- * ingestion happens during server startup.
+ * Workflows sets codes in advance. We trust them as long as they match
+ * the expected formats. Invalid formats are warned and ignored — the raw
+ * location text is still preserved in JSONB.
  *
  * @param location - The location object from the news item
- * @param workflowId - The workflow ID for logging unmatched locations
- * @returns Normalized geographic codes (countryCode, regionCode, municipalityCode)
+ * @returns Validated geographic codes (countryCode, regionCode, municipalityCode)
  */
-const normalizeLocationMetadata = async (
-  location: NewsItem['location'],
-  workflowId: string
-): Promise<{
+const validateLocationCodes = (
+  location: NewsItem['location']
+): {
   countryCode?: string
   regionCountryCode?: string
   regionCode?: string
   municipalityCountryCode?: string
   municipalityRegionCode?: string
   municipalityCode?: string
-}> => {
+} => {
   if (!location) return {}
 
-  // Check if location already has geographic codes from Workflows AI agent
-  // If codes are present, trust them and skip fuzzy matching
   const isSingleCountryCode = (code: unknown): code is string =>
     isNonEmptyString(code) && /^[A-Z]{2}$/.test((code as string).trim())
+
+  const isRegionCode = (code: unknown): code is string =>
+    isNonEmptyString(code) && /^\d{2}$/.test((code as string).trim())
+
+  const isMunicipalityCode = (code: unknown): code is string =>
+    isNonEmptyString(code) && /^\d{4}$/.test((code as string).trim())
+
   const hasCountryCode = isSingleCountryCode(location.countryCode)
-  const hasRegionCode = isNonEmptyString(location.regionCode)
-  const hasMunicipalityCode = isNonEmptyString(location.municipalityCode)
+  const hasRegionCode = isRegionCode(location.regionCode)
+  const hasMunicipalityCode = isMunicipalityCode(location.municipalityCode)
 
-  if (hasCountryCode && hasRegionCode) {
-    // Codes provided by AI agent - validate regionCode against DB before trusting
-    // This handles national-scope events where regionCode is a placeholder like "00"
-    const regionValid = await geoLookup.isValidRegionCode(location.countryCode!, location.regionCode!)
-    if (regionValid) {
-      return {
-        countryCode: location.countryCode,
-        regionCountryCode: location.countryCode,
-        regionCode: location.regionCode,
-        municipalityCountryCode: hasMunicipalityCode ? location.countryCode : undefined,
-        municipalityRegionCode: hasMunicipalityCode ? location.regionCode : undefined,
-        municipalityCode: hasMunicipalityCode ? location.municipalityCode : undefined
-      }
-    }
-    // regionCode not found in DB (e.g. "00" = national scope, or unknown country).
-    // Don't store countryCode — it may not exist in the countries FK table.
-    return {}
+  if (location.countryCode && !hasCountryCode) {
+    console.warn('[ingestion] Invalid countryCode format (expected 2-letter ISO):', location.countryCode)
+  }
+  if (location.regionCode && !hasRegionCode) {
+    console.warn('[ingestion] Invalid regionCode format (expected 2-digit SCB):', location.regionCode)
+  }
+  if (location.municipalityCode && !hasMunicipalityCode) {
+    console.warn('[ingestion] Invalid municipalityCode format (expected 4-digit SCB):', location.municipalityCode)
   }
 
-  // Fall back to fuzzy matching if codes not provided
-  // Try to match municipality first (most specific)
-  if (location.municipality) {
-    // Normalize: strip common suffixes like " kommun", " stad", etc.
-    const normalizedMunicipality = location.municipality
-      .replace(/\s+kommun$/i, '')
-      .replace(/\s+stad$/i, '')
-      .trim()
+  if (!hasCountryCode) return {}
 
-    const match = await geoLookup.findByName(normalizedMunicipality)
-    if (match && match.municipalityCode) {
-      return {
-        countryCode: match.municipalityCountryCode || match.countryCode,
-        regionCountryCode: match.municipalityCountryCode || match.countryCode,
-        regionCode: match.municipalityRegionCode,  // Use municipality's region!
-        municipalityCountryCode: match.municipalityCountryCode,
-        municipalityRegionCode: match.municipalityRegionCode,
-        municipalityCode: match.municipalityCode
-      }
-    } else if (location.municipality) {
-      // Log unmatched municipality for admin review (async, don't wait)
-      persistentDb.logUnmatchedLocation({
-        rawLocation: location,
-        failedField: 'municipality',
-        failedValue: location.municipality,
-        sourceWorkflowId: workflowId
-      }).catch(() => {
-        // Logging failures shouldn't break ingestion
-      })
-    }
+  return {
+    countryCode: location.countryCode,
+    regionCountryCode: hasRegionCode ? location.countryCode : undefined,
+    regionCode: hasRegionCode ? location.regionCode : undefined,
+    municipalityCountryCode: hasMunicipalityCode ? location.countryCode : undefined,
+    municipalityRegionCode: hasMunicipalityCode ? location.regionCode : undefined,
+    municipalityCode: hasMunicipalityCode ? location.municipalityCode : undefined
   }
-
-  // Fall back to county/region matching
-  if (location.county) {
-    // Normalize: strip " län" suffix
-    const normalizedCounty = location.county
-      .replace(/\s+län$/i, '')
-      .trim()
-
-    const match = await geoLookup.findByName(normalizedCounty)
-    if (match && match.regionCode) {
-      return {
-        countryCode: match.countryCode,
-        regionCountryCode: match.regionCountryCode,
-        regionCode: match.regionCode,
-        municipalityCountryCode: undefined,
-        municipalityRegionCode: undefined,
-        municipalityCode: undefined
-      }
-    } else if (location.county) {
-      // Log unmatched county for admin review (async, don't wait)
-      persistentDb.logUnmatchedLocation({
-        rawLocation: location,
-        failedField: 'county',
-        failedValue: location.county,
-        sourceWorkflowId: workflowId
-      }).catch(() => {
-        // Logging failures shouldn't break ingestion
-      })
-    }
-  }
-
-  // Try location.area (e.g., "Mjällom" → Kramfors municipality)
-  if (location.area) {
-    const match = await geoLookup.findByName(location.area)
-    if (match && (match.municipalityCode || match.regionCode)) {
-      return {
-        countryCode: match.countryCode,
-        regionCountryCode: match.regionCountryCode,
-        regionCode: match.regionCode,
-        municipalityCountryCode: match.municipalityCountryCode,
-        municipalityRegionCode: match.municipalityRegionCode,
-        municipalityCode: match.municipalityCode
-      }
-    }
-  }
-
-  // Try location.name as last resort
-  if (location.name) {
-    const match = await geoLookup.findByName(location.name)
-    if (match && (match.municipalityCode || match.regionCode)) {
-      return {
-        countryCode: match.countryCode,
-        regionCountryCode: match.regionCountryCode,
-        regionCode: match.regionCode,
-        municipalityCountryCode: match.municipalityCountryCode,
-        municipalityRegionCode: match.municipalityRegionCode,
-        municipalityCode: match.municipalityCode
-      }
-    }
-  }
-
-  // Fall back to country matching
-  if (location.country) {
-    const match = await geoLookup.findByName(location.country)
-    if (match && match.countryCode) {
-      return {
-        countryCode: match.countryCode,
-        regionCountryCode: undefined,
-        regionCode: undefined,
-        municipalityCountryCode: undefined,
-        municipalityRegionCode: undefined,
-        municipalityCode: undefined
-      }
-    } else if (location.country) {
-      // Log unmatched country for admin review (async, don't wait)
-      persistentDb.logUnmatchedLocation({
-        rawLocation: location,
-        failedField: 'country',
-        failedValue: location.country,
-        sourceWorkflowId: workflowId
-      }).catch(() => {
-        // Logging failures shouldn't break ingestion
-      })
-    }
-  }
-
-  return {} // No match found, original location preserved in JSONB
 }
 
 const resolveUrl = (item: RawNewsItem): string | undefined => {
@@ -403,7 +284,7 @@ export const ingestNewsItems = async (
     throw new IngestionError('Unable to resolve workflow or column identifier from payload')
   }
 
-  // Validate and normalize all items (with async location normalization)
+  // Validate and normalize all items (async for traffic camera lookup)
   const validatedItems = await Promise.all(items.map(async (item) => {
     if (!item || typeof item !== 'object') {
       throw new IngestionError('Each item must be an object with required fields')
@@ -418,8 +299,8 @@ export const ingestNewsItems = async (
       ? item.timestamp
       : new Date().toISOString()
 
-    // Normalize location metadata using in-memory cache (async - waits for cache if needed)
-    const normalizedLocation = await normalizeLocationMetadata(item.location, resolvedWorkflowId)
+    // Validate and extract location codes from incoming payload
+    const normalizedLocation = validateLocationCodes(item.location)
 
     const coordinates = item.location ? normalizeCoordinates(item.location.coordinates) : undefined
     
