@@ -6,15 +6,18 @@
  *
  * Used by the admin UI to manage location name variations and
  * improve data quality.
- *
- * TODO: Add authentication check for admin users
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { persistentDb } from '@/lib/db-postgresql'
+import { verifySession, sessionUnauthorizedResponse } from '@/lib/api-auth'
 
 // GET - Fetch unmatched locations for admin review
 export async function GET(request: NextRequest) {
+  if (!await verifySession()) {
+    return sessionUnauthorizedResponse()
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '100')
@@ -41,6 +44,10 @@ export async function GET(request: NextRequest) {
 
 // POST - Create a new location name mapping
 export async function POST(request: NextRequest) {
+  if (!await verifySession()) {
+    return sessionUnauthorizedResponse()
+  }
+
   try {
     const body = await request.json()
 

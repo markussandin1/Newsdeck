@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getPool } from '@/lib/db-postgresql';
+import { verifySession, sessionUnauthorizedResponse } from '@/lib/api-auth';
 
 /**
  * Sync traffic camera data from news_items to column_data
@@ -8,6 +9,10 @@ import { getPool } from '@/lib/db-postgresql';
  * Run once after deploying the worker fix.
  */
 export async function POST() {
+  if (!await verifySession()) {
+    return sessionUnauthorizedResponse()
+  }
+
   const pool = getPool();
 
   try {

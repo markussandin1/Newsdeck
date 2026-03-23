@@ -99,29 +99,34 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
       if (data.success) {
         const incomingData: ColumnData = data.columnData ? { ...data.columnData } : {}
 
-        // First check if the raw data has changed at all
-        const previousData = columnDataRef.current
-        const rawDataChanged = !deepEqual(previousData, incomingData)
+        // Merge incoming data with existing polling state to prevent flash
+        // Items added via polling are preserved; fetch data is used for the rest
+        const mergedData: ColumnData = {}
 
+        Object.entries(incomingData).forEach(([columnId, newItems]) => {
+          const existingItems = columnDataRef.current[columnId] || []
+          const existingByDbId = new Map(existingItems.map(item => [item.dbId, item]))
+
+          const merged = newItems.map(item => {
+            const existing = item.dbId ? existingByDbId.get(item.dbId) : undefined
+            return existing ?? { ...item, isNew: isNewsItemNew(item.createdInDb) }
+          })
+
+          const incomingDbIds = new Set(newItems.map(i => i.dbId).filter(Boolean))
+          const pollingOnlyItems = existingItems.filter(
+            item => item.dbId && !incomingDbIds.has(item.dbId)
+          )
+
+          mergedData[columnId] = [...pollingOnlyItems, ...merged]
+        })
+
+        const rawDataChanged = !deepEqual(columnDataRef.current, mergedData)
         if (!rawDataChanged) {
-          // No changes detected, skip all updates
           return
         }
 
-        // Process new items only if there are actual changes
-        const processedData: ColumnData = {}
-
-        Object.entries(incomingData).forEach(([columnId, newItems]) => {
-          // Mark items as "new" if they were created in the last 1 minute
-          processedData[columnId] = newItems.map(item => ({
-            ...item,
-            isNew: isNewsItemNew(item.createdInDb)
-          }))
-        })
-
-        // Update state only when there are actual changes
-        setColumnData(processedData)
-        columnDataRef.current = processedData
+        setColumnData(mergedData)
+        columnDataRef.current = mergedData
         setLastUpdate(new Date())
       }
     } catch (error) {

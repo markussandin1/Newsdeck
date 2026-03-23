@@ -1001,25 +1001,7 @@ export const persistentDb = {
       for (const columnId of columnIds) {
         const items = columnData[columnId]
 
-        // Step 1: Remove old items with same source_id to prevent duplicates
-        // Collect all source_ids from incoming items (skip nulls)
-        const sourceIds = items
-          .map(item => item.id)
-          .filter(id => id != null && id !== '')
-
-        if (sourceIds.length > 0) {
-          // Delete existing column_data entries where news_items.source_id matches
-          await client.query(
-            `DELETE FROM column_data
-            WHERE column_id = $1
-            AND news_item_db_id IN (
-              SELECT db_id FROM news_items WHERE source_id = ANY($2)
-            )`,
-            [columnId, sourceIds]
-          )
-        }
-
-        // Step 2: Insert new items
+        // Insert new items
         for (const item of items) {
           if (!item.dbId) {
             logger.warn('db.appendColumnDataBatch.missingDbId', { columnId, itemId: item.id })
