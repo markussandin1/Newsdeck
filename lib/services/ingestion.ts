@@ -5,6 +5,7 @@ import { newsdeckPubSub } from '@/lib/pubsub'
 import { eventQueue } from '@/lib/event-queue'
 import { trafficCameraService } from './traffic-camera-service'
 import { queueImageUpload } from './image-queue-service'
+import { getPool } from '@/lib/db-postgresql'
 
 export class IngestionError extends Error {
   status: number
@@ -181,6 +182,52 @@ const resolveUrl = (item: RawNewsItem): string | undefined => {
     return item.source
   }
   return undefined
+}
+
+/**
+ * Asynkront upsert av region/municipality i referenstabellerna när ett nytt
+ * geo_service_id anländer. Fire-and-forget – kraschar inte om det misslyckas.
+ * code sätts temporärt till geo_service_id tills SCB-mappning finns.
+ */
+async function upsertGeoReference(item: NewsItem): Promise<void> {
+  const location = item.location
+  if (!location) return
+
+  try {
+    const pool = getPool()
+
+    if (location.regionGeoId && location.regionName) {
+      await pool.query(
+        `INSERT INTO regions (country_code, code, name, geo_service_id)
+         VALUES ('SE', $1, $2, $1)
+         ON CONFLICT (geo_service_id) DO NOTHING`,
+        [location.regionGeoId, location.regionName]
+      )
+    }
+
+    if (location.municipalityGeoId && location.municipalityName) {
+      // Use regionGeoId as region_code placeholder when available, else fall back to geo_service_id
+      const regionCodePlaceholder = location.regionGeoId ?? location.municipalityGeoId
+      // Ensure parent region exists first
+      if (location.regionGeoId && location.regionName) {
+        await pool.query(
+          `INSERT INTO regions (country_code, code, name, geo_service_id)
+           VALUES ('SE', $1, $2, $1)
+           ON CONFLICT (geo_service_id) DO NOTHING`,
+          [location.regionGeoId, location.regionName]
+        )
+      }
+      await pool.query(
+        `INSERT INTO municipalities (country_code, region_code, code, name, geo_service_id)
+         VALUES ('SE', $1, $2, $3, $2)
+         ON CONFLICT (geo_service_id) DO NOTHING`,
+        [regionCodePlaceholder, location.municipalityGeoId, location.municipalityName]
+      )
+    }
+  } catch (error) {
+    // Don't let geo upsert failure break anything
+    console.error('[ingestion] upsertGeoReference failed (non-fatal):', error)
+  }
 }
 
 const normalisePayload = (body: unknown): NormalisedPayload => {
@@ -360,7 +407,12 @@ export const ingestNewsItems = async (
         : undefined,
       location: item.location ? {
         ...item.location,
-        coordinates: coordinates
+        coordinates: coordinates,
+        // Pass through geo-service UUIDs and names from Workflows payload
+        regionGeoId: toOptionalTrimmed(item.location.regionGeoId),
+        regionName: toOptionalTrimmed(item.location.regionName),
+        municipalityGeoId: toOptionalTrimmed(item.location.municipalityGeoId),
+        municipalityName: toOptionalTrimmed(item.location.municipalityName),
       } : undefined,
       // Add normalized geographic codes
       countryCode: normalizedLocation.countryCode,
@@ -392,6 +444,15 @@ export const ingestNewsItems = async (
   // (foreign key constraint requires news_item_db_id to exist)
   // addNewsItems returns items with correct db_id from database
   const insertedItems = await db.addNewsItems(validatedItems)
+
+  // Lazy upsert geo-service references (fire-and-forget, don't block ingestion)
+  for (const item of insertedItems) {
+    if (item.location?.regionGeoId || item.location?.municipalityGeoId) {
+      upsertGeoReference(item).catch(() => {
+        // Error already logged inside upsertGeoReference
+      })
+    }
+  }
 
   // Queue image uploads for items with traffic cameras (async, don't block)
   for (const item of insertedItems) {

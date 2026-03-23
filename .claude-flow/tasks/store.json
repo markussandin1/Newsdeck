@@ -1,0 +1,23 @@
+{
+  "tasks": {
+    "task-1774296294459-5yxeoi": {
+      "taskId": "task-1774296294459-5yxeoi",
+      "type": "refactor",
+      "description": "Fas 1: Ta bort Vercel KV och geo-normaliseringskod. Branch: cleanup/remove-vercel-kv-and-geo-normalization",
+      "priority": "high",
+      "status": "completed",
+      "progress": 0,
+      "assignedTo": [],
+      "tags": [
+        "fas-1",
+        "cleanup",
+        "vercel-kv",
+        "geo-normalization"
+      ],
+      "createdAt": "2026-03-23T20:04:54.459Z",
+      "startedAt": null,
+      "completedAt": null
+    }
+  },
+  "version": "3.0.0"
+}
