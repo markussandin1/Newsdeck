@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
-import { Outfit, DM_Sans, JetBrains_Mono } from 'next/font/google'
+import { Outfit, DM_Sans, JetBrains_Mono, Inter_Tight } from 'next/font/google'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -19,6 +19,12 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400'],
   variable: '--font-mono',
+})
+
+const interTight = Inter_Tight({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-ui',
 })
 
 export const metadata: Metadata = {
@@ -60,7 +66,7 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={`${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} bg-gray-50 min-h-screen`}>
+      <body className={`${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${interTight.variable} bg-gray-50 min-h-screen`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

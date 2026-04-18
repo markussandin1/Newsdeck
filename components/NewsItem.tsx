@@ -4,6 +4,7 @@ import { MapPin, ExternalLink, Camera, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCompactTime, isUrl, getHostname } from '@/lib/time-utils'
+import { getPriority } from '@/lib/design-system'
 
 interface NewsItemProps {
   item: NewsItemType
@@ -45,19 +46,6 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
       return () => clearTimeout(timer)
     }
   }, [item.dbId, item.isNew])
-  const getNewsValueAccentColor = (newsValue: number) => {
-    switch (newsValue) {
-      case 5:
-        return 'bg-priority-critical'
-      case 4:
-        return 'bg-priority-high'
-      case 3:
-        return 'bg-priority-medium'
-      default:
-        return 'bg-priority-low'
-    }
-  }
-
   const getNewsValueBadgeVariant = (newsValue: number): 'error' | 'warning' | 'info' | 'secondary' => {
     switch (newsValue) {
       case 5:
@@ -138,94 +126,45 @@ function NewsItem({ item, compact = false, onClick }: NewsItemProps) {
 
 
   if (compact) {
+    const p = getPriority(item.newsValue)
+    const isEmph = item.newsValue >= 4
     return (
-      <div
-        className={`relative bg-card rounded-lg border border-border p-4 cursor-pointer group smooth-transition hover:shadow-soft-lg hover:border-border/80 ${isNew ? 'new-message' : ''
-          }`}
+      <article
+        className={`nd-card nd-compact ${isNew ? 'nd-is-new' : ''} ${isEmph ? 'nd-emph' : ''}`}
+        style={{ '--nd-pc': p.color, '--nd-ps': p.soft } as React.CSSProperties}
         onClick={onClick}
       >
-        {/* New message indicator */}
-        {isNew && (
-          <div className="absolute -top-1 -right-1 flex items-center justify-center">
-            <div className="new-indicator-dot"></div>
-            <div className="new-indicator-ping"></div>
-          </div>
-        )}
-
-        {/* Accent stripe */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${getNewsValueAccentColor(item.newsValue)}`}></div>
-
-        <div className="pl-3">
-          {/* Metadata header */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              {sourceUrl ? (
-                <a
-                  href={sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-body font-medium text-primary uppercase tracking-wide hover:underline flex items-center gap-1"
-                >
-                  {displaySource}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : (
-                <span className="text-xs font-body font-medium text-muted-foreground uppercase tracking-wide">
-                  {displaySource}
-                </span>
-              )}
-              {isNew && (
-                <span className="new-badge">NY</span>
-              )}
-            </div>
-            <time className="text-xs text-muted-foreground">
-              {formatCompactTime(item.createdInDb || item.timestamp)}
-            </time>
-          </div>
-
-          {/* Category badge (if present) */}
+        <span className="nd-ribbon" aria-hidden />
+        <header className="nd-meta">
+          <span className="nd-src">{displaySource}</span>
+          <span className="nd-dot" aria-hidden>·</span>
+          <time className="nd-tm">{formatCompactTime(item.createdInDb || item.timestamp)}</time>
+          {isNew && <span className="nd-new">NY</span>}
+          <span className="nd-pip-wrap">
+            <span className="nd-pip" style={{ background: p.color }}>{item.newsValue}</span>
+          </span>
+        </header>
+        <h3 className="nd-title">{item.title}</h3>
+        {item.description && <p className="nd-desc">{item.description}</p>}
+        <footer className="nd-foot">
           {item.category && (
-            <div className="mb-1">
-              <Badge variant="info" className="text-[8px] uppercase">
-                {item.category}
-              </Badge>
-            </div>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', padding: '2px 7px',
+              borderRadius: 99, background: 'var(--nd-surface-2)', color: 'var(--nd-ink-dim)',
+              fontSize: 10.5, fontFamily: 'var(--nd-font-mono)', fontWeight: 500,
+              border: '1px solid var(--nd-line-soft)'
+            }}>
+              {item.category}
+            </span>
           )}
-
-          {/* Title */}
-          <h3 className="font-display font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary smooth-transition text-sm leading-tight">
-            {item.title}
-          </h3>
-
-          {/* Description */}
-          {item.description && (
-            <p className="text-sm font-body text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
-              {item.description}
-            </p>
+          {locationSummary && (
+            <span className="nd-loc">
+              <MapPin size={10} />
+              {locationSummary}
+            </span>
           )}
-
-
-          {/* Footer */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant={getNewsValueBadgeVariant(item.newsValue)}>
-                {item.newsValue}
-              </Badge>
-              {item.trafficCamera && (
-                <div className="text-muted-foreground flex items-center" title={`Kamera finns: ${item.trafficCamera.name}`}>
-                  <Camera className="w-3.5 h-3.5" />
-                </div>
-              )}
-            </div>
-            {locationSummary && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1 text-right">
-                <MapPin className="w-3 h-3" />
-                {locationSummary}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
+        </footer>
+      </article>
     )
   }
 

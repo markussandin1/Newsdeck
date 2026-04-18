@@ -172,11 +172,22 @@ interface NewsItem {
 - `/test-persistence` - Database connectivity testing
 
 ### Visual Priority System
-NewsValue determines visual styling:
-- `newsValue: 5` - Red border + pulsing animation (critical)
-- `newsValue: 4` - Orange border (high)
-- `newsValue: 3` - Yellow border (medium)
-- `newsValue: 1-2` - Gray border (low)
+NewsValue determines visual styling via the design system v2 (`lib/design-system.ts`):
+- `newsValue: 5` - P1 Kritisk: röd ribbon (`oklch(0.66 0.22 25)`), emph-klass (bakgrundston)
+- `newsValue: 4` - P2 Hög: amber ribbon (`oklch(0.78 0.17 65)`), emph-klass
+- `newsValue: 3` - P3 Medel: cyan ribbon (`oklch(0.76 0.13 220)`)
+- `newsValue: 1-2` - P4/P5 Låg: grå ribbon
+
+**Design System v2** (`lib/design-system.ts` + `app/globals.css` CSS-token-block `--nd-*`):
+- Fonts: Inter Tight (UI), JetBrains Mono (metadata)
+- Dark theme default, light theme via `html.light`
+- Helper-funktioner: `getPriority()`, `getColumnColor()`, `timeAgo()`, `timeExact()`, `timeBucket()`
+
+**Dashboard Views** (desktop):
+- Kolumner (default): befintlig kolumnlayout med uppdaterade kort
+- Pulse (`components/views/PulseView.tsx`): kronologisk flödesvy med filtersidebar
+- Grid (`components/views/GridView.tsx`): tät bricköversikt, P1/P2 får stora brickor
+- Vy-switcher i header, sparas i localStorage (`nd.viewMode`)
 
 ## Storage & Deployment
 
