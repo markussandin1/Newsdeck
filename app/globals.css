@@ -521,7 +521,7 @@ html.light {
 /* Brand block: icon + Newsdeck wordmark + BONNIER NEWS subtitle */
 .nd-brand {
   display: flex; align-items: center; gap: 10px;
-  padding-right: 12px;
+  padding: 4px 12px 4px 0;
   border-right: 1px solid var(--nd-line-soft);
   color: var(--nd-ink);
   flex-shrink: 0;
@@ -550,7 +550,7 @@ html.light {
   transition: background .12s;
 }
 .nd-dash-btn:hover { background: var(--nd-surface); }
-.nd-dash-btn-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.nd-dash-btn-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
 .nd-dash-n {
   font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
   color: var(--nd-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -558,7 +558,7 @@ html.light {
 }
 .nd-dash-s {
   font-size: 11px; color: var(--nd-ink-mute);
-  font-family: var(--nd-font-mono); margin-top: 2px;
+  font-family: var(--nd-font-mono);
 }
 .nd-dash-caret {
   color: var(--nd-ink-mute); flex-shrink: 0;
