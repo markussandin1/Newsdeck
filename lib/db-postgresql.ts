@@ -631,6 +631,39 @@ export const persistentDb = {
     }
   },
 
+  /**
+   * Delete a dashboard by id. Refuses to delete the main/default dashboard.
+   * Also removes any associated dashboard_follows rows (column_data lives keyed
+   * by columnId so the rows are orphaned — they don't show anywhere once the
+   * dashboard is gone).
+   */
+  deleteDashboard: async (id: string): Promise<boolean> => {
+    if (id === MAIN_DASHBOARD_ID || id === 'main-dashboard') {
+      throw new Error('Main dashboard cannot be deleted')
+    }
+
+    const pool = getPool()
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      // Cascade-clean follows table if it exists; ignore "relation does not exist".
+      await client.query(
+        'DELETE FROM dashboard_follows WHERE dashboard_id = $1',
+        [id]
+      ).catch(() => {})
+
+      const res = await client.query('DELETE FROM dashboards WHERE id = $1', [id])
+      await client.query('COMMIT')
+      return (res.rowCount ?? 0) > 0
+    } catch (error) {
+      await client.query('ROLLBACK')
+      logger.error('db.deleteDashboard.error', { error, id })
+      throw error
+    } finally {
+      client.release()
+    }
+  },
+
   // Column data management
   setColumnData: async (columnId: string, items: NewsItem[]) => {
     const pool = getPool()

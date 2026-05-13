@@ -223,6 +223,15 @@ export const mockDb = {
     return null
   },
 
+  deleteDashboard: async (id: string): Promise<boolean> => {
+    console.log(`📦 [MOCK DB] deleteDashboard: ${id}`)
+    if (id === 'main-dashboard' || id === 'main') {
+      throw new Error('Main dashboard cannot be deleted')
+    }
+    // Mock has only one dashboard so nothing to delete
+    return false
+  },
+
   createDashboard: async (dashboard: Partial<Dashboard>): Promise<Dashboard> => {
     console.log('📦 [MOCK DB] createDashboard', dashboard)
     const newDashboard: Dashboard = {
