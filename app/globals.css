@@ -490,6 +490,73 @@ html.light {
   color: var(--nd-ink-mute); font-size: 10.5px; font-family: var(--nd-font-mono);
 }
 
+.nd-cat {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 99px;
+  background: var(--nd-surface-2); color: var(--nd-ink-dim);
+  font-size: 10.5px; font-weight: 500; letter-spacing: 0.01em;
+  border: 1px solid var(--nd-line-soft);
+  font-family: var(--nd-font-ui);
+}
+.nd-cat .nd-cat-ico { font-size: 11px; line-height: 1; }
+
+/* ——— Column header — live indicator + critical count ——————————————— */
+.nd-col-live {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--nd-font-mono);
+  font-size: 10px; color: var(--nd-ink-mute);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border: 1px solid var(--nd-line); border-radius: 99px;
+  background: none;
+}
+.nd-col-live .nd-col-live-dot {
+  width: 6px; height: 6px; border-radius: 99px;
+  background: var(--nd-ink-mute);
+}
+.nd-col-live.nd-on {
+  color: var(--nd-live);
+  border-color: color-mix(in oklch, var(--nd-live) 30%, var(--nd-line));
+}
+.nd-col-live.nd-on .nd-col-live-dot {
+  background: var(--nd-live);
+  box-shadow: 0 0 0 0 var(--nd-live);
+  animation: nd-pulse 2s ease-in-out infinite;
+}
+@keyframes nd-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(from var(--nd-live) l c h / 0.5); }
+  50%      { box-shadow: 0 0 0 6px oklch(from var(--nd-live) l c h / 0); }
+}
+
+.nd-col-crit {
+  margin-top: 6px;
+  font-size: 11px; font-family: var(--nd-font-mono);
+  color: var(--nd-p4); letter-spacing: 0.02em;
+}
+.nd-col-crit.nd-has-p1 { color: var(--nd-p5); }
+
+.nd-col-empty {
+  padding: 40px 16px; text-align: center;
+  color: var(--nd-ink-mute);
+  font-family: var(--nd-font-ui);
+}
+.nd-col-empty-ic {
+  font-size: 26px; margin-bottom: 6px; color: var(--nd-line);
+}
+.nd-col-empty-t {
+  font-size: 13px; font-weight: 600; color: var(--nd-ink-dim); margin-bottom: 2px;
+}
+.nd-col-empty-d {
+  font-size: 11px; font-family: var(--nd-font-mono); color: var(--nd-ink-mute);
+}
+.nd-col-empty-d code {
+  font-family: var(--nd-font-mono);
+  background: var(--nd-surface-2);
+  color: var(--nd-ink-dim);
+  padding: 1px 5px; border-radius: 3px;
+  font-size: 10.5px;
+}
+
 /* ——— Pulse view ——————————————————————————————————————————————————— */
 .nd-pulse { display: flex; height: 100%; min-height: 0; overflow: hidden; }
 .nd-pulse-rail {

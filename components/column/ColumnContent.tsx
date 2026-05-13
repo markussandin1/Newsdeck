@@ -1,10 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Image from 'next/image'
 import { NewsItem as NewsItemType } from '@/lib/types'
-import { Settings, Copy, Info } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import NewsItem from '@/components/NewsItem'
 
 interface ColumnContentProps {
@@ -57,53 +54,21 @@ export function ColumnContent({
   if (items.length === 0) {
     if (hasFilterActive) {
       return (
-        <div className="text-center py-8 px-4 text-muted-foreground text-sm">
-          <div className="mb-2 text-2xl">🔍</div>
-          <div>Inga händelser matchar sökningen.</div>
+        <div className="nd-col-empty">
+          <div className="nd-col-empty-ic">🔍</div>
+          <div className="nd-col-empty-t">Inga träffar</div>
+          <div className="nd-col-empty-d">Inga händelser matchar sökningen.</div>
         </div>
       )
     }
     return (
-      <div className="text-center py-8 px-4 text-muted-foreground text-sm">
-        <div className="mb-4 flex justify-center">
-          <Image src="/newsdeck-icon.svg" alt="Newsdeck logo" width={48} height={48} className="w-12 h-12 object-contain opacity-40" />
-        </div>
-        <div className="font-medium text-foreground mb-3">Denna kolumn är tom</div>
-
-        <div className="space-y-3 text-xs">
-          <div className="p-3 bg-blue-50 rounded-lg text-left">
-            <div className="font-medium text-blue-800 mb-1 flex items-center gap-1">
-              <Info className="h-3 w-3" />
-              För automatiska nyheter:
-            </div>
-            <div className="text-blue-700 mb-2 flex items-center gap-1">
-              Klicka på <Settings className="h-3 w-3 inline" /> och anslut en workflow
-            </div>
-            <Button
-              asChild
-              variant="link"
-              size="sm"
-              className="h-auto p-0 text-blue-600 hover:underline font-medium"
-            >
-              <a
-                href="https://workflows-lab-iap.bnu.bn.nr/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Öppna Workflows-appen →
-              </a>
-            </Button>
-          </div>
-
-          <div className="p-3 bg-muted/30 rounded-lg text-left">
-            <div className="font-medium text-foreground mb-1 flex items-center gap-1">
-              <Copy className="h-3 w-3" />
-              För manuell publicering:
-            </div>
-            <div className="text-muted-foreground flex items-center gap-1">
-              Använd Kolumn-ID från inställningar <Settings className="h-3 w-3 inline" />
-            </div>
-          </div>
+      <div className="nd-col-empty">
+        <div className="nd-col-empty-ic">◦</div>
+        <div className="nd-col-empty-t">Tom kolumn</div>
+        <div className="nd-col-empty-d">
+          {columnId
+            ? <>Väntar på händelser till <code>{columnId.slice(0, 8)}…</code></>
+            : <>Väntar på händelser…</>}
         </div>
       </div>
     )
@@ -118,7 +83,6 @@ export function ColumnContent({
         <div key={`${columnId}-${item.dbId}`} className="mb-2">
           <NewsItem
             item={item}
-            compact={true}
             onClick={() => onSelectNewsItem(item)}
           />
         </div>

@@ -10,6 +10,12 @@ interface ColumnHeaderProps {
   isMenuOpen: boolean
   isSoundMuted: boolean
   copiedFeedId: string | null
+  /** Number of items with newsValue >= 4 in this column (for the "X prioriterade just nu" row) */
+  criticalCount?: number
+  /** True if this column has any P1 (newsValue === 5) items — switches critical-row colour to red */
+  hasP1?: boolean
+  /** When true, the live-indicator chip pulses green; otherwise muted */
+  isLive?: boolean
   onOpenMenu: (columnId: string) => void
   onStartEditing: (column: DashboardColumn) => void
   onToggleSound: (columnId: string) => void
@@ -22,18 +28,38 @@ export function ColumnHeader({
   isMenuOpen,
   isSoundMuted,
   copiedFeedId,
+  criticalCount = 0,
+  hasP1 = false,
+  isLive = false,
   onOpenMenu,
   onStartEditing,
   onToggleSound,
   onCopyFeedUrl,
 }: ColumnHeaderProps) {
   return (
-    <div className="flex justify-between items-start ml-6">
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-          <h3 className="font-display font-semibold text-foreground">
-            {column.title}
-          </h3>
+    <div className="ml-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <h3 className="font-display font-semibold text-foreground truncate min-w-0">
+              {column.title}
+            </h3>
+            <span className="text-[11px] font-mono text-muted-foreground flex-shrink-0">
+              {itemCount}
+            </span>
+          </div>
+          {column.description && (
+            <p className="text-[11.5px] text-muted-foreground truncate mt-0.5">
+              {column.description}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className={`nd-col-live ${isLive ? 'nd-on' : ''}`} title={isLive ? 'Live' : 'Vilande'}>
+            <span className="nd-col-live-dot" />
+            Live
+          </span>
           <div className="relative">
             <Button
               variant="ghost"
@@ -85,6 +111,12 @@ export function ColumnHeader({
           </div>
         </div>
       </div>
+
+      {criticalCount > 0 && (
+        <div className={`nd-col-crit ${hasP1 ? 'nd-has-p1' : ''}`}>
+          {criticalCount} prioriterade just nu
+        </div>
+      )}
     </div>
   )
 }

@@ -288,25 +288,14 @@ export default function DemoPage() {
 
         {/* Compact View Grid */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Kompakt vy (Dashboard-layout)</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-4">Kort (Designsystem v2)</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {demoItems.map((item) => (
               <NewsItem
                 key={item.id}
                 item={item}
-                compact
                 onClick={() => setSelectedItem(item)}
               />
-            ))}
-          </div>
-        </div>
-
-        {/* Expanded View */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Expanderad vy (Detaljerad)</h2>
-          <div className="space-y-4">
-            {demoItems.slice(0, 3).map((item) => (
-              <NewsItem key={item.id} item={item} compact={false} />
             ))}
           </div>
         </div>
