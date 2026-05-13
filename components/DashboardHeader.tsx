@@ -105,20 +105,26 @@ export function DashboardHeader({
       </button>
 
       {showDashboardDropdown && (
-        <div className="absolute top-full left-0 mt-1.5 w-72 bg-[var(--nd-surface)] rounded-xl border border-[var(--nd-line)] py-2 z-50 shadow-[var(--nd-shadow-lg)]">
-          <div className="px-4 py-2 border-b border-[var(--nd-line-soft)]">
+        <div
+          className="absolute top-full left-0 mt-1.5 w-72 bg-[var(--nd-surface)] rounded-xl border border-[var(--nd-line)] z-50 shadow-[var(--nd-shadow-lg)] flex flex-col"
+          style={{ maxHeight: 'calc(100vh - 80px)' }}
+        >
+          {/* Sticky header */}
+          <div className="px-4 py-2 border-b border-[var(--nd-line-soft)] flex-shrink-0">
             <div className="text-xs font-mono text-[var(--nd-ink-mute)] uppercase tracking-[0.08em]">
               Dashboards
             </div>
           </div>
           <button
             onClick={() => { setShowCreateDashboardModal(true); setShowDashboardDropdown(false); }}
-            className="w-full px-4 py-3 text-left hover:bg-[var(--nd-surface-2)] flex items-center gap-3 text-[var(--nd-accent)]"
+            className="w-full px-4 py-3 text-left hover:bg-[var(--nd-surface-2)] flex items-center gap-3 text-[var(--nd-accent)] flex-shrink-0"
           >
             <span className="text-sm font-bold">＋</span>
             <span className="font-medium">Ny Dashboard</span>
           </button>
-          <div className="border-t border-[var(--nd-line-soft)] mt-1 pt-1">
+
+          {/* Scrollable dashboards list */}
+          <div className="border-t border-[var(--nd-line-soft)] flex-1 overflow-y-auto min-h-0">
             {allDashboards.map((dash) => (
               <button
                 key={dash.id}
@@ -136,7 +142,9 @@ export function DashboardHeader({
               </button>
             ))}
           </div>
-          <div className="border-t border-[var(--nd-line-soft)] mt-1 pt-1">
+
+          {/* Sticky footer */}
+          <div className="border-t border-[var(--nd-line-soft)] flex-shrink-0">
             <button
               onClick={() => { copyDashboardFeed(); }}
               className="w-full px-4 py-2.5 text-left hover:bg-[var(--nd-surface-2)] flex items-center gap-3 text-[var(--nd-ink-dim)]"
