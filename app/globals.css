@@ -537,7 +537,10 @@ html.light {
 }
 
 /* Dashboard picker button */
-.nd-dash-pick { position: relative; min-width: 0; }
+.nd-dash-pick {
+  position: relative; min-width: 0;
+  display: flex; align-items: center; gap: 2px;
+}
 .nd-dash-btn {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 10px;
