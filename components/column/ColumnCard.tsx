@@ -129,6 +129,9 @@ export function ColumnCard({
             isMenuOpen={openColumnMenuId === column.id}
             isSoundMuted={isSoundMuted}
             copiedFeedId={copiedFeedId}
+            criticalCount={items.filter(i => i.newsValue >= 4).length}
+            hasP1={items.some(i => i.newsValue === 5)}
+            isLive={items.length > 0}
             onOpenMenu={onOpenMenu}
             onStartEditing={onStartEditing}
             onToggleSound={onToggleSound}
