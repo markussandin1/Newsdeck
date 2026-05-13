@@ -138,17 +138,11 @@ export function NotificationSettingsModal({
             </div>
             <button
               onClick={() => onUpdateGlobal({ masterEnabled: !settings.global.masterEnabled })}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                settings.global.masterEnabled ? 'bg-primary' : 'bg-muted'
-              }`}
+              className={`nd-toggle ${settings.global.masterEnabled ? 'nd-on' : ''}`}
               role="switch"
               aria-checked={settings.global.masterEnabled}
             >
-              <span
-                className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                  settings.global.masterEnabled ? 'translate-x-7' : 'translate-x-1'
-                }`}
-              />
+              <span className="nd-toggle-knob" />
             </button>
           </div>
 
@@ -173,21 +167,11 @@ export function NotificationSettingsModal({
             <button
               onClick={() => onUpdateGlobal({ defaultSoundEnabled: !settings.global.defaultSoundEnabled })}
               disabled={!settings.global.masterEnabled}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                !settings.global.masterEnabled
-                  ? 'bg-muted/50 cursor-not-allowed'
-                  : settings.global.defaultSoundEnabled
-                  ? 'bg-blue-500'
-                  : 'bg-muted'
-              }`}
+              className={`nd-toggle ${settings.global.defaultSoundEnabled ? 'nd-on-blue' : ''}`}
               role="switch"
               aria-checked={settings.global.defaultSoundEnabled}
             >
-              <span
-                className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                  settings.global.defaultSoundEnabled ? 'translate-x-7' : 'translate-x-1'
-                }`}
-              />
+              <span className="nd-toggle-knob" />
             </button>
           </div>
 
@@ -208,21 +192,11 @@ export function NotificationSettingsModal({
               <button
                 onClick={() => onUpdateGlobal({ defaultDesktopEnabled: !settings.global.defaultDesktopEnabled })}
                 disabled={!settings.global.masterEnabled || desktopPermission === 'unsupported'}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  !settings.global.masterEnabled || desktopPermission === 'unsupported'
-                    ? 'bg-muted/50 cursor-not-allowed'
-                    : settings.global.defaultDesktopEnabled
-                    ? 'bg-green-500'
-                    : 'bg-muted'
-                }`}
+                className={`nd-toggle ${settings.global.defaultDesktopEnabled ? 'nd-on-green' : ''}`}
                 role="switch"
                 aria-checked={settings.global.defaultDesktopEnabled}
               >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                    settings.global.defaultDesktopEnabled ? 'translate-x-7' : 'translate-x-1'
-                  }`}
-                />
+                <span className="nd-toggle-knob" />
               </button>
             </div>
 

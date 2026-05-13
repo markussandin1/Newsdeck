@@ -500,6 +500,53 @@ html.light {
 }
 .nd-cat .nd-cat-ico { font-size: 11px; line-height: 1; }
 
+/* ——— Toggle switch ———————————————————————————————————————————————— */
+.nd-toggle {
+  position: relative;
+  width: 38px; height: 22px;
+  border-radius: 99px;
+  background: var(--nd-surface-2);
+  border: 1px solid var(--nd-line);
+  padding: 0;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  flex-shrink: 0;
+}
+.nd-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+.nd-toggle .nd-toggle-knob {
+  position: absolute;
+  top: 50%; left: 2px;
+  width: 16px; height: 16px;
+  margin-top: -8px;
+  border-radius: 99px;
+  background: var(--nd-ink-dim);
+  transition: transform .15s, background .15s;
+}
+.nd-toggle.nd-on {
+  background: color-mix(in oklch, var(--nd-accent) 25%, transparent);
+  border-color: var(--nd-accent);
+}
+.nd-toggle.nd-on .nd-toggle-knob {
+  background: var(--nd-accent);
+  transform: translateX(16px);
+}
+.nd-toggle.nd-on-blue {
+  background: color-mix(in oklch, oklch(0.6 0.2 250) 25%, transparent);
+  border-color: oklch(0.6 0.2 250);
+}
+.nd-toggle.nd-on-blue .nd-toggle-knob {
+  background: oklch(0.6 0.2 250);
+  transform: translateX(16px);
+}
+.nd-toggle.nd-on-green {
+  background: color-mix(in oklch, oklch(0.7 0.18 150) 25%, transparent);
+  border-color: oklch(0.7 0.18 150);
+}
+.nd-toggle.nd-on-green .nd-toggle-knob {
+  background: oklch(0.7 0.18 150);
+  transform: translateX(16px);
+}
+
 /* ——— Top bar (header) v2 ————————————————————————————————————————— */
 .nd-top {
   display: grid;
