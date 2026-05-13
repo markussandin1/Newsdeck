@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dashboard as DashboardType } from '@/lib/types';
 import { GlobalHeader } from './GlobalHeader';
-import { Rss, Check, Search, X, Bell } from 'lucide-react';
+import { Rss, Check, Search, X, Bell, Trash2 } from 'lucide-react';
 
 interface DashboardHeaderProps {
   dashboard: DashboardType;
@@ -41,8 +42,36 @@ export function DashboardHeader({
   onSearchChange,
 }: DashboardHeaderProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [feedCopied, setFeedCopied] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [now, setNow] = useState(() => new Date());
+
+  const isMainDashboard = dashboard.id === 'main-dashboard' || dashboard.slug === 'main'
+
+  const deleteCurrentDashboard = async () => {
+    if (isMainDashboard) return
+    const ok = window.confirm(
+      `Är du säker på att du vill radera dashboarden "${dashboard.name}"?\n\nKolumnerna i dashboarden försvinner men händelserna (events) finns kvar i databasen. Denna åtgärd kan inte ångras.`
+    )
+    if (!ok) return
+    try {
+      setIsDeleting(true)
+      const res = await fetch(`/api/dashboards/${dashboard.slug}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || 'Kunde inte radera dashboarden')
+        return
+      }
+      router.push('/dashboard/main')
+    } catch (error) {
+      console.error('Failed to delete dashboard:', error)
+      alert('Kunde inte radera dashboarden')
+    } finally {
+      setIsDeleting(false)
+      setShowDashboardDropdown(false)
+    }
+  }
 
   // Tick the clock every 30 s — minute resolution is enough for the status pill
   useEffect(() => {
@@ -154,6 +183,16 @@ export function DashboardHeader({
                 : <Rss className="w-3.5 h-3.5" />}
               <span className="text-sm">{feedCopied ? 'Kopierat!' : 'Kopiera dashboard-feed'}</span>
             </button>
+            {!isMainDashboard && (
+              <button
+                onClick={deleteCurrentDashboard}
+                disabled={isDeleting}
+                className="w-full px-4 py-2.5 text-left hover:bg-[var(--nd-surface-2)] flex items-center gap-3 text-[oklch(0.7_0.2_25)] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="text-sm">{isDeleting ? 'Raderar…' : 'Radera dashboard'}</span>
+              </button>
+            )}
           </div>
         </div>
       )}

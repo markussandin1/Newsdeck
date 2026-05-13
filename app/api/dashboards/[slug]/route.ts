@@ -116,3 +116,44 @@ export async function PUT(
     )
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const params = await context.params
+    const slug = params.slug
+
+    if (slug === 'main' || slug === 'main-dashboard') {
+      return NextResponse.json(
+        { error: 'Main dashboard cannot be deleted' },
+        { status: 400 }
+      )
+    }
+
+    const dashboard = await db.getDashboardBySlug(slug)
+    if (!dashboard) {
+      return NextResponse.json(
+        { error: 'Dashboard not found' },
+        { status: 404 }
+      )
+    }
+
+    const ok = await db.deleteDashboard(dashboard.id)
+    if (!ok) {
+      return NextResponse.json(
+        { error: 'Dashboard could not be deleted' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting dashboard:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
