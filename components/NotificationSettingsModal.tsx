@@ -88,39 +88,26 @@ export function NotificationSettingsModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="nd-modal-wrap"
       role="dialog"
       aria-modal="true"
       aria-labelledby="notification-settings-title"
+      onClick={onClose}
     >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-md bg-background rounded-xl shadow-2xl border border-border/50 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <Bell className="h-5 w-5 text-primary" />
-            <h2 id="notification-settings-title" className="text-lg font-semibold">
-              Notisinställningar
-            </h2>
+      <div className="nd-modal nd-modal-sm" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <div className="nd-mh-l">
+            <Bell className="h-3.5 w-3.5" style={{ color: 'var(--nd-accent)' }} />
+            <span id="notification-settings-title" className="nd-mh-col">Notisinställningar</span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
-            aria-label="Stäng"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+          <div className="nd-mh-r">
+            <button onClick={onClose} aria-label="Stäng" className="nd-mh-x">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </header>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="nd-mbody" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {/* Master Toggle */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -243,9 +230,8 @@ export function NotificationSettingsModal({
               value={settings.global.newsValueThreshold}
               onChange={(e) => onUpdateGlobal({ newsValueThreshold: Number(e.target.value) as 1 | 2 | 3 | 4 | 5 })}
               disabled={!settings.global.masterEnabled}
-              className={`w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground ${
-                !settings.global.masterEnabled ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              className="nd-input"
+              style={!settings.global.masterEnabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
             >
               {[1, 2, 3, 4, 5].map((value) => (
                 <option key={value} value={value}>
@@ -256,22 +242,20 @@ export function NotificationSettingsModal({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-border/50 bg-muted/30 flex justify-between items-center">
+        <footer className="nd-mfoot" style={{ justifyContent: 'space-between' }}>
           <button
             onClick={onTestNotification}
-            disabled={!settings.global.masterEnabled}
-            className="px-4 py-2 text-sm font-medium rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="nd-btn nd-btn-ghost"
           >
             Testa notis
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="nd-btn nd-btn-primary"
           >
             Klar
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );

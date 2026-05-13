@@ -500,6 +500,97 @@ html.light {
 }
 .nd-cat .nd-cat-ico { font-size: 11px; line-height: 1; }
 
+/* ——— Form elements ——————————————————————————————————————————————— */
+.nd-input,
+.nd-textarea {
+  width: 100%;
+  background: var(--nd-bg-soft);
+  border: 1px solid var(--nd-line);
+  border-radius: var(--nd-r-md);
+  padding: 10px 12px;
+  font: inherit;
+  font-family: var(--nd-font-ui);
+  font-size: 13.5px;
+  color: var(--nd-ink);
+  outline: none;
+  transition: border-color .12s, background .12s;
+}
+.nd-input::placeholder,
+.nd-textarea::placeholder { color: var(--nd-ink-mute); }
+.nd-input:focus,
+.nd-textarea:focus {
+  border-color: var(--nd-accent);
+  background: var(--nd-surface);
+}
+.nd-input.nd-mono,
+.nd-textarea.nd-mono { font-family: var(--nd-font-mono); font-size: 12px; }
+.nd-input[readonly] { background: var(--nd-surface); color: var(--nd-ink-dim); }
+
+.nd-label {
+  display: block;
+  font-size: 12px; font-weight: 500;
+  color: var(--nd-ink-dim);
+  margin-bottom: 6px;
+  font-family: var(--nd-font-ui);
+}
+
+.nd-tip {
+  background: var(--nd-bg-soft);
+  border: 1px solid var(--nd-line-soft);
+  border-radius: var(--nd-r-md);
+  padding: 12px 14px;
+  color: var(--nd-ink-dim);
+  font-size: 13px;
+}
+.nd-tip-title {
+  display: flex; align-items: center; gap: 6px;
+  font-weight: 600; color: var(--nd-ink);
+  font-size: 13px; margin-bottom: 6px;
+}
+.nd-tip ol, .nd-tip ul {
+  margin: 6px 0 0; padding-left: 20px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.nd-tip a { color: var(--nd-accent); }
+.nd-tip a:hover { text-decoration: underline; }
+
+/* Tab bar (modal-internal) */
+.nd-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--nd-line-soft);
+  margin-bottom: 16px;
+}
+.nd-tab {
+  background: none; border: 0; padding: 8px 16px;
+  font-family: var(--nd-font-ui);
+  font-size: 13px; font-weight: 500;
+  color: var(--nd-ink-mute);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color .12s, border-color .12s;
+}
+.nd-tab:hover { color: var(--nd-ink-dim); }
+.nd-tab.nd-active {
+  color: var(--nd-accent);
+  border-bottom-color: var(--nd-accent);
+}
+
+/* Checkbox */
+.nd-checkbox {
+  display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px; color: var(--nd-ink);
+}
+.nd-checkbox input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--nd-accent);
+  cursor: pointer;
+}
+
+/* Small modal variant */
+.nd-modal.nd-modal-sm { width: min(440px, 100%); }
+
 /* ——— Toggle switch ———————————————————————————————————————————————— */
 .nd-toggle {
   position: relative;
