@@ -189,7 +189,7 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
             </div>
             <div className="nd-mh-r">
               <span className="nd-mh-prio" style={{ background: priority.color }}>
-                {priority.label} · {priority.name}
+                Nyhetsvärde {item.newsValue}
               </span>
               <button onClick={onClose} aria-label="Stäng" className="nd-mh-x">✕</button>
             </div>
