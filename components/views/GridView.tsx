@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { DashboardColumn } from '@/lib/types'
 import { getPriority, getColumnColor, timeAgo } from '@/lib/design-system'
+import { getCategory } from '@/lib/categories'
 import { MapPin } from 'lucide-react'
 
 interface GridViewProps {
@@ -81,16 +82,15 @@ export function GridView({ columns, columnData, onSelectItem }: GridViewProps) {
                   </>
                 )}
                 <span className="nd-grow" />
-                {item.category && (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', padding: '2px 6px',
-                    borderRadius: 99, background: 'var(--nd-surface-2)', color: 'var(--nd-ink-dim)',
-                    fontSize: 10, fontFamily: 'var(--nd-font-ui)', fontWeight: 500,
-                    border: '1px solid var(--nd-line-soft)'
-                  }}>
-                    {item.category}
-                  </span>
-                )}
+                {item.category && (() => {
+                  const cat = getCategory(item.category)
+                  return cat ? (
+                    <span className="nd-cat">
+                      <span className="nd-cat-ico" aria-hidden>{cat.icon}</span>
+                      <span>{cat.label}</span>
+                    </span>
+                  ) : null
+                })()}
               </div>
             </article>
           )
