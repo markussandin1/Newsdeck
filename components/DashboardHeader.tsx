@@ -2,10 +2,8 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { Dashboard as DashboardType } from '@/lib/types';
-import { ConnectionStatus } from './ConnectionStatus';
 import { GlobalHeader } from './GlobalHeader';
-import { EnhancedDateTime } from './EnhancedDateTime';
-import { Rss, Check, Search, X } from 'lucide-react';
+import { Rss, Check, Search, X, Bell } from 'lucide-react';
 
 interface DashboardHeaderProps {
   dashboard: DashboardType;
@@ -34,7 +32,7 @@ export function DashboardHeader({
   showDashboardDropdown,
   setShowDashboardDropdown,
   setShowCreateDashboardModal,
-  getTotalNewsCount: _getTotalNewsCount,
+  getTotalNewsCount,
   navigateToDashboard,
   onOpenNotificationSettings,
   viewMode,
@@ -44,6 +42,13 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [feedCopied, setFeedCopied] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  // Tick the clock every 30 s — minute resolution is enough for the status pill
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   const copyDashboardFeed = async () => {
     const url = `${window.location.origin}/feeds/dashboards/${dashboard.slug}`;
@@ -72,135 +77,160 @@ export function DashboardHeader({
     window.location.href = '/api/auth/signout';
   };
 
-  // Left zone: compact brand + dropdown
-  const brandContent = (
-    <div className="flex items-center gap-1.5 min-w-0">
-      <div className="relative" ref={dropdownRef}>
-        <button
-          className="flex items-center gap-2 hover:bg-muted/50 rounded-md px-2 py-1 smooth-transition min-w-0"
-          onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
-        >
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[15px] font-semibold text-foreground leading-tight tracking-tight truncate max-w-[200px]">
-                {dashboard.name}
-              </span>
-              <svg
-                className={`w-3.5 h-3.5 text-muted-foreground shrink-0 smooth-transition ${showDashboardDropdown ? 'rotate-180' : ''}`}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-            <div className="flex items-center gap-2 text-[10.5px] text-muted-foreground font-mono mt-0.5">
-              <ConnectionStatus status={connectionStatus} />
-              <span className="text-muted-foreground/50">·</span>
-              <EnhancedDateTime />
-            </div>
-          </div>
-        </button>
+  const activeColumnCount = dashboard.columns?.filter(c => !c.isArchived).length ?? 0
+  const totalNewsCount = getTotalNewsCount()
 
-        {showDashboardDropdown && (
-          <div className="absolute top-full left-0 mt-1.5 w-72 glass rounded-xl shadow-soft-lg border border-border py-2 z-50">
-            <div className="px-4 py-2 border-b border-border/50">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Dashboards
-              </div>
-            </div>
-            <button
-              onClick={() => { setShowCreateDashboardModal(true); setShowDashboardDropdown(false); }}
-              className="w-full px-4 py-3 text-left hover:bg-muted smooth-transition flex items-center gap-3"
-            >
-              <div className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-md flex items-center justify-center text-sm font-bold">+</div>
-              <span className="font-medium text-foreground">Ny Dashboard</span>
-            </button>
-            <div className="border-t border-border/50 mt-1 pt-1">
-              {allDashboards.map((dash) => (
-                <button
-                  key={dash.id}
-                  onClick={() => { if (dash.slug !== dashboard.slug) navigateToDashboard(dash.slug); setShowDashboardDropdown(false); }}
-                  className={`w-full px-4 py-3 text-left hover:bg-muted smooth-transition flex items-center justify-between ${dash.id === dashboard.id ? 'bg-blue-50/50 border-r-2 border-blue-500' : ''}`}
-                >
-                  <div className="flex-1">
-                    <div className="font-medium text-foreground">{dash.name}</div>
-                    {dash.description && <div className="text-xs text-muted-foreground mt-1">{dash.description}</div>}
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {dash.columns?.filter(col => !col.isArchived)?.length ?? 0} kolumner
-                    </div>
-                  </div>
-                  {dash.id === dashboard.id && <div className="text-blue-500 text-sm">✓</div>}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+  const timeLabel = now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })
+  const statusLabel = connectionStatus === 'connected' ? 'Live' : connectionStatus === 'connecting' ? 'Ansluter' : 'Offline'
+
+  // Left zone (after brand wordmark): dashboard picker + RSS shortcut
+  const brandContent = (
+    <div className="nd-dash-pick" ref={dropdownRef}>
+      <button
+        className="nd-dash-btn"
+        onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
+      >
+        <span className="nd-dash-btn-text">
+          <span className="nd-dash-n">{dashboard.name}</span>
+          <span className="nd-dash-s">
+            {activeColumnCount} kolumner · {totalNewsCount} händelser
+          </span>
+        </span>
+        <svg
+          className={`nd-dash-caret ${showDashboardDropdown ? 'nd-open' : ''}`}
+          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
 
       <button
         onClick={copyDashboardFeed}
         title="Kopiera feed-URL"
-        className="p-1.5 rounded-md hover:bg-muted/50 smooth-transition text-muted-foreground hover:text-foreground shrink-0"
+        className="ml-1 p-1.5 rounded-md hover:bg-[var(--nd-surface)] text-[var(--nd-ink-mute)] hover:text-[var(--nd-ink)] transition-colors"
       >
         {feedCopied ? <Check className="w-3.5 h-3.5" /> : <Rss className="w-3.5 h-3.5" />}
+      </button>
+
+      {showDashboardDropdown && (
+        <div className="absolute top-full left-0 mt-1.5 w-72 bg-[var(--nd-surface)] rounded-xl border border-[var(--nd-line)] py-2 z-50 shadow-[var(--nd-shadow-lg)]">
+          <div className="px-4 py-2 border-b border-[var(--nd-line-soft)]">
+            <div className="text-xs font-mono text-[var(--nd-ink-mute)] uppercase tracking-[0.08em]">
+              Dashboards
+            </div>
+          </div>
+          <button
+            onClick={() => { setShowCreateDashboardModal(true); setShowDashboardDropdown(false); }}
+            className="w-full px-4 py-3 text-left hover:bg-[var(--nd-surface-2)] flex items-center gap-3 text-[var(--nd-accent)]"
+          >
+            <span className="text-sm font-bold">＋</span>
+            <span className="font-medium">Ny Dashboard</span>
+          </button>
+          <div className="border-t border-[var(--nd-line-soft)] mt-1 pt-1">
+            {allDashboards.map((dash) => (
+              <button
+                key={dash.id}
+                onClick={() => { if (dash.slug !== dashboard.slug) navigateToDashboard(dash.slug); setShowDashboardDropdown(false); }}
+                className={`w-full px-4 py-3 text-left hover:bg-[var(--nd-surface-2)] flex items-center justify-between ${dash.id === dashboard.id ? 'bg-[var(--nd-surface-2)]' : ''}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-[var(--nd-ink)] truncate">{dash.name}</div>
+                  {dash.description && <div className="text-xs text-[var(--nd-ink-mute)] mt-1 truncate">{dash.description}</div>}
+                  <div className="text-xs text-[var(--nd-ink-mute)] mt-1 font-mono">
+                    {dash.columns?.filter(col => !col.isArchived)?.length ?? 0} kolumner
+                  </div>
+                </div>
+                {dash.id === dashboard.id && <div className="text-[var(--nd-accent)] text-sm ml-2">✓</div>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Center zone: view switcher only
+  const centerContent = (
+    <div className="nd-seg">
+      <button
+        className={viewMode === 'columns' ? 'nd-active' : ''}
+        onClick={() => setViewMode('columns')}
+        title="Kolumnvy"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="16" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg>
+        Kolumner
+      </button>
+      <button
+        className={viewMode === 'pulse' ? 'nd-active' : ''}
+        onClick={() => setViewMode('pulse')}
+        title="Kronologisk vy"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></svg>
+        Pulse
+      </button>
+      <button
+        className={viewMode === 'grid' ? 'nd-active' : ''}
+        onClick={() => setViewMode('grid')}
+        title="Rutnätsvy"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Grid
       </button>
     </div>
   );
 
-  // Center zone: view switcher + persistent search
-  const centerContent = (
-    <div className="flex items-center gap-3">
-      <div className="nd-seg">
-        <button
-          className={viewMode === 'columns' ? 'nd-active' : ''}
-          onClick={() => setViewMode('columns')}
-          title="Kolumnvy"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="16" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg>
-          Kolumner
-        </button>
-        <button
-          className={viewMode === 'pulse' ? 'nd-active' : ''}
-          onClick={() => setViewMode('pulse')}
-          title="Kronologisk vy"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></svg>
-          Pulse
-        </button>
-        <button
-          className={viewMode === 'grid' ? 'nd-active' : ''}
-          onClick={() => setViewMode('grid')}
-          title="Rutnätsvy"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          Grid
-        </button>
-      </div>
-
-      <div className="relative flex items-center">
-        <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+  // Right zone: search + status pill + notification bell
+  const rightContent = (
+    <>
+      <label className="nd-search">
+        <Search className="w-3.5 h-3.5 shrink-0" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Sök händelser…"
-          className="pl-8 pr-7 py-1.5 w-56 rounded-md border border-border bg-background/60 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-colors"
+          placeholder="Sök titel, källa, plats…"
         />
-        {searchQuery && (
+        {searchQuery ? (
           <button
+            type="button"
             onClick={() => onSearchChange('')}
-            className="absolute right-2 text-muted-foreground hover:text-foreground"
+            className="text-[var(--nd-ink-mute)] hover:text-[var(--nd-ink)]"
+            aria-label="Rensa sökning"
           >
             <X className="w-3.5 h-3.5" />
           </button>
+        ) : (
+          <kbd>⌘K</kbd>
         )}
-      </div>
-    </div>
+      </label>
+
+      <span className={`nd-status nd-${connectionStatus}`} title={`Status: ${statusLabel}`}>
+        <span className="nd-live-dot" />
+        <span>{statusLabel}</span>
+        <span className="nd-status-sep">·</span>
+        <time dateTime={now.toISOString()}>{timeLabel}</time>
+      </span>
+
+      {onOpenNotificationSettings && (
+        <button
+          type="button"
+          onClick={onOpenNotificationSettings}
+          className="nd-icon-btn"
+          aria-label="Notiser"
+          title="Notiser"
+        >
+          <Bell className="w-4 h-4" />
+          <span className="nd-icon-btn-badge" aria-hidden />
+        </button>
+      )}
+    </>
   );
 
   return (
     <GlobalHeader
       contextContent={brandContent}
       centerContent={centerContent}
+      rightContent={rightContent}
       userName={userName}
       dashboardId={dashboard.id}
       onLogout={handleLogout}
