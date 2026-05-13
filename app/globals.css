@@ -586,6 +586,29 @@ html.light {
 .nd-rail-chip.nd-all { font-weight: 600; margin-bottom: 6px; }
 .nd-rail-chip.nd-all .nd-count { color: var(--nd-accent); }
 
+.nd-rail-slider {
+  width: 100%; appearance: none; -webkit-appearance: none;
+  height: 4px;
+  background: var(--nd-line); border-radius: 99px; outline: none;
+  margin-bottom: 6px;
+}
+.nd-rail-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px;
+  background: var(--nd-accent); border-radius: 99px; cursor: pointer;
+  border: 0;
+}
+.nd-rail-slider::-moz-range-thumb {
+  width: 14px; height: 14px;
+  background: var(--nd-accent); border-radius: 99px; cursor: pointer;
+  border: 0;
+}
+.nd-rail-scale {
+  display: flex; justify-content: space-between;
+  font-family: var(--nd-font-mono); font-size: 10px;
+  color: var(--nd-ink-mute); padding: 0 2px;
+}
+
 .nd-pulse-main { flex: 1; overflow-y: auto; padding: 20px 24px 40px; position: relative; font-family: var(--nd-font-ui); }
 .nd-pulse-axis { position: absolute; top: 0; bottom: 0; left: 108px; width: 1px; background: var(--nd-line-soft); pointer-events: none; }
 

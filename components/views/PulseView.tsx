@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { DashboardColumn } from '@/lib/types'
 import { getPriority, getColumnColor, timeAgo, timeExact, timeBucket } from '@/lib/design-system'
+import { getCategory } from '@/lib/categories'
 import { MapPin } from 'lucide-react'
 
 interface PulseViewProps {
@@ -99,9 +100,9 @@ export function PulseView({ columns, columnData, onSelectItem }: PulseViewProps)
           <input
             type="range" min="1" max="5" value={minPrio}
             onChange={e => setMinPrio(Number(e.target.value))}
-            style={{ width: '100%', accentColor: 'var(--nd-accent)' }}
+            className="nd-rail-slider"
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--nd-font-mono)', fontSize: 10, color: 'var(--nd-ink-mute)', padding: '2px 2px 0' }}>
+          <div className="nd-rail-scale">
             <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
           </div>
         </div>
@@ -144,6 +145,15 @@ export function PulseView({ columns, columnData, onSelectItem }: PulseViewProps)
                           {col?.title || '—'}
                         </span>
                         <span className="nd-psrc">{item.source}</span>
+                        {item.category && (() => {
+                          const cat = getCategory(item.category)
+                          return cat ? (
+                            <span className="nd-cat">
+                              <span className="nd-cat-ico" aria-hidden>{cat.icon}</span>
+                              <span>{cat.label}</span>
+                            </span>
+                          ) : null
+                        })()}
                         {item.location && getLocationSummary(item) && (
                           <span className="nd-loc">
                             <MapPin size={10} />
