@@ -1,9 +1,12 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import { DashboardColumn, NewsItem as NewsItemType } from '@/lib/types'
 import { ColumnHeader } from './ColumnHeader'
 import { ColumnEditForm } from './ColumnEditForm'
 import { ColumnContent } from './ColumnContent'
+
+const ONE_HOUR_MS = 60 * 60 * 1000
 
 interface ColumnCardProps {
   column: DashboardColumn
@@ -74,6 +77,28 @@ export function ColumnCard({
   onDragLeave,
   onDrop,
 }: ColumnCardProps) {
+  // Re-tick once per minute so the "breaking senaste timmen"-count stays fresh
+  // even when no new items arrive (old items age out of the 1h window).
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const { breakingCount, hasP1Recent } = useMemo(() => {
+    const cutoff = now - ONE_HOUR_MS
+    let count = 0
+    let p1 = false
+    for (const item of items) {
+      if (item.newsValue < 4) continue
+      const ts = new Date(item.createdInDb || item.timestamp).getTime()
+      if (Number.isNaN(ts) || ts < cutoff) continue
+      count++
+      if (item.newsValue === 5) p1 = true
+    }
+    return { breakingCount: count, hasP1Recent: p1 }
+  }, [items, now])
+
   return (
     <div
       key={column.id}
@@ -127,8 +152,8 @@ export function ColumnCard({
             isMenuOpen={openColumnMenuId === column.id}
             isSoundMuted={isSoundMuted}
             copiedFeedId={copiedFeedId}
-            criticalCount={items.filter(i => i.newsValue >= 4).length}
-            hasP1={items.some(i => i.newsValue === 5)}
+            criticalCount={breakingCount}
+            hasP1={hasP1Recent}
             isLive={items.length > 0}
             onOpenMenu={onOpenMenu}
             onStartEditing={onStartEditing}

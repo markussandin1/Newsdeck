@@ -10,9 +10,9 @@ interface ColumnHeaderProps {
   isMenuOpen: boolean
   isSoundMuted: boolean
   copiedFeedId: string | null
-  /** Number of items with newsValue >= 4 in this column (for the "X prioriterade just nu" row) */
+  /** Number of items with newsValue >= 4 received in the last hour */
   criticalCount?: number
-  /** True if this column has any P1 (newsValue === 5) items — switches critical-row colour to red */
+  /** True if any of the items in the 1h window is a P1 (newsValue === 5) — switches the row colour to red */
   hasP1?: boolean
   /** When true, the live-indicator chip pulses green; otherwise muted */
   isLive?: boolean
@@ -114,7 +114,7 @@ export function ColumnHeader({
 
       {criticalCount > 0 && (
         <div className={`nd-col-crit ${hasP1 ? 'nd-has-p1' : ''}`}>
-          {criticalCount} prioriterade just nu
+          {criticalCount} breaking senaste timmen
         </div>
       )}
     </div>
