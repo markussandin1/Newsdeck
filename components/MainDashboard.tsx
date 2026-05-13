@@ -28,6 +28,8 @@ import { DashboardFilterBar } from './dashboard/DashboardFilterBar'
 import { MobileMenu } from './dashboard/MobileMenu'
 import { MobileColumnActions } from './dashboard/MobileColumnActions'
 import { MobileDragPreview } from './dashboard/MobileDragPreview'
+import { PulseView } from './views/PulseView'
+import { GridView } from './views/GridView'
 
 interface MainDashboardProps {
   dashboard: DashboardType
@@ -172,6 +174,12 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
   const [searchQuery, setSearchQuery] = useState('')
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false)
   const [showSearchInput, setShowSearchInput] = useState(false)
+  const [viewMode, setViewMode] = useState<'columns' | 'pulse' | 'grid'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('nd.viewMode') as 'columns' | 'pulse' | 'grid') || 'columns'
+    }
+    return 'columns'
+  })
   const [openColumnMenuId, setOpenColumnMenuId] = useState<string | null>(null)
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
@@ -201,6 +209,10 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     }
     fetchSession()
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem('nd.viewMode', viewMode)
+  }, [viewMode])
 
   // Close column menu on click outside
   useEffect(() => {
@@ -428,6 +440,36 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             onSearchChange={setSearchQuery}
             onToggleSearchInput={setShowSearchInput}
           />
+          {!isMobile && (
+            <div className="flex items-center justify-between mt-2">
+              <div className="nd-seg">
+                <button
+                  className={viewMode === 'columns' ? 'nd-active' : ''}
+                  onClick={() => setViewMode('columns')}
+                  title="Kolumnvy"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="16" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg>
+                  Kolumner
+                </button>
+                <button
+                  className={viewMode === 'pulse' ? 'nd-active' : ''}
+                  onClick={() => setViewMode('pulse')}
+                  title="Kronologisk vy"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></svg>
+                  Pulse
+                </button>
+                <button
+                  className={viewMode === 'grid' ? 'nd-active' : ''}
+                  onClick={() => setViewMode('grid')}
+                  title="Rutnätsvy"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  Grid
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -450,8 +492,26 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
         </div>
       )}
 
-      {/* TweetDeck-style Columns / Mobile Single Column View */}
-      <div className={isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "flex overflow-x-auto h-[calc(100vh-100px)]"}>
+      {/* Dashboard Content: Columns / Pulse / Grid views */}
+      {!isMobile && viewMode === 'pulse' && (
+        <div className="h-[calc(100vh-120px)]">
+          <PulseView
+            columns={activeColumns}
+            columnData={filteredColumnData}
+            onSelectItem={setSelectedNewsItem}
+          />
+        </div>
+      )}
+      {!isMobile && viewMode === 'grid' && (
+        <div className="h-[calc(100vh-120px)]">
+          <GridView
+            columns={activeColumns}
+            columnData={filteredColumnData}
+            onSelectItem={setSelectedNewsItem}
+          />
+        </div>
+      )}
+      <div className={`${(!isMobile && viewMode !== 'columns') ? 'hidden' : ''} ${isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "flex overflow-x-auto h-[calc(100vh-120px)]"}`}>
         {isMobile ? (
           activeColumns.length > 0 && activeColumns[activeColumnIndex] ? (
             <div className="relative h-full">
