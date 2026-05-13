@@ -108,7 +108,6 @@ export default function GalleryPage() {
         contextContent={pageContext}
         userName={userName}
         onLogout={handleLogout}
-        showWeather={false}
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">

@@ -1,123 +1,173 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Newsdeck Workflows Event",
+  "description": "Schema för POST /api/workflows. Antingen columnId eller workflowId krävs. Antingen item eller items krävs.",
   "type": "object",
   "properties": {
-    "events": {
+    "columnId": {
+      "type": "string",
+      "description": "UUID för målkolumnen (rekommenderat). Hittas i kolumnens inställningar i UI:t."
+    },
+    "workflowId": {
+      "type": "string",
+      "description": "Äldre identifierare (fasas ut). Matchas mot kolumners flowId-fält."
+    },
+    "item": {
       "type": "object",
-      "description": "Händelser som händer",
+      "description": "Enskilt nyhetsobjekt (rekommenderat format).",
+      "required": ["title"],
       "properties": {
-        "columnId": {
+        "title": {
           "type": "string",
-          "description": "Kolumn-id"
+          "description": "Rubrik. Enda obligatoriska fältet."
         },
-        "workflowId": {
+        "id": {
           "type": "string",
-          "description": "{{context.workflowId}}"
+          "description": "Källans eget ID (valfritt, ej unikt – används för deduplicering inom kolumn)."
+        },
+        "source": {
+          "type": "string",
+          "description": "Källnamn, t.ex. Trafikverket, Polisen, SOS Alarm. Default: workflows."
+        },
+        "url": {
+          "type": "string",
+          "description": "Länk till källa eller artikel."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO 8601-tidsstämpel, t.ex. 2026-03-23T10:30:00Z. Default: serverns tid."
+        },
+        "description": {
+          "type": "string",
+          "description": "Fritext beskrivning av händelsen."
+        },
+        "newsValue": {
+          "type": "number",
+          "description": "Nyhetsvärde 1–5. 5 = högst prioritet (röd pulsande ram). Default: 3.",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "category": {
+          "type": "string",
+          "description": "Händelsekategori, t.ex. trafikolycka, brand, vägarbete."
+        },
+        "severity": {
+          "type": "string",
+          "description": "Allvarlighetsgrad – fri textsträng, t.ex. Allvarlig. Kan vara null.",
+          "nullable": true
+        },
+        "location": {
+          "type": "object",
+          "description": "Geografisk information.",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Fritext platsnamn, t.ex. E4 vid Rotebro."
+            },
+            "county": {
+              "type": "string",
+              "description": "Länsnamn i fritext, t.ex. Stockholms län."
+            },
+            "municipality": {
+              "type": "string",
+              "description": "Kommunnamn i fritext, t.ex. Stockholm."
+            },
+            "countryCode": {
+              "type": "string",
+              "description": "ISO 3166-1 alpha-2 landskod, exakt 2 versaler, t.ex. SE. Krävs för geo-filtrering."
+            },
+            "regionCode": {
+              "type": "string",
+              "description": "SCB länskod, exakt 2 siffror, t.ex. 01 för Stockholm, 24 för Västerbotten."
+            },
+            "municipalityCode": {
+              "type": "string",
+              "description": "SCB kommunkod, exakt 4 siffror, t.ex. 0180 för Stockholm."
+            },
+            "coordinates": {
+              "type": "array",
+              "description": "Koordinater [lat, lon] som tal, t.ex. [59.5, 17.9].",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "regionGeoId": {
+              "type": "string",
+              "description": "UUID från Bonniers geo-service för regionen."
+            },
+            "regionName": {
+              "type": "string",
+              "description": "Regionnamn från geo-service."
+            },
+            "municipalityGeoId": {
+              "type": "string",
+              "description": "UUID från Bonniers geo-service för kommunen."
+            },
+            "municipalityName": {
+              "type": "string",
+              "description": "Kommunnamn från geo-service."
+            }
+          },
+          "additionalProperties": true
+        },
+        "extra": {
+          "type": "object",
+          "description": "Valfria extra-fält för detta item.",
+          "additionalProperties": true
         }
-      }
+      },
+      "additionalProperties": true
     },
     "items": {
       "type": "array",
-      "description": "Olika",
+      "description": "Array av nyhetsobjekt (äldre format). Samma struktur som item.",
       "items": {
         "type": "object",
+        "required": ["title"],
         "properties": {
-          "id": {
-            "type": "string",
-            "description": ""
-          },
-          "title": {
-            "type": "string",
-            "description": "Rubrik"
-          },
-          "description": {
-            "type": "string",
-            "description": "Beskrivning"
-          },
-          "source": {
-            "type": "string",
-            "description": "Source like Polis, SOS etc"
-          },
-          "URL": {
-            "type": "string",
-            "description": "URL to a source or link"
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "tidsstämpel"
-          },
-          "newsValue": {
-            "type": "number",
-            "description": "Nyhetsvärde mellan 1-5"
-          },
-          "category": {
-            "type": "string",
-            "description": "kategori"
-          },
-          "severity": {
-            "type": "string",
-            "description": "Allvarlighetsgrad"
-          },
+          "title": { "type": "string" },
+          "id": { "type": "string" },
+          "source": { "type": "string" },
+          "url": { "type": "string" },
+          "timestamp": { "type": "string" },
+          "description": { "type": "string" },
+          "newsValue": { "type": "number", "minimum": 1, "maximum": 5 },
+          "category": { "type": "string" },
+          "severity": { "type": "string", "nullable": true },
           "location": {
             "type": "object",
-            "description": "Plats med koder",
             "properties": {
-              "name": {
-                "type": "string",
-                "description": "Platsnamn, t.ex. 'Stockholm'"
-              },
-              "municipality": {
-                "type": "string",
-                "description": "Kommunnamn, t.ex. 'Stockholm kommun'",
-                "nullable": true
-              },
-              "county": {
-                "type": "string",
-                "description": "Länsnamn, t.ex. 'Stockholms län'",
-                "nullable": true
-              },
-              "countryCode": {
-                "type": "string",
-                "description": "Landskod enligt ISO 3166-1 alpha-2, t.ex. 'SE'"
-              },
-              "regionCode": {
-                "type": "string",
-                "description": "SCB länskod (2-siffrig), t.ex. '01' för Stockholm, '23' för Jämtland"
-              },
-              "municipalityCode": {
-                "type": "string",
-                "description": "SCB kommunkod (4-siffrig), t.ex. '0180' för Stockholm, eller null om endast region är känt",
-                "nullable": true
-              },
+              "name": { "type": "string" },
+              "county": { "type": "string" },
+              "municipality": { "type": "string" },
+              "countryCode": { "type": "string" },
+              "regionCode": { "type": "string" },
+              "municipalityCode": { "type": "string" },
               "coordinates": {
                 "type": "array",
-                "description": "Valfri koordinat [lat, lng]",
-                "items": {
-                  "type": "number"
-                },
+                "items": { "type": "number" },
                 "minItems": 2,
                 "maxItems": 2
-              }
+              },
+              "regionGeoId": { "type": "string" },
+              "regionName": { "type": "string" },
+              "municipalityGeoId": { "type": "string" },
+              "municipalityName": { "type": "string" }
             },
-            "required": ["name", "countryCode", "regionCode"]
-          }
+            "additionalProperties": true
+          },
+          "extra": { "type": "object", "additionalProperties": true }
         },
-        "required": ["title", "description"]
-      }
+        "additionalProperties": true
+      },
+      "minItems": 1
     },
     "extra": {
       "type": "object",
-      "description": "extrafält",
-      "required": ["cms-url", "source-url"],
-      "properties": {
-        "cms-url": {
-          "type": "string",
-          "description": "CMS to articles in the Abbe cms"
-        },
-        "source-url": {
-          "type": "string",
-          "description": "url to the source"
-        }
-      }
+      "description": "Extra-fält som appliceras på alla items i requesten.",
+      "additionalProperties": true
     }
   },
   "additionalProperties": false

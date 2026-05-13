@@ -431,45 +431,22 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             navigateToDashboard={navigateToDashboard}
             onOpenNotificationSettings={() => setIsNotificationSettingsOpen(true)}
             onNavigateAway={stopAllPolling}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
 
-          <DashboardFilterBar
-            searchQuery={searchQuery}
-            showSearchInput={showSearchInput}
-            hasActiveSearch={hasActiveSearch && !showSearchNoResults}
-            onSearchChange={setSearchQuery}
-            onToggleSearchInput={setShowSearchInput}
-          />
-          {!isMobile && (
-            <div className="flex items-center justify-between mt-2">
-              <div className="nd-seg">
-                <button
-                  className={viewMode === 'columns' ? 'nd-active' : ''}
-                  onClick={() => setViewMode('columns')}
-                  title="Kolumnvy"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="16" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg>
-                  Kolumner
-                </button>
-                <button
-                  className={viewMode === 'pulse' ? 'nd-active' : ''}
-                  onClick={() => setViewMode('pulse')}
-                  title="Kronologisk vy"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></svg>
-                  Pulse
-                </button>
-                <button
-                  className={viewMode === 'grid' ? 'nd-active' : ''}
-                  onClick={() => setViewMode('grid')}
-                  title="Rutnätsvy"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                  Grid
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Mobile-only filter bar */}
+          <div className="lg:hidden">
+            <DashboardFilterBar
+              searchQuery={searchQuery}
+              showSearchInput={showSearchInput}
+              hasActiveSearch={hasActiveSearch && !showSearchNoResults}
+              onSearchChange={setSearchQuery}
+              onToggleSearchInput={setShowSearchInput}
+            />
+          </div>
         </div>
       </div>
 
@@ -494,7 +471,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
 
       {/* Dashboard Content: Columns / Pulse / Grid views */}
       {!isMobile && viewMode === 'pulse' && (
-        <div className="h-[calc(100vh-120px)]">
+        <div className="h-[calc(100vh-56px)]">
           <PulseView
             columns={activeColumns}
             columnData={filteredColumnData}
@@ -503,7 +480,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
         </div>
       )}
       {!isMobile && viewMode === 'grid' && (
-        <div className="h-[calc(100vh-120px)]">
+        <div className="h-[calc(100vh-56px)]">
           <GridView
             columns={activeColumns}
             columnData={filteredColumnData}
@@ -511,7 +488,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
           />
         </div>
       )}
-      <div className={`${(!isMobile && viewMode !== 'columns') ? 'hidden' : ''} ${isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "flex overflow-x-auto h-[calc(100vh-120px)]"}`}>
+      <div className={`${(!isMobile && viewMode !== 'columns') ? 'hidden' : ''} ${isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "flex overflow-x-auto h-[calc(100vh-56px)]"}`}>
         {isMobile ? (
           activeColumns.length > 0 && activeColumns[activeColumnIndex] ? (
             <div className="relative h-full">

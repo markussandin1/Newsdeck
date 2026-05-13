@@ -66,6 +66,9 @@ coverage/
 tmp/
 temp/
 
+# Git worktrees
+.worktrees/
+
 # Local files
 .claude/
 fix-column-data-schema.sql
