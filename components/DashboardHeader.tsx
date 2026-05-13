@@ -83,7 +83,7 @@ export function DashboardHeader({
   const timeLabel = now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' })
   const statusLabel = connectionStatus === 'connected' ? 'Live' : connectionStatus === 'connecting' ? 'Ansluter' : 'Offline'
 
-  // Left zone (after brand wordmark): dashboard picker + RSS shortcut
+  // Left zone (after brand wordmark): dashboard picker
   const brandContent = (
     <div className="nd-dash-pick" ref={dropdownRef}>
       <button
@@ -102,14 +102,6 @@ export function DashboardHeader({
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
-      </button>
-
-      <button
-        onClick={copyDashboardFeed}
-        title="Kopiera feed-URL"
-        className="ml-1 p-1.5 rounded-md hover:bg-[var(--nd-surface)] text-[var(--nd-ink-mute)] hover:text-[var(--nd-ink)] transition-colors"
-      >
-        {feedCopied ? <Check className="w-3.5 h-3.5" /> : <Rss className="w-3.5 h-3.5" />}
       </button>
 
       {showDashboardDropdown && (
@@ -143,6 +135,17 @@ export function DashboardHeader({
                 {dash.id === dashboard.id && <div className="text-[var(--nd-accent)] text-sm ml-2">✓</div>}
               </button>
             ))}
+          </div>
+          <div className="border-t border-[var(--nd-line-soft)] mt-1 pt-1">
+            <button
+              onClick={() => { copyDashboardFeed(); }}
+              className="w-full px-4 py-2.5 text-left hover:bg-[var(--nd-surface-2)] flex items-center gap-3 text-[var(--nd-ink-dim)]"
+            >
+              {feedCopied
+                ? <Check className="w-3.5 h-3.5 text-[var(--nd-accent)]" />
+                : <Rss className="w-3.5 h-3.5" />}
+              <span className="text-sm">{feedCopied ? 'Kopierat!' : 'Kopiera dashboard-feed'}</span>
+            </button>
           </div>
         </div>
       )}
