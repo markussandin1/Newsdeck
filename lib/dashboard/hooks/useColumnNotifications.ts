@@ -171,22 +171,45 @@ export function useColumnNotifications({
     }
   }, [settings, columns, audioReady, desktopPermission, playSound, showDesktopNotification])
 
-  // Test notification - useful for settings modal
+  // Test notification - useful for settings modal.
+  // Always attempts to play sound + show desktop notification regardless of
+  // current settings, since the user explicitly clicked "test". The click
+  // counts as a user gesture so the browser allows audio playback even if
+  // the autoplay init failed earlier.
   const testNotification = useCallback(() => {
-    // Play sound if enabled globally
-    if (settings.global.defaultSoundEnabled && audioReady) {
-      playSound()
+    // Attempt to play sound regardless of settings/audioReady — this click IS
+    // the required user gesture, so autoplay policies should permit it.
+    if (audioRef.current) {
+      console.log('🔔 Testing notification sound')
+      audioRef.current.currentTime = 0
+      audioRef.current.play()
+        .then(() => {
+          // Successful play implies audio is now unlocked; remember it.
+          if (!audioReady) {
+            setAudioReady(true)
+            localStorage.setItem('audioEnabled', 'true')
+            console.log('✅ Audio unlocked by test-button gesture')
+          }
+        })
+        .catch(e => {
+          console.warn('⚠️ Test playback failed:', e)
+          setShowAudioPrompt(true)
+        })
+    } else {
+      console.warn('⚠️ Audio element not initialised yet')
     }
 
-    // Show desktop notification if enabled and permitted
-    if (settings.global.defaultDesktopEnabled && desktopPermission === 'granted') {
+    // Always attempt a desktop notification if permission is granted.
+    if (desktopPermission === 'granted') {
       showDesktopNotification({
         title: 'Testnotis',
-        body: 'Newsdeck • Desktop-notiser fungerar!',
+        body: 'Newsdeck • Notiser fungerar!',
         tag: 'newsdeck-test'
       })
+    } else {
+      console.log(`🔕 Desktop notification permission: ${desktopPermission}`)
     }
-  }, [settings.global, audioReady, desktopPermission, playSound, showDesktopNotification])
+  }, [audioReady, desktopPermission, showDesktopNotification])
 
   const enableAudio = useCallback(async () => {
     try {
