@@ -746,6 +746,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
       {/* News Item Modal */}
       <NewsItemModal
         item={selectedNewsItem}
+        columns={dashboard?.columns || []}
         onClose={() => setSelectedNewsItem(null)}
       />
 
