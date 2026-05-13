@@ -500,6 +500,66 @@ html.light {
 }
 .nd-cat .nd-cat-ico { font-size: 11px; line-height: 1; }
 
+/* ——— Column container ("card-in-card" panel) ————————————————————— */
+.nd-col {
+  width: 340px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  background: var(--nd-bg-soft);
+  border: 1px solid var(--nd-line-soft);
+  border-radius: var(--nd-r-lg);
+  overflow: hidden;
+  font-family: var(--nd-font-ui);
+}
+.nd-col-header {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--nd-line-soft);
+  background: var(--nd-surface);
+  position: relative;
+}
+.nd-col-body {
+  flex: 1; overflow-y: auto;
+  padding: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--nd-bg-soft);
+}
+
+/* "Lägg till kolumn" placeholder column */
+.nd-col-add {
+  width: 340px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: 1.5px dashed var(--nd-line);
+  border-radius: var(--nd-r-lg);
+  color: var(--nd-ink-mute);
+  cursor: pointer;
+  font-family: var(--nd-font-ui);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.nd-col-add:hover {
+  border-color: var(--nd-accent);
+  color: var(--nd-accent);
+  background: oklch(from var(--nd-accent) l c h / 0.04);
+}
+.nd-col-add .nd-col-add-plus { font-size: 28px; line-height: 1; }
+.nd-col-add .nd-col-add-label { font-size: 13px; font-weight: 500; }
+.nd-col-add .nd-col-add-sub {
+  font-size: 11px; font-family: var(--nd-font-mono);
+  color: inherit; opacity: 0.75;
+}
+
+/* Columns scroller — gap + padding between column containers */
+.nd-cols-scroller {
+  flex: 1;
+  overflow-x: auto; overflow-y: hidden;
+  padding: 14px 16px;
+  background: var(--nd-bg);
+}
+.nd-cols-scroller > .nd-cols-inner {
+  display: flex; gap: 14px;
+  height: 100%; min-width: max-content;
+}
+
 /* ——— Column header — live indicator + critical count ——————————————— */
 .nd-col-live {
   display: inline-flex; align-items: center; gap: 5px;

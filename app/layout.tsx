@@ -69,7 +69,7 @@ export default function RootLayout({
       <body className={`${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${interTight.variable} bg-gray-50 min-h-screen`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
