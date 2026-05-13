@@ -7,10 +7,12 @@ import { UserMenu } from './UserMenu';
 import { DatabaseStatusIndicator } from './DatabaseStatusIndicator';
 
 interface GlobalHeaderProps {
-  /** Left zone: brand name, dashboard dropdown etc */
+  /** Left zone: content right of the brand wordmark (dashboard picker etc.) */
   contextContent: ReactNode;
-  /** Center zone: view switcher, search bar etc */
+  /** Center zone: view switcher etc. */
   centerContent?: ReactNode;
+  /** Right zone slot rendered before the user menu (status pill, search, bell etc.) */
+  rightContent?: ReactNode;
   /** User name for the user menu */
   userName: string | null;
   /** Dashboard ID (used for logout redirect) */
@@ -26,6 +28,7 @@ interface GlobalHeaderProps {
 export function GlobalHeader({
   contextContent,
   centerContent,
+  rightContent,
   userName,
   dashboardId = '',
   onLogout,
@@ -41,36 +44,37 @@ export function GlobalHeader({
   };
 
   return (
-    <div className={`glass border-b border-border sticky top-0 z-50 hidden lg:block ${className}`}>
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-5 px-5 py-2.5">
-        {/* Zone 1: Brand anchor + context (dashboard name/dropdown) */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Link href="/dashboards" className="shrink-0 hover:opacity-80 transition-opacity">
-            <Image
-              src="/newsdeck-icon.svg"
-              alt="Newsdeck"
-              width={28}
-              height={28}
-              className="w-7 h-7 object-contain"
-            />
-          </Link>
-          {contextContent}
-        </div>
-
-        {/* Zone 2: Center content (view switcher + search) */}
-        <div className="flex items-center justify-center gap-3">
-          {centerContent}
-        </div>
-
-        {/* Zone 3: Right controls */}
-        <div className="flex items-center gap-2 shrink-0">
-          <UserMenu
-            userName={userName || 'User'}
-            dashboardId={dashboardId}
-            onLogout={handleLogout}
-            onOpenNotificationSettings={onOpenNotificationSettings}
+    <div className={`nd-top hidden lg:grid ${className}`}>
+      {/* Zone 1: Brand wordmark + context (dashboard picker etc.) */}
+      <div className="nd-top-l">
+        <Link href="/dashboards" className="nd-brand" aria-label="Newsdeck">
+          <Image
+            src="/newsdeck-icon.svg"
+            alt=""
+            width={28}
+            height={28}
+            className="shrink-0"
           />
-        </div>
+          <span className="nd-brand-text">
+            <span className="nd-brand-n">Newsdeck</span>
+            <span className="nd-brand-s">Bonnier News</span>
+          </span>
+        </Link>
+        {contextContent}
+      </div>
+
+      {/* Zone 2: Center content (view switcher) */}
+      <div className="nd-top-c">{centerContent}</div>
+
+      {/* Zone 3: Right controls */}
+      <div className="nd-top-r">
+        {rightContent}
+        <UserMenu
+          userName={userName || 'User'}
+          dashboardId={dashboardId}
+          onLogout={handleLogout}
+          onOpenNotificationSettings={onOpenNotificationSettings}
+        />
       </div>
 
       {process.env.NODE_ENV === 'development' && <DatabaseStatusIndicator />}
