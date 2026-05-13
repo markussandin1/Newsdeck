@@ -114,7 +114,9 @@ export function ColumnHeader({
 
       {criticalCount > 0 && (
         <div className={`nd-col-crit ${hasP1 ? 'nd-has-p1' : ''}`}>
-          {criticalCount} breaking senaste timmen
+          {criticalCount === 1
+            ? '1 stor händelse senaste timmen'
+            : `${criticalCount} stora händelser senaste timmen`}
         </div>
       )}
     </div>
