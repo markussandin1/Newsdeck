@@ -81,28 +81,26 @@ export function ColumnCard({
       onDragOver={(e) => onDragOver(e, column.id)}
       onDragLeave={onDragLeave}
       onDrop={(e) => onDrop(e, column.id)}
-      className={`flex-shrink-0 w-80 bg-background border-r border-border flex flex-col transition-colors ${
-        isDragged ? 'opacity-50' : ''
-      } ${
-        isDragOver && !isDragged ? 'border-l-4 border-blue-500 bg-blue-50/50' : ''
+      className={`nd-col transition-colors ${isDragged ? 'opacity-50' : ''} ${
+        isDragOver && !isDragged ? 'ring-2 ring-[var(--nd-accent)]' : ''
       }`}
     >
       {/* Static header with drag handle */}
-      <div className={`glass border-b border-border bg-muted/20 p-4 rounded-t-xl relative ${openColumnMenuId === column.id ? 'z-50' : ''}`}>
+      <div className={`nd-col-header relative ${openColumnMenuId === column.id ? 'z-50' : ''}`}>
         {/* Drag handle */}
         <div
           draggable
           onDragStart={(e) => onDragStart(e, column.id)}
           onDragEnd={onDragEnd}
-          className="absolute left-0 top-0 bottom-0 w-6 cursor-move hover:bg-muted rounded-l-xl flex flex-col items-center justify-center gap-1 opacity-40 hover:opacity-80 transition-all"
+          className="absolute left-0 top-0 bottom-0 w-5 cursor-move hover:bg-[var(--nd-surface-2)] flex flex-col items-center justify-center gap-1 opacity-30 hover:opacity-80 transition-all"
           title="Dra för att flytta kolumn"
         >
-          <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-          <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-          <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-          <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-          <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-          <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+          <div className="w-1 h-1 bg-[var(--nd-ink-mute)] rounded-full"></div>
+          <div className="w-1 h-1 bg-[var(--nd-ink-mute)] rounded-full"></div>
+          <div className="w-1 h-1 bg-[var(--nd-ink-mute)] rounded-full"></div>
+          <div className="w-1 h-1 bg-[var(--nd-ink-mute)] rounded-full"></div>
+          <div className="w-1 h-1 bg-[var(--nd-ink-mute)] rounded-full"></div>
+          <div className="w-1 h-1 bg-[var(--nd-ink-mute)] rounded-full"></div>
         </div>
 
         {isEditing ? (
@@ -141,7 +139,7 @@ export function ColumnCard({
       </div>
 
       {/* Static scrollable area */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="nd-col-body">
         <ColumnContent
           columnId={column.id}
           items={items}

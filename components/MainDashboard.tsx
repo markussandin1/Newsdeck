@@ -475,7 +475,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           />
         </div>
       )}
-      <div className={`${(!isMobile && viewMode !== 'columns') ? 'hidden' : ''} ${isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "flex overflow-x-auto h-[calc(100vh-56px)]"}`}>
+      <div className={`${(!isMobile && viewMode !== 'columns') ? 'hidden' : ''} ${isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "nd-cols-scroller h-[calc(100vh-56px)]"}`}>
         {isMobile ? (
           activeColumns.length > 0 && activeColumns[activeColumnIndex] ? (
             <div className="relative h-full">
@@ -596,7 +596,7 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
           )
         ) : (
           // Desktop: Show all columns side by side
-          <>
+          <div className="nd-cols-inner">
             {(dashboard?.columns || [])
               .filter(col => !col.isArchived)
               .sort((a, b) => a.order - b.order)
@@ -638,19 +638,17 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
                 />
               ))}
 
-            {/* Add Column Button */}
-            <div className="flex-shrink-0 w-80 bg-muted/30 border-r border-border flex items-center justify-center">
-              <button
-                onClick={() => setShowAddColumnModal(true)}
-                className="flex flex-col items-center text-muted-foreground hover:text-foreground p-8"
-              >
-                <div className="w-12 h-12 border-2 border-dashed border-muted-foreground/50 rounded-lg flex items-center justify-center text-2xl mb-2">
-                  +
-                </div>
-                <span className="text-sm">Lägg till kolumn</span>
-              </button>
-            </div>
-          </>
+            {/* Add Column placeholder */}
+            <button
+              onClick={() => setShowAddColumnModal(true)}
+              className="nd-col-add"
+              aria-label="Lägg till kolumn"
+            >
+              <span className="nd-col-add-plus">＋</span>
+              <span className="nd-col-add-label">Lägg till kolumn</span>
+              <span className="nd-col-add-sub">Koppla från Workflows</span>
+            </button>
+          </div>
         )}
       </div>
 
