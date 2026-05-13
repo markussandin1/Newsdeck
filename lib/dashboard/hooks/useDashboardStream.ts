@@ -270,32 +270,11 @@ export function useDashboardStream({
   ])
 
   // -------------------------------------------------------------------------
-  // Pause/resume when tab visibility changes
+  // SSE-anslutningen hålls öppen även när tab:en är dold så att nya items
+  // (och tillhörande desktop-/ljudnotiser) levereras direkt när Newsdeck
+  // ligger i en bakgrundsflik. Anslutningen återansluter automatiskt via
+  // backoff-logiken i onerror om Cloud Run stänger den vid request-timeout.
   // -------------------------------------------------------------------------
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden) {
-        // Close connection to free server resources while tab is hidden
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close()
-          eventSourceRef.current = null
-        }
-        if (reconnectTimerRef.current) {
-          clearTimeout(reconnectTimerRef.current)
-          reconnectTimerRef.current = null
-        }
-      } else {
-        // Tab became visible again – reconnect immediately
-        if (!isStoppedRef.current) {
-          backoffRef.current = 1000 // reset back-off
-          connect()
-        }
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [connect])
 
   // -------------------------------------------------------------------------
   // Hard-stop on page unload
