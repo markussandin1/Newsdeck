@@ -1,8 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { DashboardColumn } from '@/lib/types'
 import { extractWorkflowId } from '@/lib/dashboard/utils'
-import { Settings, Copy, Check, Info } from 'lucide-react'
+import { Settings, Copy, Check, Info, ExternalLink } from 'lucide-react'
 
 interface AddColumnModalProps {
   isOpen: boolean
@@ -43,7 +44,7 @@ export function AddColumnModal({
   onTabChange,
   onWorkflowInputToggle,
   onTitleChange,
-  onDescriptionChange: _onDescriptionChange,
+  onDescriptionChange,
   onFlowIdChange,
   onUrlExtractedChange,
   onCreatedColumnIdChange,
@@ -51,48 +52,54 @@ export function AddColumnModal({
   onRestore,
   onCopyId,
 }: AddColumnModalProps) {
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = 'unset'
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const handleClose = () => {
     onClose()
     onTitleChange('')
-    _onDescriptionChange('')
+    onDescriptionChange('')
     onFlowIdChange('')
     onUrlExtractedChange(false)
     onCreatedColumnIdChange(null)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-card text-card-foreground rounded-lg max-w-md w-full border border-border">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-display font-semibold text-foreground">✨ Skapa ny kolumn</h3>
-            <button
-              onClick={handleClose}
-              className="text-muted-foreground hover:text-foreground text-xl"
-            >
-              ×
-            </button>
+    <div className="nd-modal-wrap" onClick={handleClose}>
+      <div className="nd-modal nd-modal-sm" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <div className="nd-mh-l">
+            <span className="nd-mh-col">Ny kolumn</span>
           </div>
+          <div className="nd-mh-r">
+            <button onClick={handleClose} aria-label="Stäng" className="nd-mh-x">✕</button>
+          </div>
+        </header>
 
-          {/* Tab buttons */}
-          <div className="flex mb-4 border-b border-border">
+        <div className="nd-mbody">
+          <div className="nd-tabs">
             <button
+              type="button"
               onClick={() => onTabChange(false)}
-              className={`px-4 py-2 font-medium text-sm ${!showArchivedColumns
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'text-muted-foreground hover:text-foreground'
-                }`}
+              className={`nd-tab ${!showArchivedColumns ? 'nd-active' : ''}`}
             >
               Skapa ny
             </button>
             <button
+              type="button"
               onClick={() => onTabChange(true)}
-              className={`px-4 py-2 font-medium text-sm ${showArchivedColumns
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'text-muted-foreground hover:text-foreground'
-                }`}
+              className={`nd-tab ${showArchivedColumns ? 'nd-active' : ''}`}
             >
               Återställ ({archivedColumns.length})
             </button>
@@ -101,106 +108,85 @@ export function AddColumnModal({
           {!showArchivedColumns ? (
             createdColumnId ? (
               // Bekräftelsesteg efter skapad kolumn
-              <div className="space-y-4 py-2">
-                <div className="flex items-center gap-2 text-emerald-600">
-                  <Check className="h-5 w-5" />
-                  <span className="font-medium">&quot;{createdColumnId.title}&quot; har skapats</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nd-live)' }}>
+                  <Check className="h-4 w-4" />
+                  <span style={{ fontWeight: 600 }}>&quot;{createdColumnId.title}&quot; har skapats</span>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Kolumn-ID (klistra in i Workflows):
-                  </label>
-                  <div className="flex gap-2">
+                  <label className="nd-label">Kolumn-ID (klistra in i Workflows)</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       type="text"
                       value={createdColumnId.id}
                       readOnly
-                      className="flex-1 px-3 py-2 text-sm bg-muted border border-input rounded font-mono text-foreground"
+                      className="nd-input nd-mono"
                     />
                     <button
                       type="button"
                       onClick={() => onCopyId(createdColumnId.id, createdColumnId.id, createdColumnId.title)}
-                      className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1 text-sm"
+                      className="nd-btn nd-btn-primary"
+                      style={{ flexShrink: 0 }}
                     >
-                      {copiedId === createdColumnId.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copiedId === createdColumnId.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                       Kopiera
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-3 pt-2 border-t border-border">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose()
-                      onCreatedColumnIdChange(null)
-                      onTabChange(false)
-                    }}
-                    className="flex-1 px-4 py-2 border border-input text-foreground rounded-lg hover:bg-muted text-sm"
-                  >
-                    Stäng
-                  </button>
-                </div>
               </div>
             ) : (
               // Create new column form
-              <form onSubmit={(e) => {
-                e.preventDefault()
-                if (newColumnTitle.trim()) {
-                  onSubmit()
-                }
-              }}>
-                <div className="space-y-4">
-                  {/* Column Name */}
+              <form
+                id="add-column-form"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (newColumnTitle.trim()) onSubmit()
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Kolumnnamn *
-                    </label>
+                    <label className="nd-label">Kolumnnamn *</label>
                     <input
                       type="text"
                       value={newColumnTitle}
                       onChange={(e) => onTitleChange(e.target.value)}
-                      className="w-full p-3 border border-input rounded-lg font-body focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-background text-foreground"
+                      className="nd-input"
                       placeholder="t.ex. Breaking News Stockholm"
                       required
                       autoFocus
                     />
                   </div>
 
-                  {/* Workflow Connection Section */}
-                  <div className="p-4 bg-blue-50 border border-border rounded-lg">
+                  <div className="nd-tip">
                     {activeColumnCount === 0 && (
-                      <div className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full mb-2">
-                        🎯 Rekommenderat för första kolumnen
+                      <div style={{
+                        display: 'inline-block', padding: '2px 8px', borderRadius: 99,
+                        background: 'color-mix(in oklch, var(--nd-live) 20%, transparent)',
+                        color: 'var(--nd-live)', fontSize: 10.5,
+                        fontFamily: 'var(--nd-font-mono)', letterSpacing: '0.04em',
+                        textTransform: 'uppercase', marginBottom: 8,
+                      }}>
+                        Rekommenderat för första kolumnen
                       </div>
                     )}
-
-                    <div className="font-display font-medium text-foreground mb-2">
-                      🤖 Vill du fylla denna kolumn automatiskt?
+                    <div className="nd-tip-title">🤖 Fyll kolumnen automatiskt?</div>
+                    <div style={{ marginBottom: 10 }}>
+                      Anslut en AI-workflow så tar kolumnen emot nyheter direkt — inga fler steg krävs.
                     </div>
-                    <div className="text-sm text-muted-foreground mb-3">
-                      Anslut en AI-workflow för att automatiskt ta emot nyheter - inga fler steg krävs!
-                    </div>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="nd-checkbox">
                       <input
                         type="checkbox"
                         checked={showWorkflowInput}
                         onChange={(e) => onWorkflowInputToggle(e.target.checked)}
-                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm font-medium text-foreground">
-                        Ja, anslut workflow
-                      </span>
+                      <span style={{ fontWeight: 500 }}>Ja, anslut workflow</span>
                     </label>
                   </div>
 
-                  {/* Workflow Input (Conditional) */}
                   {showWorkflowInput ? (
-                    <div className="space-y-3 p-4 bg-blue-50 rounded-lg transition-all duration-200 ease-in-out">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Workflow-URL
-                        </label>
+                        <label className="nd-label">Workflow-URL</label>
                         <input
                           type="text"
                           value={newColumnFlowId}
@@ -215,36 +201,35 @@ export function AddColumnModal({
                               onFlowIdChange(extracted)
                             }
                           }}
-                          className="w-full p-3 border border-border rounded-lg font-body font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="nd-input nd-mono"
                           placeholder="Klistra in URL från Workflows-appen"
                         />
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-muted-foreground">
-                            💡 Vi extraherar automatiskt ID:t från URL:en
-                          </p>
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          marginTop: 4, fontSize: 11, color: 'var(--nd-ink-mute)',
+                        }}>
+                          <span>Vi extraherar automatiskt ID:t från URL:en</span>
                           {urlExtracted && (
-                            <div className="text-xs text-green-600 font-medium">
-                              ✓ Workflow-ID extraherat
-                            </div>
+                            <span style={{ color: 'var(--nd-live)', fontWeight: 600 }}>
+                              ✓ ID extraherat
+                            </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Step-by-step Guide */}
-                      <div className="p-3 bg-blue-100 rounded-md text-sm text-blue-800">
-                        <div className="font-medium mb-2 flex items-center gap-1">
-                          <Info className="h-4 w-4" />
-                          Så här gör du:
+                      <div className="nd-tip">
+                        <div className="nd-tip-title">
+                          <Info className="h-3.5 w-3.5" />
+                          Så här gör du
                         </div>
-                        <ol className="list-decimal list-inside space-y-1">
+                        <ol>
                           <li>
                             <a
-                              href="https://newsdeck-389280113319.europe-west1.run.app/"
+                              href="https://workflows-lab-iap.bnu.bn.nr/"
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline font-medium"
                             >
-                              🔗 Öppna Workflows-appen →
+                              Öppna Workflows-appen <ExternalLink className="h-3 w-3 inline" />
                             </a>
                           </li>
                           <li>Välj din workflow med &quot;PostToNewsdeck&quot;-nod</li>
@@ -254,99 +239,92 @@ export function AddColumnModal({
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg flex items-center gap-2">
-                      <Info className="h-4 w-4 flex-shrink-0" />
-                      <span>Inget problem! Du kan ansluta en workflow senare via inställningar <Settings className="h-3 w-3 inline" /></span>
+                    <div className="nd-tip" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Info className="h-4 w-4 shrink-0" />
+                      <span>Inget problem! Du kan ansluta en workflow senare via kolumnens inställningar <Settings className="h-3 w-3 inline" />.</span>
                     </div>
                   )}
-                </div>
-
-                <div className="flex gap-3 pt-4 mt-6 border-t">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium"
-                    disabled={!newColumnTitle.trim()}
-                  >
-                    ✨ Skapa kolumn
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose()
-                      onTitleChange('')
-                      _onDescriptionChange('')
-                      onFlowIdChange('')
-                      onUrlExtractedChange(false)
-                      onTabChange(false)
-                    }}
-                    className="px-6 py-3 border border-input text-foreground rounded-lg hover:bg-muted"
-                  >
-                    Avbryt
-                  </button>
                 </div>
               </form>
             )
           ) : (
             // Restore archived columns
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {archivedColumns.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <div className="mb-2">📦</div>
+                <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--nd-ink-mute)' }}>
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>📦</div>
                   <div>Inga arkiverade kolumner</div>
                 </div>
               ) : (
                 archivedColumns.map((column) => (
-                  <div key={column.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium text-foreground">{column.title}</div>
+                  <div
+                    key={column.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 12, padding: 12,
+                      background: 'var(--nd-bg-soft)',
+                      border: '1px solid var(--nd-line-soft)',
+                      borderRadius: 'var(--nd-r-md)',
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--nd-ink)' }}>{column.title}</div>
                       {column.description && (
-                        <div className="text-sm text-muted-foreground mt-1">{column.description}</div>
+                        <div style={{ fontSize: 12, color: 'var(--nd-ink-mute)', marginTop: 2 }}>
+                          {column.description}
+                        </div>
                       )}
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div style={{
+                        fontSize: 11, color: 'var(--nd-ink-mute)', marginTop: 4,
+                        fontFamily: 'var(--nd-font-mono)',
+                      }}>
                         Arkiverad: {new Date(column.archivedAt || '').toLocaleDateString('sv-SE')}
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={() => onRestore(column.id)}
-                      className="ml-3 px-3 py-2 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+                      className="nd-btn nd-btn-primary"
+                      style={{ flexShrink: 0 }}
                     >
                       Återställ
                     </button>
                   </div>
                 ))
               )}
-
-              <div className="flex justify-end pt-4 mt-6 border-t">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose()
-                    onTabChange(false)
-                  }}
-                  className="px-6 py-3 border border-input text-foreground rounded-lg hover:bg-muted"
-                >
-                  Stäng
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!showArchivedColumns && (
-            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-              <div className="text-sm text-blue-800">
-                <div className="font-medium mb-1 flex items-center gap-1">
-                  <Info className="h-4 w-4" />
-                  Vad händer sen?
-                </div>
-                <div className="flex items-center gap-1">
-                  {showWorkflowInput
-                    ? <>När kolumnen är skapad börjar den ta emot nyheter från din workflow automatiskt. Du kan också se Kolumn-ID i inställningar <Settings className="h-3 w-3 inline" /> för manuell publicering.</>
-                    : <>Kolumnen får ett unikt Kolumn-ID som du hittar i inställningar <Settings className="h-3 w-3 inline" />. Använd det för att skicka data från workflows eller andra källor.</>}
-                </div>
-              </div>
             </div>
           )}
         </div>
+
+        <footer className="nd-mfoot">
+          {createdColumnId ? (
+            <button type="button" onClick={handleClose} className="nd-btn nd-btn-primary">
+              Stäng
+            </button>
+          ) : showArchivedColumns ? (
+            <button
+              type="button"
+              onClick={() => { onClose(); onTabChange(false) }}
+              className="nd-btn nd-btn-ghost"
+            >
+              Stäng
+            </button>
+          ) : (
+            <>
+              <button type="button" onClick={handleClose} className="nd-btn nd-btn-ghost">
+                Avbryt
+              </button>
+              <button
+                type="submit"
+                form="add-column-form"
+                disabled={!newColumnTitle.trim()}
+                className="nd-btn nd-btn-primary"
+              >
+                Skapa kolumn
+              </button>
+            </>
+          )}
+        </footer>
       </div>
     </div>
   )
