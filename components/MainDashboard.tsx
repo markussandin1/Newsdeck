@@ -34,19 +34,11 @@ import { GridView } from './views/GridView'
 interface MainDashboardProps {
   dashboard: DashboardType
   onDashboardUpdate: (dashboard: DashboardType) => void
-  dashboardSlug?: string
 }
 
-export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardSlug }: MainDashboardProps) {
+export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDashboardProps) {
   const router = useRouter()
   const pathname = usePathname()
-
-  // Empty geo filters (geo filtering removed – replaced by geo-service UUID fields)
-  const emptyGeoFilters = useMemo(() => ({
-    regionCodes: [] as string[],
-    municipalityCodes: [] as string[],
-    showItemsWithoutLocation: true
-  }), [])
 
   // Dashboard data management
   const {
@@ -59,7 +51,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     updateColumnData,
   } = useDashboardData({
     dashboard,
-    geoFilters: emptyGeoFilters
   })
 
   // Notification settings
@@ -93,7 +84,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
     columns: dashboard?.columns || [],
     updateColumnData,
     onNewItems: handleNewItems,
-    geoFilters: emptyGeoFilters
   })
 
   usePendingImagePolling({
@@ -251,8 +241,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             item.location.area,
             item.location.street,
             item.location.name,
-            item.location.regionName,
-            item.location.municipalityName,
           ].filter(Boolean).join(' ').toLowerCase()
         : ''
       const searchableText = [item.title, item.description, item.source, item.category, item.severity]
@@ -430,7 +418,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
             getTotalNewsCount={getTotalNewsCount}
             navigateToDashboard={navigateToDashboard}
             onOpenNotificationSettings={() => setIsNotificationSettingsOpen(true)}
-            onNavigateAway={stopAllPolling}
             viewMode={viewMode}
             setViewMode={setViewMode}
             searchQuery={searchQuery}
@@ -617,7 +604,6 @@ export default function MainDashboard({ dashboard, onDashboardUpdate, dashboardS
                 <ColumnCard
                   key={column.id}
                   column={column}
-                  dashboardSlug={dashboardSlug || dashboard.slug || dashboard.id}
                   items={filteredColumnData[column.id] || []}
                   isEditing={editingColumn === column.id}
                   editTitle={editTitle}

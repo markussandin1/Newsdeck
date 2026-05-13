@@ -1,6 +1,6 @@
 import { Pool } from 'pg'
 import { parse as parseConnectionString } from 'pg-connection-string'
-import { NewsItem, Dashboard, DashboardColumn, Country, Region, Municipality, GeoFilters } from './types'
+import { NewsItem, Dashboard, DashboardColumn } from './types'
 import { logger } from './logger'
 
 // PostgreSQL connection pool
@@ -165,75 +165,6 @@ function buildBatchInsert(
   return chunks
 }
 
-// ─── Helper types and functions for geographic filtering ──────────────────────
-interface WhereClauseResult {
-  clause: string
-  params: (string[] | boolean)[]
-}
-
-/**
- * Build WHERE clause for geographic filtering in SQL queries
- *
- * @param filters - Geographic filters (region and municipality codes)
- * @param startParamIndex - Starting index for SQL parameters (e.g., 2 if $1 is already used)
- * @returns Object with SQL clause string and parameter array
- */
-function buildGeographicWhereClause(
-  filters: GeoFilters,
-  startParamIndex: number
-): WhereClauseResult {
-  const conditions: string[] = []
-  const params: (string[] | boolean)[] = []
-  let paramIndex = startParamIndex
-
-  const hasFilters = filters.regionCodes.length > 0 || filters.municipalityCodes.length > 0
-
-  if (!hasFilters) {
-    return { clause: '', params: [] }
-  }
-
-  const itemConditions: string[] = []
-
-  // Municipality filtering
-  if (filters.municipalityCodes.length > 0) {
-    // Direct municipality match
-    itemConditions.push(`ni.municipality_code = ANY($${paramIndex})`)
-    params.push(filters.municipalityCodes)
-    paramIndex++
-  }
-
-  // Region filtering (includes both explicit region selection AND implicit from municipalities)
-  if (filters.regionCodes.length > 0) {
-    // Region-level events (items with regionCode but NO municipalityCode)
-    itemConditions.push(
-      `(ni.region_code = ANY($${paramIndex}) AND ni.municipality_code IS NULL)`
-    )
-    params.push(filters.regionCodes)
-    paramIndex++
-  }
-
-  if (itemConditions.length === 0) {
-    return { clause: '', params: [] }
-  }
-
-  // Combine with OR
-  const locationCondition = `(${itemConditions.join(' OR ')})`
-
-  // Handle items without location codes
-  if (filters.showItemsWithoutLocation) {
-    conditions.push(
-      `(${locationCondition} OR (ni.country_code IS NULL AND ni.region_code IS NULL AND ni.municipality_code IS NULL))`
-    )
-  } else {
-    conditions.push(locationCondition)
-  }
-
-  return {
-    clause: conditions.join(' AND '),
-    params
-  }
-}
-
 export const persistentDb = {
   // News items
   addNewsItem: async (item: NewsItem) => {
@@ -247,13 +178,11 @@ export const persistentDb = {
       const result = await pool.query(
         `INSERT INTO news_items (
           source_id, workflow_id, source, timestamp, title, description,
-          news_value, category, severity, location, extra, raw, created_in_db,
-          country_code, region_country_code, region_code,
-          municipality_country_code, municipality_region_code, municipality_code
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          news_value, category, severity, location, extra, raw, created_in_db
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING db_id`,
         [
-          item.id || null,  // Original source ID (can be null)
+          item.id || null,
           item.workflowId,
           item.source,
           item.timestamp,
@@ -266,12 +195,6 @@ export const persistentDb = {
           JSON.stringify({ ...(item.extra || {}), trafficCamera: item.trafficCamera }),
           JSON.stringify(item.raw || {}),
           itemWithTimestamp.createdInDb,
-          item.countryCode || null,
-          item.regionCountryCode || null,
-          item.regionCode || null,
-          item.municipalityCountryCode || null,
-          item.municipalityRegionCode || null,
-          item.municipalityCode || null
         ]
       )
 
@@ -300,7 +223,7 @@ export const persistentDb = {
 
       // Build all rows as a flat array for a single batch INSERT
       const rows = itemsWithTimestamp.map(item => [
-        item.id || null,  // Original source ID (can be null)
+        item.id || null,
         item.workflowId,
         item.source,
         item.timestamp,
@@ -313,20 +236,8 @@ export const persistentDb = {
         JSON.stringify({ ...(item.extra || {}), trafficCamera: item.trafficCamera }),
         JSON.stringify(item.raw || {}),
         item.createdInDb,
-        item.countryCode || null,
-        item.regionCountryCode || null,
-        item.regionCode || null,
-        item.municipalityCountryCode || null,
-        item.municipalityRegionCode || null,
-        item.municipalityCode || null,
-        item.location?.regionGeoId || null,
-        item.location?.regionName || null,
-        item.location?.municipalityGeoId || null,
-        item.location?.municipalityName || null,
       ])
 
-      // Process in chunks to stay within PostgreSQL's 65 535 parameter limit
-      // (23 params per row → chunks of 1 000 rows = 23 000 params max)
       const chunks = buildBatchInsert(rows)
       const insertedItems: typeof itemsWithTimestamp = []
       let itemOffset = 0
@@ -335,10 +246,7 @@ export const persistentDb = {
         const result = await client.query(
           `INSERT INTO news_items (
             source_id, workflow_id, source, timestamp, title, description,
-            news_value, category, severity, location, extra, raw, created_in_db,
-            country_code, region_country_code, region_code,
-            municipality_country_code, municipality_region_code, municipality_code,
-            region_geo_id, region_name, municipality_geo_id, municipality_name
+            news_value, category, severity, location, extra, raw, created_in_db
           ) VALUES ${chunk.text}
           RETURNING db_id`,
           chunk.values
@@ -377,13 +285,7 @@ export const persistentDb = {
           source, timestamp, title, description,
           news_value as "newsValue",
           category, severity, location, extra, raw,
-          created_in_db as "createdInDb",
-          country_code as "countryCode",
-          region_country_code as "regionCountryCode",
-          region_code as "regionCode",
-          municipality_country_code as "municipalityCountryCode",
-          municipality_region_code as "municipalityRegionCode",
-          municipality_code as "municipalityCode"
+          created_in_db as "createdInDb"
         FROM news_items
         ORDER BY created_in_db DESC, timestamp DESC`
       )
@@ -420,13 +322,7 @@ export const persistentDb = {
           source, timestamp, title, description,
           news_value as "newsValue",
           category, severity, location, extra, raw,
-          created_in_db as "createdInDb",
-          country_code as "countryCode",
-          region_country_code as "regionCountryCode",
-          region_code as "regionCode",
-          municipality_country_code as "municipalityCountryCode",
-          municipality_region_code as "municipalityRegionCode",
-          municipality_code as "municipalityCode"
+          created_in_db as "createdInDb"
         FROM news_items
         ORDER BY created_in_db DESC, timestamp DESC
         LIMIT $1`,
@@ -449,95 +345,6 @@ export const persistentDb = {
       })
     } catch (error) {
       logger.error('db.getRecentNewsItems.error', { error })
-      throw error
-    }
-  },
-
-  getTrafficCameraItems: async (limit = 50, offset = 0) => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `SELECT
-          db_id AS "dbId",
-          source_id AS "id",
-          workflow_id AS "workflowId",
-          source,
-          timestamp,
-          title,
-          description,
-          news_value AS "newsValue",
-          category,
-          severity,
-          location,
-          country_code AS "countryCode",
-          region_country_code AS "regionCountryCode",
-          region_code AS "regionCode",
-          municipality_country_code AS "municipalityCountryCode",
-          municipality_region_code AS "municipalityRegionCode",
-          municipality_code AS "municipalityCode",
-          created_in_db AS "createdInDb",
-          extra,
-          raw
-        FROM news_items
-        WHERE
-          extra->'trafficCamera' IS NOT NULL
-          AND COALESCE(extra->'trafficCamera'->>'status', 'pending') != 'failed'
-          AND timestamp <= NOW()
-        ORDER BY timestamp DESC
-        LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      )
-
-      return result.rows.map(row => {
-        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
-        const trafficCamera = extra?.trafficCamera || null
-
-        return {
-          dbId: row.dbId,
-          id: row.id,
-          workflowId: row.workflowId,
-          source: row.source,
-          timestamp: row.timestamp,
-          title: row.title,
-          description: row.description,
-          newsValue: row.newsValue,
-          category: row.category,
-          severity: row.severity,
-          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-          countryCode: row.countryCode,
-          regionCountryCode: row.regionCountryCode,
-          regionCode: row.regionCode,
-          municipalityCountryCode: row.municipalityCountryCode,
-          municipalityRegionCode: row.municipalityRegionCode,
-          municipalityCode: row.municipalityCode,
-          createdInDb: row.createdInDb,
-          extra,
-          trafficCamera,
-          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-        }
-      })
-    } catch (error) {
-      logger.error('db.getTrafficCameraItems.error', { error, limit, offset })
-      throw error
-    }
-  },
-
-  getTrafficCameraCount: async () => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `SELECT COUNT(*) AS count
-         FROM news_items
-         WHERE
-           extra->'trafficCamera' IS NOT NULL
-           AND COALESCE(extra->'trafficCamera'->>'status', 'pending') != 'failed'
-           AND timestamp <= NOW()`
-      )
-      return parseInt(result.rows[0].count, 10)
-    } catch (error) {
-      logger.error('db.getTrafficCameraCount.error', { error })
       throw error
     }
   },
@@ -585,13 +392,7 @@ export const persistentDb = {
           source, timestamp, title, description,
           news_value as "newsValue",
           category, severity, location, extra, raw,
-          created_in_db as "createdInDb",
-          country_code as "countryCode",
-          region_country_code as "regionCountryCode",
-          region_code as "regionCode",
-          municipality_country_code as "municipalityCountryCode",
-          municipality_region_code as "municipalityRegionCode",
-          municipality_code as "municipalityCode"
+          created_in_db as "createdInDb"
         FROM news_items
         ORDER BY created_in_db DESC, timestamp DESC
         LIMIT $1 OFFSET $2`,
@@ -877,73 +678,41 @@ export const persistentDb = {
     }
   },
 
-  getColumnData: async (columnId: string, limit?: number, geoFilters?: GeoFilters) => {
+  getColumnData: async (columnId: string, limit?: number) => {
     const pool = getPool()
 
     try {
-      // Build WHERE clause for geographic filtering
-      let whereClause = 'cd.column_id = $1'
-      const params: (string | number | string[] | boolean)[] = [columnId]
-      let paramIndex = 2
-
-      if (geoFilters) {
-        const geoConditions = buildGeographicWhereClause(geoFilters, paramIndex)
-        if (geoConditions.clause) {
-          whereClause += ` AND (${geoConditions.clause})`
-          params.push(...geoConditions.params)
-          paramIndex += geoConditions.params.length
-        }
-      }
-
       const query = limit
-        ? `SELECT cd.data, cd.news_item_db_id,
-                  ni.country_code, ni.region_code, ni.municipality_code,
-                  ni.region_geo_id, ni.region_name, ni.municipality_geo_id, ni.municipality_name
-           FROM column_data cd
-           LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-           WHERE ${whereClause}
-           ORDER BY cd.created_at DESC LIMIT $${paramIndex}`
-        : `SELECT cd.data, cd.news_item_db_id,
-                  ni.country_code, ni.region_code, ni.municipality_code,
-                  ni.region_geo_id, ni.region_name, ni.municipality_geo_id, ni.municipality_name
-           FROM column_data cd
-           LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-           WHERE ${whereClause}
-           ORDER BY cd.created_at DESC`
+        ? `SELECT data, news_item_db_id
+           FROM column_data
+           WHERE column_id = $1
+           ORDER BY created_at DESC LIMIT $2`
+        : `SELECT data, news_item_db_id
+           FROM column_data
+           WHERE column_id = $1
+           ORDER BY created_at DESC`
 
+      const params: (string | number)[] = [columnId]
       if (limit) params.push(limit)
 
       const result = await pool.query(query, params)
 
       return result.rows.map(row => {
         const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
-        // CRITICAL FIX: Ensure dbId and geographic codes are always set from the database
-        // This prevents items from being lost during re-ingestion and ensures filters work correctly
-        const location = data.location ? {
-          ...data.location,
-          regionGeoId: row.region_geo_id || data.location.regionGeoId,
-          regionName: row.region_name || data.location.regionName,
-          municipalityGeoId: row.municipality_geo_id || data.location.municipalityGeoId,
-          municipalityName: row.municipality_name || data.location.municipalityName,
-        } : data.location
         return {
           ...data,
           dbId: row.news_item_db_id,
-          countryCode: row.country_code || data.countryCode,
-          regionCode: row.region_code || data.regionCode,
-          municipalityCode: row.municipality_code || data.municipalityCode,
-          location,
         }
       })
     } catch (error) {
-      logger.error('db.getColumnData.error', { error, columnId, geoFilters })
+      logger.error('db.getColumnData.error', { error, columnId })
       throw error
     }
   },
 
   // Batch column data operations (optimized for performance)
   // Uses a single SQL query with ROW_NUMBER() window function to enforce per-column limit
-  getColumnDataBatch: async (columnIds: string[], limit: number = 500, geoFilters?: GeoFilters) => {
+  getColumnDataBatch: async (columnIds: string[], limit: number = 500) => {
     const pool = await getPool()
 
     try {
@@ -951,74 +720,40 @@ export const persistentDb = {
         return {}
       }
 
-      // Build WHERE clause for geographic filtering
-      // $1 = columnIds, $2 = limit per column, geo params start at $3
-      let additionalWhere = ''
-      const geoParams: (string[] | boolean)[] = []
-
-      if (geoFilters) {
-        const geoConditions = buildGeographicWhereClause(geoFilters, 3) // Start at $3 since $1=columnIds, $2=limit
-        if (geoConditions.clause) {
-          additionalWhere = ` AND (${geoConditions.clause})`
-          geoParams.push(...geoConditions.params)
-        }
-      }
-
-      // Window function ranks rows per column by recency, then we filter to top N
       const query = `
-        SELECT column_id, data, news_item_db_id, country_code, region_code, municipality_code,
-               region_geo_id, region_name, municipality_geo_id, municipality_name
+        SELECT column_id, data, news_item_db_id
         FROM (
-          SELECT cd.column_id, cd.data, cd.news_item_db_id,
-                 ni.country_code, ni.region_code, ni.municipality_code,
-                 ni.region_geo_id, ni.region_name, ni.municipality_geo_id, ni.municipality_name,
-                 ROW_NUMBER() OVER (PARTITION BY cd.column_id ORDER BY cd.created_at DESC) AS rn
-          FROM column_data cd
-          LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-          WHERE cd.column_id = ANY($1)${additionalWhere}
+          SELECT column_id, data, news_item_db_id,
+                 ROW_NUMBER() OVER (PARTITION BY column_id ORDER BY created_at DESC) AS rn
+          FROM column_data
+          WHERE column_id = ANY($1)
         ) ranked
         WHERE rn <= $2
         ORDER BY column_id, rn
       `
 
-      const result = await pool.query(query, [columnIds, limit, ...geoParams])
+      const result = await pool.query(query, [columnIds, limit])
 
-      // Group results by column_id
       const columnData: Record<string, NewsItem[]> = {}
 
-      // Initialize empty arrays for all requested columns
       columnIds.forEach(id => {
         columnData[id] = []
       })
 
-      // Populate with actual data
       result.rows.forEach(row => {
         const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
         if (!columnData[row.column_id]) {
           columnData[row.column_id] = []
         }
-        // CRITICAL FIX: Ensure dbId and geographic codes are always set from the database
-        // This prevents items from being lost during re-ingestion and ensures filters work correctly
-        const location = data.location ? {
-          ...data.location,
-          regionGeoId: row.region_geo_id || data.location.regionGeoId,
-          regionName: row.region_name || data.location.regionName,
-          municipalityGeoId: row.municipality_geo_id || data.location.municipalityGeoId,
-          municipalityName: row.municipality_name || data.location.municipalityName,
-        } : data.location
         columnData[row.column_id].push({
           ...data,
           dbId: row.news_item_db_id,
-          countryCode: row.country_code || data.countryCode,
-          regionCode: row.region_code || data.regionCode,
-          municipalityCode: row.municipality_code || data.municipalityCode,
-          location,
         })
       })
 
       return columnData
     } catch (error) {
-      logger.error('db.getColumnDataBatch.error', { error, columnCount: columnIds.length, geoFilters })
+      logger.error('db.getColumnDataBatch.error', { error, columnCount: columnIds.length })
       throw error
     }
   },
@@ -1195,13 +930,7 @@ export const persistentDb = {
           source, timestamp, title, description,
           news_value as "newsValue",
           category, severity, location, extra, raw,
-          created_in_db as "createdInDb",
-          country_code as "countryCode",
-          region_country_code as "regionCountryCode",
-          region_code as "regionCode",
-          municipality_country_code as "municipalityCountryCode",
-          municipality_region_code as "municipalityRegionCode",
-          municipality_code as "municipalityCode"
+          created_in_db as "createdInDb"
         FROM news_items
         WHERE workflow_id = $1
         ORDER BY created_in_db DESC, timestamp DESC`,
@@ -1241,13 +970,7 @@ export const persistentDb = {
           source, timestamp, title, description,
           news_value as "newsValue",
           category, severity, location, extra, raw,
-          created_in_db as "createdInDb",
-          country_code as "countryCode",
-          region_country_code as "regionCountryCode",
-          region_code as "regionCode",
-          municipality_country_code as "municipalityCountryCode",
-          municipality_region_code as "municipalityRegionCode",
-          municipality_code as "municipalityCode"
+          created_in_db as "createdInDb"
         FROM news_items
         WHERE workflow_id = ANY($1)
         ORDER BY created_in_db DESC, timestamp DESC`,
@@ -1655,105 +1378,6 @@ export const persistentDb = {
     } catch (error) {
       logger.error('db.isConnected.error', { error })
       return false
-    }
-  },
-
-  // ========================================
-  // Geographic Metadata Functions
-  // ========================================
-
-  /**
-   * Get all countries
-   */
-  getCountries: async (): Promise<Country[]> => {
-    try {
-      const pool = getPool()
-      const result = await pool.query(`
-        SELECT code, name, name_local as "nameLocal", created_at as "createdAt"
-        FROM countries
-        ORDER BY name
-      `)
-      return result.rows
-    } catch (error) {
-      logger.error('db.getCountries.error', { error })
-      throw error
-    }
-  },
-
-  /**
-   * Get all regions (counties) for a specific country
-   */
-  getRegionsByCountry: async (countryCode: string): Promise<Region[]> => {
-    try {
-      const pool = getPool()
-      const result = await pool.query(`
-        SELECT
-          country_code as "countryCode",
-          code,
-          name,
-          name_short as "nameShort",
-          is_active as "isActive",
-          created_at as "createdAt"
-        FROM regions
-        WHERE country_code = $1 AND is_active = TRUE
-        ORDER BY name
-      `, [countryCode])
-      return result.rows
-    } catch (error) {
-      logger.error('db.getRegionsByCountry.error', { error, countryCode })
-      throw error
-    }
-  },
-
-  /**
-   * Get all municipalities for a specific region
-   */
-  getMunicipalitiesByRegion: async (countryCode: string, regionCode: string): Promise<Municipality[]> => {
-    try {
-      const pool = getPool()
-      const result = await pool.query(`
-        SELECT
-          country_code as "countryCode",
-          region_code as "regionCode",
-          code,
-          name,
-          is_active as "isActive",
-          merged_into_code as "mergedIntoCode",
-          created_at as "createdAt"
-        FROM municipalities
-        WHERE country_code = $1 AND region_code = $2 AND is_active = TRUE
-        ORDER BY name
-      `, [countryCode, regionCode])
-      return result.rows
-    } catch (error) {
-      logger.error('db.getMunicipalitiesByRegion.error', { error, countryCode, regionCode })
-      throw error
-    }
-  },
-
-  /**
-   * Get all municipalities for a country (across all regions)
-   */
-  getMunicipalitiesByCountry: async (countryCode: string): Promise<Municipality[]> => {
-    try {
-      const pool = getPool()
-      const result = await pool.query(`
-        SELECT
-          country_code as "countryCode",
-          region_code as "regionCode",
-          code,
-          name,
-          is_active as "isActive",
-          merged_into_code as "mergedIntoCode",
-          created_at as "createdAt"
-        FROM municipalities
-        WHERE country_code = $1 AND is_active = TRUE
-        ORDER BY name
-      `, [countryCode])
-      return result.rows
-    } catch (error) {
-      logger.error('db.getMunicipalitiesByCountry.error', { error, countryCode })
-      throw error
     }
   },
 

@@ -132,7 +132,6 @@ interface NewsItem {
 - `/api/dashboards` - Dashboard management (returns max 500 most recent items per column)
   - `?structureOnly=true` - Skip column data, return only dashboard structure (used by initial page load)
 - `/api/news-items` - NewsItem storage and retrieval (intern användning)
-- `/api/geo` - Geographic metadata API (countries, regions, municipalities)
 
 **Atom Feed Routes** (`app/feeds/`):
 - `/feeds/columns/[id]` - Atom 1.0-feed med 50 senaste items från en kolumn
@@ -143,21 +142,10 @@ interface NewsItem {
 - Hjälpbibliotek: `lib/feeds/atom.ts`
 - Feed-ikoner (Rss) i kolumn-header och dashboard-header kopierar URL till clipboard
 
-**Geographic Filtering System** (added 2025-12-29):
-- **Database Schema**: 3 reference tables for geographic metadata
-  - `countries` - ISO country codes (e.g., 'SE' for Sweden)
-  - `regions` - Swedish counties (län) with SCB codes (e.g., '01' = Stockholm)
-  - `municipalities` - Swedish municipalities (kommuner) with SCB codes
-- **Ingestion Pipeline** (`lib/services/ingestion.ts`):
-  - Tar emot `columnId` (primärt) eller `workflowId` (bakåtkompatibilitet)
-  - Litar på att Workflows sätter geo-koder i förväg (countryCode, regionCode, municipalityCode)
-  - Validerar format: countryCode = 2-bokstavs ISO, regionCode = 2-siffrig SCB, municipalityCode = 4-siffrig SCB
-  - Loggar warning vid ogiltigt format men kraschar inte — location.name sparas ändå i JSONB
-- **Frontend Components**:
-  - `lib/dashboard/hooks/useGeoFilters.ts` - Filter state management with localStorage
-  - `components/GeoFilterPanel.tsx` - Collapsible filter UI with region/municipality selection
-  - Integrated into `MainDashboard.tsx` - MapPin button next to search input
-  - Filters combine with text search (AND operation)
+**Ingestion Pipeline** (`lib/services/ingestion.ts`):
+- Tar emot `columnId` (primärt) eller `workflowId` (bakåtkompatibilitet)
+- Sparar `location`-objektet rakt av till JSONB. Ingen validering eller mappning av geo-koder sker i Newsdeck — eventuell geo-berikning ska ske i Workflows innan posten skickas hit.
+- Reservtabellerna `countries`, `regions`, `municipalities` finns kvar i databasen men används inte längre av koden.
 
 **Performance Limits**:
 - **Column Item Limit**: 500 most recent items per column (defined in dashboard API routes)
@@ -304,7 +292,7 @@ The application uses a **denormalized data architecture** with two data sources 
 
 1. **`news_items`** (Source of Truth)
    - Stores each news item exactly once
-   - Contains all authoritative data: `db_id`, `title`, `timestamp`, `country_code`, `region_code`, `municipality_code`, etc.
+   - Contains all authoritative data: `db_id`, `title`, `timestamp`, `location` (JSONB), etc.
    - This is the **single source of truth** for news item metadata
 
 2. **`column_data`** (Denormalized Cache)
@@ -340,53 +328,9 @@ WHERE ci.column_id = 'abc123'
 - ⚠️ More disk space
 - ⚠️ Maintenance burden when adding new fields
 
-### Synchronization Fixes Applied
+### Reading column data
 
-**When reading column data**, we now **override stale JSONB values** with fresh data from `news_items`:
-
-**In `lib/db-postgresql.ts`** (both `getColumnData` and `getColumnDataBatch`):
-```typescript
-// Join with news_items to get current values
-SELECT cd.data, cd.news_item_db_id,
-       ni.country_code, ni.region_code, ni.municipality_code
-FROM column_data cd
-LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-
-// Override JSONB with current values from news_items
-return {
-  ...data,
-  dbId: row.news_item_db_id,              // Fix 2025-12-01
-  countryCode: row.country_code || data.countryCode,         // Fix 2025-12-30
-  regionCode: row.region_code || data.regionCode,            // Fix 2025-12-30
-  municipalityCode: row.municipality_code || data.municipalityCode  // Fix 2025-12-30
-}
-```
-
-**Why This Pattern?**
-- `news_items` is the authoritative source
-- JSONB in `column_data` may contain stale/incorrect values
-- We pull fresh values on every read to prevent filtering bugs
-
-### Critical Rules for Adding New Fields
-
-**When adding a new field to NewsItem:**
-
-1. ✅ Add column to `news_items` table
-2. ✅ Add field to TypeScript interface
-3. ⚠️ **MUST** add synchronization in `getColumnData` and `getColumnDataBatch`:
-   ```typescript
-   // In both functions, add:
-   SELECT cd.data, cd.news_item_db_id, ni.your_new_field
-   FROM column_data cd
-   LEFT JOIN news_items ni ON ni.db_id = cd.news_item_db_id
-
-   // In return mapping:
-   return {
-     ...data,
-     yourNewField: row.your_new_field || data.yourNewField
-   }
-   ```
-4. ⚠️ Otherwise filtering/display bugs will occur as JSONB becomes stale
+`getColumnData` och `getColumnDataBatch` läser endast från `column_data`-tabellen. `dbId` sätts från radens `news_item_db_id`; övriga fält kommer från JSONB-`data`-kolumnen. Om ett fält måste vara strikt synkat med `news_items` får man lägga till en explicit JOIN och override-mappning vid behov.
 
 
 ## External Integration
@@ -423,7 +367,7 @@ POST /api/workflows
 - Kolumn-ID hittas i kolumnens inställningar i UI:t
 - Kräver API-nyckel i `Authorization: Bearer <key>`-header
 - `severity` är en fri textsträng (inga enum-krav)
-- `countryCode` måste vara en enskild 2-bokstavs ISO-kod (t.ex. `"SE"`) — multi-country sparas utan geokod
+- `location` sparas rakt av i JSONB — geo-koder valideras inte och används inte för filtrering, men kan användas för framtida berikning från egen geo-service.
 - Retroaktiv routing via `workflowId` stöds fortfarande för bakåtkompatibilitet men fasas ut
 
 **GET /api/columns/{id}** - Hämta kolumndata (publik, ingen auth)
@@ -432,40 +376,16 @@ POST /api/workflows
 
 Äldre integreringar kan skicka `workflowId` istället för `columnId`. Systemet matchar då mot kolumner vars `flowId` stämmer överens. Stödet finns kvar men ny kod ska alltid använda `columnId` direkt.
 
-**Event Schema**:
-- `location.countryCode`: ISO 3166-1 alpha-2, måste vara enskild kod (t.ex. `"SE"`)
-- `location.regionCode`: SCB länskod, 2-siffrig (t.ex. `"01"` Stockholm, `"24"` Västerbotten)
-- `location.municipalityCode`: SCB kommunkod, 4-siffrig (t.ex. `"0180"`)
-- Okända/ogiltiga geokoder ignoreras utan krasch — location.name sparas ändå i JSONB
-
 ## Header Architecture
 
 **Global Header Component**:
 - `components/GlobalHeader.tsx` - Unified header used across all pages
-- Handles: logo, weather warnings, weather display, date/time, user menu
-- Accepts `contextContent` prop for page-specific content (Zone 2)
-- Eliminates code duplication between different pages
-- Used by: `DashboardHeader.tsx` and `app/dashboards/page.tsx`
+- Accepts `contextContent` prop för sidspecifikt innehåll
+- Used by: `DashboardHeader.tsx` och `app/dashboards/page.tsx`
 
-## Weather Display Architecture
+## Weather Display
 
-**Weather Cycle Component** (Desktop & Mobile):
-- `components/WeatherCycle.tsx` - Pure display component that cycles through cities
-- Displays one city at a time with 5-second intervals
-- Receives weather data via `useWeather()` hook (managed by GlobalHeader)
-- Pauses on hover/focus for accessibility
-- Used in: `GlobalHeader.tsx` and `MainDashboard.tsx` (mobile)
-
-**Weather Warnings (SMHI Integration)**:
-- `components/WeatherWarningBanner.tsx` - Prominent banner showing first warning with headline and time
-- `components/WeatherWarningModal.tsx` - Detailed warning popup with filters and map
-- `components/SMHIWarningIcon.tsx` - Shared SVG icon component
-- Severity levels: Gul (yellow circle), Orange (diamond), Röd (red triangle)
-- Banner displays above weather/datetime in both desktop and mobile views
-
-**Data Hooks**:
-- `lib/hooks/useWeather.ts` - Fetches weather data from `/api/weather`, caches for 1 hour
-- `lib/hooks/useWeatherWarnings.ts` - Fetches SMHI warnings from `/api/weather-warnings`, refreshes every 5 minutes
+- `components/WeatherCycle.tsx` cyklar genom städer (5s/intervall), tar emot data via `useWeather()` (`lib/hooks/useWeather.ts` mot `/api/weather`). Inga vädervarningar — workflows skickar dem som vanliga events sedan kodrensningen.
 
 ## Notification System
 
@@ -520,58 +440,6 @@ interface NotificationSettings {
 - Display mode: standalone (hides browser UI when installed)
 
 
-## Geographic Service
-
-**Location-Based Filtering** (added 2025-12-29):
-- Multi-country support with ISO 3166-2 codes
-- Hierarchical data: countries → regions (län) → municipalities (kommuner)
-- Frontend filter panel for geographic filtering
-
-**Data Model**:
-```typescript
-interface Country {
-  code: string;          // ISO 3166-1 alpha-2 (e.g., "SE")
-  name: string;          // "Sweden"
-}
-
-interface Region {
-  countryCode: string;   // "SE"
-  code: string;          // SCB 2-siffrig (e.g., "01" for Stockholm)
-  name: string;          // "Stockholms län"
-  nameShort?: string;    // "Stockholm"
-}
-
-interface Municipality {
-  countryCode: string;   // "SE"
-  regionCode: string;    // "01"
-  code: string;          // "0114"
-  name: string;          // "Upplands Väsby"
-}
-```
-
-**API Endpoints**:
-- `GET /api/geo` - Returns all geographic metadata (21 regions, 290 municipalities for Sweden)
-- `GET /api/geo?type=regions&countryCode=SE` - Returns regions for a country
-- `GET /api/geo?type=municipalities&countryCode=SE&regionCode=01` - Returns municipalities
-
-**Cache Settings**:
-- Browser cache: 5 minutes (`max-age=300`)
-- CDN cache: 5 minutes
-
-**Database Schema**:
-- `countries` - Country reference data
-- `regions` - Regions/counties with SCB codes
-- `municipalities` - Municipalities with parent region references
-- Database migration: `db/migrations/001_geographic_metadata.sql`
-
-**Frontend Components**:
-- `lib/dashboard/hooks/useGeoFilters.ts` - Filter state management with localStorage persistence
-- `components/GeoFilterPanel.tsx` - UI with search, expandable regions, municipality checkboxes
-- `components/MainDashboard.tsx` - Integrated with existing text search filters
-
-**Current Data**:
-- ✅ Sweden (SE): 21 regions, 290 municipalities
-
 ## Current Status
 
 The application is a **production-ready system** with:
@@ -584,5 +452,4 @@ The application is a **production-ready system** with:
 - ✅ Desktop browser notifications (Web Notifications API, Chrome desktop only)
 - ✅ Configurable audio/desktop notifications per column and globally
 - ✅ PWA support for better notification UX
-- ✅ Geographic filtering with multi-country support (ISO 3166-2)
 

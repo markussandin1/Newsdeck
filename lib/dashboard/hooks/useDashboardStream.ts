@@ -7,11 +7,6 @@ interface UseDashboardStreamProps {
   columns: DashboardColumn[]
   updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void
   onNewItems?: (columnId: string, items: NewsItem[]) => void
-  geoFilters: {
-    regionCodes: string[]
-    municipalityCodes: string[]
-    showItemsWithoutLocation: boolean
-  }
 }
 
 interface UseDashboardStreamReturn {
@@ -34,19 +29,16 @@ export function useDashboardStream({
   columns,
   updateColumnData,
   onNewItems,
-  geoFilters,
 }: UseDashboardStreamProps): UseDashboardStreamReturn {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
 
   // Refs to avoid stale closures
   const columnsRef = useRef(columns)
-  const geoFiltersRef = useRef(geoFilters)
   const updateColumnDataRef = useRef(updateColumnData)
   const onNewItemsRef = useRef(onNewItems)
   const isInitialConnectionRef = useRef(true)
 
   columnsRef.current = columns
-  geoFiltersRef.current = geoFilters
   updateColumnDataRef.current = updateColumnData
   onNewItemsRef.current = onNewItems
 
@@ -68,17 +60,6 @@ export function useDashboardStream({
 
     const params = new URLSearchParams()
     params.set('columns', activeCols.map(c => c.id).join(','))
-
-    const filters = geoFiltersRef.current
-    if (filters.regionCodes.length > 0) {
-      filters.regionCodes.forEach(code => params.append('regionCode', code))
-    }
-    if (filters.municipalityCodes.length > 0) {
-      filters.municipalityCodes.forEach(code => params.append('municipalityCode', code))
-    }
-    if (filters.showItemsWithoutLocation !== undefined) {
-      params.set('showItemsWithoutLocation', String(filters.showItemsWithoutLocation))
-    }
 
     return `/api/stream?${params.toString()}`
   }, [])
@@ -263,10 +244,6 @@ export function useDashboardStream({
   }, [
     // Re-connect when active column list changes (archived state or column set)
     columns.filter(c => !c.isArchived).map(c => c.id).join(','),
-    // Re-connect when geo filters change
-    geoFilters.regionCodes.join(','),
-    geoFilters.municipalityCodes.join(','),
-    String(geoFilters.showItemsWithoutLocation),
   ])
 
   // -------------------------------------------------------------------------

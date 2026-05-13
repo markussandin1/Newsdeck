@@ -18,7 +18,6 @@ interface DashboardHeaderProps {
   getTotalNewsCount: () => number;
   navigateToDashboard: (slug: string) => void;
   onOpenNotificationSettings?: () => void;
-  onNavigateAway?: () => void;
   /** Desktop view mode state */
   viewMode: 'columns' | 'pulse' | 'grid';
   setViewMode: (mode: 'columns' | 'pulse' | 'grid') => void;
@@ -38,7 +37,6 @@ export function DashboardHeader({
   getTotalNewsCount: _getTotalNewsCount,
   navigateToDashboard,
   onOpenNotificationSettings,
-  onNavigateAway,
   viewMode,
   setViewMode,
   searchQuery,
@@ -207,7 +205,6 @@ export function DashboardHeader({
       dashboardId={dashboard.id}
       onLogout={handleLogout}
       onOpenNotificationSettings={onOpenNotificationSettings}
-      onNavigateAway={onNavigateAway}
     />
   );
 }
