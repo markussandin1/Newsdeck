@@ -84,10 +84,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <MainDashboard 
+    <MainDashboard
       dashboard={dashboard}
       onDashboardUpdate={setDashboard}
-      dashboardSlug={slug}
     />
   )
 }

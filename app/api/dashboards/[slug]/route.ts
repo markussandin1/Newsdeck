@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NewsItem, GeoFilters } from '@/lib/types'
+import { NewsItem } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
@@ -10,23 +10,8 @@ export async function GET(
     const params = await context.params
     const slug = params.slug
 
-    // Parse query parameters
     const { searchParams } = new URL(request.url)
-
-    // structureOnly=true skips column data computation (used by page.tsx initial load)
     const structureOnly = searchParams.get('structureOnly') === 'true'
-
-    const geoFilters: GeoFilters | undefined = (() => {
-      const regionCodes = searchParams.getAll('regionCode')
-      const municipalityCodes = searchParams.getAll('municipalityCode')
-      const showItemsWithoutLocation = searchParams.get('showItemsWithoutLocation') === 'true'
-
-      // Only create filter object if filters are active
-      if (regionCodes.length > 0 || municipalityCodes.length > 0) {
-        return { regionCodes, municipalityCodes, showItemsWithoutLocation }
-      }
-      return undefined
-    })()
 
     let dashboard
 
@@ -57,7 +42,7 @@ export async function GET(
       columnIds.forEach((id: string) => { columnData[id] = [] })
       if (columnIds.length > 0) {
         try {
-          const batchData = await db.getColumnDataBatch(columnIds, COLUMN_ITEM_LIMIT, geoFilters)
+          const batchData = await db.getColumnDataBatch(columnIds, COLUMN_ITEM_LIMIT)
           Object.assign(columnData, batchData)
         } catch (error) {
           console.error('Error fetching column data batch:', error)

@@ -7,7 +7,6 @@ import { ColumnContent } from './ColumnContent'
 
 interface ColumnCardProps {
   column: DashboardColumn
-  dashboardSlug: string
   items: NewsItemType[]
   isEditing: boolean
   editTitle: string
@@ -43,7 +42,6 @@ interface ColumnCardProps {
 
 export function ColumnCard({
   column,
-  dashboardSlug,
   items,
   isEditing,
   editTitle,
@@ -127,7 +125,6 @@ export function ColumnCard({
         ) : (
           <ColumnHeader
             column={column}
-            dashboardSlug={dashboardSlug}
             itemCount={items.length}
             isMenuOpen={openColumnMenuId === column.id}
             isSoundMuted={isSoundMuted}

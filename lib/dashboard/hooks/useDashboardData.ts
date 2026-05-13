@@ -16,22 +16,15 @@ import { isNewsItemNew } from '@/lib/time-utils'
 
 interface UseDashboardDataProps {
   dashboard: Dashboard
-  geoFilters: {
-    regionCodes: string[]
-    municipalityCodes: string[]
-    showItemsWithoutLocation: boolean
-  }
 }
 
 interface UseDashboardDataReturn {
-  // State
   columnData: ColumnData
   archivedColumns: DashboardColumn[]
   allDashboards: Array<Dashboard & { columnCount?: number }>
   lastUpdate: Date
   isLoading: boolean
 
-  // Actions
   fetchColumnData: () => Promise<void>
   loadArchivedColumns: () => Promise<void>
   loadAllDashboards: () => Promise<void>
@@ -39,24 +32,14 @@ interface UseDashboardDataReturn {
   updateColumnData: (updater: React.SetStateAction<ColumnData>) => void
 }
 
-export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProps): UseDashboardDataReturn {
+export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashboardDataReturn {
   const [columnData, setColumnData] = useState<ColumnData>({})
   const columnDataRef = useRef<ColumnData>({})
-  const geoFiltersRef = useRef(geoFilters)
   const [lastUpdate, setLastUpdate] = useState(new Date())
   const [isLoading, setIsLoading] = useState(false)
   const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
   const [allDashboards, setAllDashboards] = useState<Array<Dashboard & { columnCount?: number }>>([])
 
-  // Keep ref in sync with prop
-  useEffect(() => {
-    geoFiltersRef.current = geoFilters
-  }, [geoFilters])
-
-  /**
-   * Fetch all column data for the current dashboard
-   * Uses deep equality checking to prevent unnecessary re-renders
-   */
   const fetchColumnData = useCallback(async () => {
     if (!dashboard?.id) {
       return
@@ -64,30 +47,10 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
 
     try {
       setIsLoading(true)
-      // Use the correct endpoint based on dashboard type
-      let baseEndpoint = `/api/dashboards/${dashboard.slug}`
+      let endpoint = `/api/dashboards/${dashboard.slug}`
       if (dashboard.id === 'main-dashboard') {
-        baseEndpoint = '/api/dashboards/main-dashboard'
+        endpoint = '/api/dashboards/main-dashboard'
       }
-
-      // Build query parameters for geographic filters
-      const params = new URLSearchParams()
-      const currentGeoFilters = geoFiltersRef.current
-
-      if (currentGeoFilters.regionCodes.length > 0) {
-        currentGeoFilters.regionCodes.forEach(code => params.append('regionCode', code))
-      }
-
-      if (currentGeoFilters.municipalityCodes.length > 0) {
-        currentGeoFilters.municipalityCodes.forEach(code => params.append('municipalityCode', code))
-      }
-
-      if (currentGeoFilters.showItemsWithoutLocation !== undefined) {
-        params.append('showItemsWithoutLocation', String(currentGeoFilters.showItemsWithoutLocation))
-      }
-
-      const queryString = params.toString()
-      const endpoint = queryString ? `${baseEndpoint}?${queryString}` : baseEndpoint
 
       console.log('📡 Fetching column data:', endpoint)
       const response = await fetch(endpoint)
@@ -99,8 +62,6 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
       if (data.success) {
         const incomingData: ColumnData = data.columnData ? { ...data.columnData } : {}
 
-        // Merge incoming data with existing polling state to prevent flash
-        // Items added via polling are preserved; fetch data is used for the rest
         const mergedData: ColumnData = {}
 
         Object.entries(incomingData).forEach(([columnId, newItems]) => {
@@ -112,8 +73,6 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
             item => item.dbId && !incomingDbIds.has(item.dbId)
           )
 
-          // If polling has a newer version of an item (same source_id, different dbId),
-          // skip the stale fetch version to avoid showing duplicates
           const pollingOnlySourceIds = new Set(
             pollingOnlyItems.map(i => i.id).filter(Boolean)
           )
@@ -144,9 +103,6 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
     }
   }, [dashboard.id, dashboard.slug])
 
-  /**
-   * Load archived columns for the current dashboard
-   */
   const loadArchivedColumns = useCallback(async () => {
     try {
       const response = await fetch(`/api/columns/archived?dashboardId=${dashboard.id}`)
@@ -159,9 +115,6 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
     }
   }, [dashboard.id])
 
-  /**
-   * Load all available dashboards
-   */
   const loadAllDashboards = useCallback(async () => {
     try {
       const response = await fetch('/api/dashboards')
@@ -177,36 +130,19 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
     }
   }, [])
 
-  /**
-   * Refresh all columns (alias for fetchColumnData for backwards compatibility)
-   */
   const refreshAllColumns = useCallback(async () => {
     await fetchColumnData()
   }, [fetchColumnData])
 
-  /**
-   * Update column data externally (e.g., from long-polling)
-   * This wrapper ensures columnDataRef and lastUpdate stay in sync
-   */
   const updateColumnData = useCallback((updater: React.SetStateAction<ColumnData>) => {
     setColumnData(prev => {
-      // Calculate new value (handle both function and direct value)
       const newValue = typeof updater === 'function' ? updater(prev) : updater
-
-      // Update ref to keep it in sync
       columnDataRef.current = newValue
-
-      // Update timestamp
       setLastUpdate(new Date())
-
       return newValue
     })
   }, [])
 
-  /**
-   * Load dashboard structure (archived columns, all dashboards) when dashboard changes.
-   * Does NOT fetch column data here – that is handled by the effect below.
-   */
   useEffect(() => {
     if (dashboard?.id) {
       loadArchivedColumns()
@@ -215,36 +151,24 @@ export function useDashboardData({ dashboard, geoFilters }: UseDashboardDataProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard?.id])
 
-  /**
-   * Fetch column data on initial mount and whenever geographic filters change.
-   * Only one fetchColumnData() call is triggered at a time, preventing the
-   * race condition where two concurrent calls overwrite each other's results.
-   */
   useEffect(() => {
     if (dashboard?.id) {
       fetchColumnData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    dashboard?.id,
-    geoFilters.regionCodes.join(','),
-    geoFilters.municipalityCodes.join(','),
-    geoFilters.showItemsWithoutLocation
-  ])
+  }, [dashboard?.id])
 
   return {
-    // State
     columnData,
     archivedColumns,
     allDashboards,
     lastUpdate,
     isLoading,
 
-    // Actions
     fetchColumnData,
     loadArchivedColumns,
     loadAllDashboards,
     refreshAllColumns,
-    updateColumnData, // Wrapped setter that keeps ref and lastUpdate in sync
+    updateColumnData,
   }
 }
