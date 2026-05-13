@@ -1,51 +1,53 @@
 'use client'
 
-import { NewsItem as NewsItemType } from '@/lib/types'
 import { useEffect, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
-import { MapPin, ExternalLink, X, Paperclip, Settings, Map, Camera, RefreshCw } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { AnimatePresence, motion } from 'framer-motion'
+import { ExternalLink, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
+
+import { NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
+import { getPriority, timeExact } from '@/lib/design-system'
+import { getCategory } from '@/lib/categories'
 import { formatFullTime, isUrl, getHostname } from '@/lib/time-utils'
 
 // Dynamically import LeafletMap to avoid SSR issues
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
-  loading: () => <div className="w-full h-48 bg-muted rounded-lg border border-border animate-pulse" />
+  loading: () => <div className="w-full h-48 bg-[var(--nd-bg-soft)] animate-pulse" />,
 })
 
 interface NewsItemModalProps {
   item: NewsItemType | null
+  columns?: DashboardColumn[]
   onClose: () => void
 }
 
-export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
+export default function NewsItemModal({ item, columns, onClose }: NewsItemModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [cameraUrl, setCameraUrl] = useState<string | null>(null)
   const [isRefreshingCamera, setIsRefreshingCamera] = useState(false)
   const [cameraStatus, setCameraStatus] = useState<'pending' | 'ready' | 'failed'>('ready')
   const [refreshCooldown, setRefreshCooldown] = useState(0)
+  const [showTech, setShowTech] = useState(false)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      }
+      if (event.key === 'Escape') onClose()
     }
 
     if (item) {
       document.addEventListener('keydown', handleKeyDown)
-      // Prevent body scrolling when modal is open
       document.body.style.overflow = 'hidden'
-      
-      // Reset camera URL and status when item changes
+
       if (item.trafficCamera) {
-        // Prefer currentUrl (GCS) over photoUrl (Trafikverket) for backward compatibility
         const url = item.trafficCamera.currentUrl || item.trafficCamera.photoUrl
         setCameraUrl(url)
         setCameraStatus(item.trafficCamera.status || 'ready')
+      } else {
+        setCameraUrl(null)
+        setCameraStatus('ready')
       }
+      setShowTech(false)
     }
 
     return () => {
@@ -56,526 +58,350 @@ export default function NewsItemModal({ item, onClose }: NewsItemModalProps) {
 
   useEffect(() => {
     if (!copiedField) return
-    const timer = setTimeout(() => setCopiedField(null), 2000)
-    return () => clearTimeout(timer)
+    const t = setTimeout(() => setCopiedField(null), 2000)
+    return () => clearTimeout(t)
   }, [copiedField])
 
-  const handleRefreshCamera = async () => {
-    if (!item?.trafficCamera || !item.dbId) return
-
-    setIsRefreshingCamera(true)
-
-    try {
-      const response = await fetch('/api/traffic-cameras/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newsItemId: item.dbId })
-      })
-
-      const data = await response.json()
-
-      if (response.status === 429) {
-        // Rate limited
-        setRefreshCooldown(data.retryAfter || 60)
-        return
-      }
-
-      if (!response.ok) {
-        console.error('Failed to refresh camera:', data.error)
-        return
-      }
-
-      // Success - set status to pending
-      setCameraStatus('pending')
-      // UI will update via long-polling when worker completes the upload
-
-    } catch (error) {
-      console.error('Failed to refresh camera:', error)
-    } finally {
-      setIsRefreshingCamera(false)
-    }
-  }
-
-  // Countdown timer for refresh cooldown
   useEffect(() => {
     if (refreshCooldown > 0) {
-      const timer = setInterval(() => {
-        setRefreshCooldown(prev => Math.max(0, prev - 1))
-      }, 1000)
-      return () => clearInterval(timer)
+      const t = setInterval(() => setRefreshCooldown(p => Math.max(0, p - 1)), 1000)
+      return () => clearInterval(t)
     }
   }, [refreshCooldown])
 
-  if (!item) {
-    return <AnimatePresence>{null}</AnimatePresence>
-  }
+  if (!item) return <AnimatePresence>{null}</AnimatePresence>
 
-  const getNewsValueStyle = (newsValue: number) => {
-    switch (newsValue) {
-      case 5:
-        return 'border-priority-critical bg-error/5'
-      case 4:
-        return 'border-priority-high bg-warning/5'
-      case 3:
-        return 'border-priority-medium bg-success/5'
-      default:
-        return 'border-priority-low bg-card'
-    }
-  }
-
-  const getNewsValueBadgeVariant = (newsValue: number): 'error' | 'warning' | 'info' | 'secondary' => {
-    switch (newsValue) {
-      case 5:
-        return 'error'
-      case 4:
-        return 'warning'
-      case 3:
-        return 'info'
-      default:
-        return 'secondary'
-    }
-  }
-
-
+  const priority = getPriority(item.newsValue)
+  const column = columns?.find(c => c.id === item.workflowId || c.flowId === item.workflowId)
 
   const rawSource = item.source?.trim()
   const rawUrl = item.url?.trim()
-  const fallbackUrl = isUrl(rawSource) ? rawSource : undefined
+  const fallbackUrl = rawSource && isUrl(rawSource) ? rawSource : undefined
   const sourceUrl = rawUrl || fallbackUrl
-
   let displaySource = rawSource
-
-  if (!displaySource && sourceUrl) {
-    displaySource = getHostname(sourceUrl)
-  }
-
-  if (displaySource && isUrl(displaySource) && sourceUrl) {
-    displaySource = getHostname(sourceUrl)
-  }
-
+  if (!displaySource && sourceUrl) displaySource = getHostname(sourceUrl)
+  if (displaySource && isUrl(displaySource) && sourceUrl) displaySource = getHostname(sourceUrl)
   const resolvedSource = displaySource || 'Okänd källa'
 
-
-  const getGoogleMapsUrl = (lat: number, lng: number) => {
-    return `https://www.google.com/maps/place/${lat},${lng}/@${lat},${lng},16z`
-  }
-
-  const handleCopy = async (value: string, field: string) => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopiedField(field)
-    } catch (error) {
-      console.error('Failed to copy', error)
-    }
-  }
-
-  const locationEntries = item.location ? [
-    { label: 'Land', value: item.location.country },
-    { label: 'Län', value: item.location.county },
-    { label: 'Kommun', value: item.location.municipality },
-    { label: 'Område', value: item.location.area },
-    { label: 'Adress', value: item.location.street },
-    { label: 'Platsnamn', value: item.location.name }
-  ].filter(entry => entry.value) : []
+  const locationParts = item.location
+    ? [
+        item.location.street,
+        item.location.area,
+        item.location.name,
+        item.location.municipality,
+        item.location.county,
+        item.location.country,
+      ].filter(Boolean).join(', ')
+    : ''
 
   const coordinates = Array.isArray(item.location?.coordinates) && item.location?.coordinates.length >= 2
     ? [item.location.coordinates[0], item.location.coordinates[1]]
     : null
 
+  const getGoogleMapsUrl = (lat: number, lng: number) =>
+    `https://www.google.com/maps/place/${lat},${lng}/@${lat},${lng},16z`
   const mapsUrl = coordinates ? getGoogleMapsUrl(coordinates[0], coordinates[1]) : null
 
-  // Convert ISO 3166-1 alpha-2 country code(s) to flag emoji(s)
-  const getCountryFlags = (countryCodes?: string) => {
-    if (!countryCodes) return '🌍'
+  const categoryDef = item.category ? getCategory(item.category) : undefined
 
-    // Split by comma if multiple codes
-    const codes = countryCodes.includes(',')
-      ? countryCodes.split(',').map(c => c.trim())
-      : [countryCodes]
+  const handleCopy = async (value: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopiedField(field)
+    } catch (err) {
+      console.error('Failed to copy', err)
+    }
+  }
 
-    const flags = codes
-      .filter(code => code.length === 2 && /^[A-Z]{2}$/i.test(code))
-      .map(code => {
-        const upperCode = code.toUpperCase()
-        const codePoints = Array.from(upperCode).map(char => 0x1F1E6 + char.charCodeAt(0) - 65)
-        return String.fromCodePoint(...codePoints)
+  const handleRefreshCamera = async () => {
+    if (!item?.trafficCamera || !item.dbId) return
+    setIsRefreshingCamera(true)
+    try {
+      const response = await fetch('/api/traffic-cameras/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newsItemId: item.dbId }),
       })
+      const data = await response.json()
+      if (response.status === 429) {
+        setRefreshCooldown(data.retryAfter || 60)
+        return
+      }
+      if (!response.ok) {
+        console.error('Failed to refresh camera:', data.error)
+        return
+      }
+      setCameraStatus('pending')
+    } catch (err) {
+      console.error('Failed to refresh camera:', err)
+    } finally {
+      setIsRefreshingCamera(false)
+    }
+  }
 
-    return flags.length > 0 ? flags.join(' ') : '🌍'
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}#${item.dbId || item.id || ''}`
+    handleCopy(url, 'link')
   }
 
   const renderExtraValue = (value: unknown): ReactNode => {
-    if (value === null || value === undefined) {
-      return ''
-    }
-    if (typeof value === 'object') {
-      return JSON.stringify(value, null, 2) ?? ''
-    }
-
-    const stringValue = String(value)
-
-    // Check if the value is a URL
-    if (isUrl(stringValue)) {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'object') return JSON.stringify(value, null, 2)
+    const s = String(value)
+    if (isUrl(s)) {
       return (
-        <a
-          href={stringValue}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline inline-flex items-center gap-1"
-        >
-          {stringValue}
+        <a href={s} target="_blank" rel="noopener noreferrer">
+          {s}
           <ExternalLink className="h-3 w-3" />
         </a>
       )
     }
-
-    return stringValue
+    return s
   }
-
-  const extraSection: ReactNode = item?.extra && Object.keys(item.extra).length > 0 ? (
-    <div>
-      <div className="flex items-center gap-2 mb-2">
-        <Paperclip className="h-5 w-5 text-muted-foreground" />
-        <h3 className="text-lg font-display font-semibold text-foreground">Extra data</h3>
-      </div>
-      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-        {(Object.entries(item.extra) as Array<[string, unknown]>).map(([key, value]) => (
-          <div key={key} className="text-sm text-muted-foreground">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground/60 mr-2">{key}</span>
-            <span className="break-words">{renderExtraValue(value)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  ) : null
-
 
   return (
     <AnimatePresence>
       <motion.div
         key={item.dbId ?? item.id ?? item.title}
-        className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/60 backdrop-blur-sm"
+        className="nd-modal-wrap"
         onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.18 }}
+        transition={{ duration: 0.15 }}
       >
         <motion.div
-          className={`bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-l-8 ${getNewsValueStyle(item.newsValue)}`}
+          className="nd-modal"
+          style={{ ['--nd-pc' as string]: priority.color }}
           onClick={(e) => e.stopPropagation()}
-          initial={{ y: 24, opacity: 0, scale: 0.94 }}
+          initial={{ y: 16, opacity: 0, scale: 0.97 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 12, opacity: 0, scale: 0.95 }}
+          exit={{ y: 8, opacity: 0, scale: 0.97 }}
           transition={{ type: 'spring', stiffness: 320, damping: 28 }}
         >
-        {/* Header */}
-        <div className="p-6 border-b border-border">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <h2 className="text-2xl font-display font-bold text-foreground leading-tight mb-3">
-                {item.title}
-              </h2>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-            {sourceUrl ? (
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-primary hover:underline flex items-center gap-1"
-              >
-                {resolvedSource}
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            ) : (
-              <span className="font-semibold text-primary">{resolvedSource}</span>
-            )}
-            <span>•</span>
-            <span>{formatFullTime(item.createdInDb || item.timestamp)}</span>
-          </div>
-        </div>
-            <Button
-              onClick={onClose}
-              variant="ghost"
-              size="icon"
-              className="ml-4"
-              title="Stäng"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Badges */}
-          <div className="flex items-center gap-3">
-            <Badge variant={getNewsValueBadgeVariant(item.newsValue)}>
-              Nyhetsvärde: {item.newsValue}
-            </Badge>
-            {item.category && (
-              <Badge variant="info">
-                {item.category}
-              </Badge>
-            )}
-          </div>
-        </div>
-        
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {item.description && (
-            <div>
-              <h3 className="text-lg font-display font-semibold text-foreground mb-2">Beskrivning</h3>
-              <p className="font-body text-muted-foreground leading-relaxed">
-                {item.description}
-              </p>
+          <header>
+            <div className="nd-mh-l">
+              {column?.title && <span className="nd-mh-col">{column.title}</span>}
+              {column?.title && <span className="nd-mh-sep">·</span>}
+              <span className="nd-mh-src">{resolvedSource}</span>
+              <span className="nd-mh-sep">·</span>
+              <time>{timeExact(item.createdInDb || item.timestamp)}</time>
             </div>
-          )}
-
-          {sourceUrl && (
-            <div>
-              <Button
-                onClick={() => window.open(sourceUrl, '_blank')}
-                className="gap-2"
-              >
-                Besök källa
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+            <div className="nd-mh-r">
+              <span className="nd-mh-prio" style={{ background: priority.color }}>
+                {priority.label} · {priority.name}
+              </span>
+              <button onClick={onClose} aria-label="Stäng" className="nd-mh-x">✕</button>
             </div>
-          )}
+          </header>
 
-          {/* Traffic Camera */}
-          {item.trafficCamera && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Camera className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-display font-semibold text-foreground">Trafikkamera</h3>
+          <div className="nd-mbody">
+            <h2>{item.title}</h2>
+            {item.description && <p className="nd-mdesc">{item.description}</p>}
+
+            <div className="nd-mgrid">
+              {locationParts && (
+                <div className="nd-mcell">
+                  <div className="nd-mk">Plats</div>
+                  <div className="nd-mv">{locationParts}</div>
+                </div>
+              )}
+              {categoryDef && (
+                <div className="nd-mcell">
+                  <div className="nd-mk">Kategori</div>
+                  <div className="nd-mv">
+                    <span aria-hidden style={{ marginRight: 6 }}>{categoryDef.icon}</span>
+                    {categoryDef.label}
+                  </div>
+                </div>
+              )}
+              <div className="nd-mcell">
+                <div className="nd-mk">Källa</div>
+                <div className="nd-mv">
+                  {sourceUrl ? (
+                    <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                      {resolvedSource}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    resolvedSource
+                  )}
+                </div>
               </div>
+              <div className="nd-mcell">
+                <div className="nd-mk">Nyhetsvärde</div>
+                <div className="nd-mv">{item.newsValue}/5 — {priority.name}</div>
+              </div>
+              <div className="nd-mcell" style={{ gridColumn: '1 / -1' }}>
+                <div className="nd-mk">Mottagen</div>
+                <div className="nd-mv">{formatFullTime(item.createdInDb || item.timestamp)}</div>
+              </div>
+            </div>
 
-              {/* Status messages */}
-              {cameraStatus === 'pending' && (
-                <div className="mb-2 text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950 p-2 rounded">
-                  Hämtar ny bild...
-                </div>
-              )}
+            {coordinates && (
+              <div className="nd-mmap">
+                <LeafletMap
+                  lat={coordinates[0]}
+                  lng={coordinates[1]}
+                  height={200}
+                  zoom={15}
+                  onClick={() => mapsUrl && window.open(mapsUrl, '_blank')}
+                />
+              </div>
+            )}
 
-              {cameraStatus === 'failed' && (
-                <div className="mb-2 text-sm text-destructive bg-red-50 dark:bg-red-950 p-2 rounded">
-                  Kunde inte hämta bild. {item.trafficCamera.error || 'Försök igen senare.'}
-                </div>
-              )}
-
-              {cameraUrl && cameraStatus === 'ready' && (
-                <div className="bg-muted/50 rounded-lg overflow-hidden border border-border/50">
-                  <div className="p-3 border-b border-border/50 bg-muted flex items-center justify-between">
-                    <div className="text-sm font-semibold text-foreground">
-                      {item.trafficCamera.name}
+            {item.trafficCamera && (
+              <div className="nd-msection">
+                <h3>
+                  Trafikkamera
+                  <button
+                    onClick={handleRefreshCamera}
+                    disabled={isRefreshingCamera || refreshCooldown > 0}
+                    className="nd-mtech-toggle"
+                    style={{ marginLeft: 'auto' }}
+                    title={refreshCooldown > 0 ? `Vänta ${refreshCooldown}s` : 'Uppdatera bild'}
+                  >
+                    {refreshCooldown > 0 ? `${refreshCooldown}s` : (
+                      <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingCamera ? 'animate-spin' : ''}`} />
+                    )}
+                    {refreshCooldown === 0 && 'Uppdatera'}
+                  </button>
+                </h3>
+                <div className="nd-msection-body" style={{ padding: 0, overflow: 'hidden' }}>
+                  {cameraStatus === 'pending' && (
+                    <div style={{ padding: '12px 14px', fontSize: 12, color: 'var(--nd-ink-dim)' }}>
+                      Hämtar ny bild...
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs text-muted-foreground bg-white/50 px-2 py-0.5 rounded-full">
-                        {item.trafficCamera.distance} km bort
+                  )}
+                  {cameraStatus === 'failed' && (
+                    <div style={{ padding: '12px 14px', fontSize: 12, color: 'var(--nd-p5)' }}>
+                      Kunde inte hämta bild. {item.trafficCamera.error || 'Försök igen senare.'}
+                    </div>
+                  )}
+                  {cameraUrl && cameraStatus === 'ready' && (
+                    <>
+                      <div style={{
+                        padding: '8px 14px',
+                        fontSize: 11,
+                        fontFamily: 'var(--nd-font-mono)',
+                        color: 'var(--nd-ink-mute)',
+                        borderBottom: '1px solid var(--nd-line-soft)',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      }}>
+                        <span>{item.trafficCamera.name}</span>
+                        <span>{item.trafficCamera.distance} km bort</span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={handleRefreshCamera}
-                        disabled={isRefreshingCamera || refreshCooldown > 0}
-                        title={refreshCooldown > 0 ? `Vänta ${refreshCooldown}s` : 'Uppdatera bild'}
-                      >
-                        {refreshCooldown > 0 ? (
-                          <span className="text-xs">{refreshCooldown}s</span>
-                        ) : (
-                          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingCamera ? 'animate-spin' : ''}`} />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="relative aspect-video bg-black/5">
-                    <img
-                      src={cameraUrl}
-                      alt={item.trafficCamera.name}
-                      className="object-cover w-full h-full transition-opacity duration-300"
-                      onError={() => {
-                        console.error('Failed to load traffic camera image')
-                        setCameraStatus('failed')
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {!cameraUrl && cameraStatus !== 'pending' && cameraStatus !== 'failed' && (
-                <div className="text-sm text-muted-foreground">
-                  Ingen bild tillgänglig
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Location */}
-          {item.location && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-display font-semibold text-foreground">Plats</h3>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-3 space-y-3">
-                {locationEntries.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                    {item.location.country && (
-                      <span className="text-lg">
-                        {getCountryFlags(item.location.country)}
-                      </span>
-                    )}
-                    {item.location.county && (
-                      <>
-                        <span className="text-muted-foreground">•</span>
-                        <span className="text-foreground">{item.location.county}</span>
-                      </>
-                    )}
-                    {item.location.municipality && (
-                      <>
-                        <span className="text-muted-foreground">•</span>
-                        <span className="text-foreground">{item.location.municipality}</span>
-                      </>
-                    )}
-                    {item.location.area && (
-                      <>
-                        <span className="text-muted-foreground">•</span>
-                        <span className="text-foreground">{item.location.area}</span>
-                      </>
-                    )}
-                    {item.location.street && (
-                      <>
-                        <span className="text-muted-foreground">•</span>
-                        <span className="text-foreground">{item.location.street}</span>
-                      </>
-                    )}
-                    {item.location.name && (
-                      <>
-                        <span className="text-muted-foreground">•</span>
-                        <span className="text-foreground">{item.location.name}</span>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {coordinates && mapsUrl && (
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => window.open(mapsUrl, '_blank')}
-                      variant="outline"
-                      className="h-5 px-2 gap-1 text-[11px] rounded"
-                    >
-                      <Map className="h-3 w-3" />
-                      Kartor
-                    </Button>
-                  </div>
-                )}
-
-                {coordinates && (
-                  <div className="mt-2">
-                    <div className="relative group">
-                      <LeafletMap
-                        lat={coordinates[0]}
-                        lng={coordinates[1]}
-                        height={192}
-                        zoom={16}
-                        onClick={() => {
-                          if (coordinates) {
-                            window.open(getGoogleMapsUrl(coordinates[0], coordinates[1]), '_blank')
-                          }
-                        }}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={cameraUrl}
+                        alt={item.trafficCamera.name}
+                        style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover' }}
+                        onError={() => setCameraStatus('failed')}
                       />
-                      <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm text-foreground opacity-0 group-hover:opacity-100 smooth-transition shadow-sm flex items-center gap-2">
-                        <Map className="h-4 w-4" />
-                        Öppna i Google Maps
-                      </div>
-                      <div className="absolute bottom-3 left-3 bg-black/70 text-white rounded px-2 py-1 text-xs">
-                        Klicka för att öppna i Google Maps
-                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowTech(s => !s)}
+              className="nd-mtech-toggle"
+            >
+              {showTech ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              Teknisk information
+            </button>
+
+            {showTech && (
+              <div className="nd-msection" style={{ marginTop: 8 }}>
+                <div className="nd-msection-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <TechRow label="db_id" value={item.dbId} field="dbId" copiedField={copiedField} onCopy={handleCopy} />
+                  {item.id && (
+                    <TechRow label="source_id" value={item.id} field="id" copiedField={copiedField} onCopy={handleCopy} />
+                  )}
+                  <TechRow label="workflow_id" value={item.workflowId} field="workflowId" copiedField={copiedField} onCopy={handleCopy} />
+                  {item.flowId && (
+                    <TechRow label="flow_id" value={item.flowId} field="flowId" copiedField={copiedField} onCopy={handleCopy} />
+                  )}
+                </div>
+
+                {item.extra && Object.keys(item.extra).length > 0 && (
+                  <>
+                    <h3 style={{ marginTop: 14 }}>Extra</h3>
+                    <div className="nd-msection-body">
+                      {(Object.entries(item.extra) as Array<[string, unknown]>).map(([key, value]) => (
+                        <div key={key} style={{ fontSize: 12, color: 'var(--nd-ink-dim)', marginBottom: 4 }}>
+                          <span style={{
+                            fontFamily: 'var(--nd-font-mono)', fontSize: 10,
+                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                            color: 'var(--nd-ink-mute)', marginRight: 8,
+                          }}>{key}</span>
+                          <span style={{ wordBreak: 'break-word' }}>{renderExtraValue(value)}</span>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  </>
+                )}
+
+                {item.raw != null && (
+                  <>
+                    <h3 style={{ marginTop: 14 }}>Rådata</h3>
+                    <div className="nd-mraw">
+                      <pre>{JSON.stringify(item.raw, null, 2)}</pre>
+                    </div>
+                  </>
                 )}
               </div>
-            </div>
-          )}
-          
-          {/* Extra information */}
-          {extraSection}
-          
-          {/* Raw data */}
-          {item.raw != null ? (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Settings className="h-5 w-5 text-muted-foreground" />
-                <h3 className="text-lg font-display font-semibold text-foreground">Rådata</h3>
-              </div>
-              <div className="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto">
-                <pre className="text-sm whitespace-pre-wrap">
-                  {JSON.stringify(item.raw, null, 2)}
-                </pre>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Technical details */}
-          <div className="border-t border-border pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Settings className="h-5 w-5 text-muted-foreground" />
-              <h3 className="text-lg font-display font-semibold text-foreground">Teknisk information</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-muted-foreground">ID:</span>
-                <div className="mt-1 flex items-center justify-between gap-3">
-                  <div className="font-mono text-foreground bg-muted px-2 py-1 rounded flex-1 break-all">
-                    {item.id}
-                  </div>
-                  <Button
-                    onClick={() => handleCopy(item.id, 'id')}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    {copiedField === 'id' ? 'Kopierad' : 'Kopiera'}
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Workflow ID:</span>
-                <div className="mt-1 flex items-center justify-between gap-3">
-                  <div className="font-mono text-foreground bg-muted px-2 py-1 rounded flex-1 break-all">
-                    {item.workflowId}
-                  </div>
-                  <Button
-                    onClick={() => handleCopy(item.workflowId, 'workflowId')}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    {copiedField === 'workflowId' ? 'Kopierad' : 'Kopiera'}
-                  </Button>
-                </div>
-              </div>
-              {item.flowId && (
-                <div>
-                  <span className="font-medium text-muted-foreground">Flow ID:</span>
-                  <div className="mt-1 flex items-center justify-between gap-3">
-                    <div className="font-mono text-foreground bg-muted px-2 py-1 rounded flex-1 break-all">
-                      {item.flowId}
-                    </div>
-                    <Button
-                      onClick={() => handleCopy(item.flowId as string, 'flowId')}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      {copiedField === 'flowId' ? 'Kopierad' : 'Kopiera'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
-        </div>
+
+          <footer className="nd-mfoot">
+            <button onClick={handleCopyLink} className="nd-btn nd-btn-ghost">
+              {copiedField === 'link' ? 'Kopierad!' : 'Kopiera länk'}
+            </button>
+            {sourceUrl && (
+              <button onClick={() => window.open(sourceUrl, '_blank')} className="nd-btn nd-btn-primary">
+                Öppna källa
+                <ExternalLink className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </footer>
         </motion.div>
       </motion.div>
     </AnimatePresence>
+  )
+}
+
+interface TechRowProps {
+  label: string
+  value: string
+  field: string
+  copiedField: string | null
+  onCopy: (value: string, field: string) => void
+}
+
+function TechRow({ label, value, field, copiedField, onCopy }: TechRowProps) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <span style={{
+        fontFamily: 'var(--nd-font-mono)', fontSize: 10,
+        textTransform: 'uppercase', letterSpacing: '0.04em',
+        color: 'var(--nd-ink-mute)', minWidth: 96,
+      }}>{label}</span>
+      <code style={{
+        flex: 1, fontFamily: 'var(--nd-font-mono)', fontSize: 11.5,
+        color: 'var(--nd-ink)', background: 'var(--nd-surface)',
+        padding: '4px 8px', borderRadius: 4,
+        border: '1px solid var(--nd-line-soft)',
+        wordBreak: 'break-all',
+      }}>{value}</code>
+      <button
+        onClick={() => onCopy(value, field)}
+        className="nd-btn nd-btn-ghost"
+        style={{ padding: '4px 10px', fontSize: 11 }}
+      >
+        {copiedField === field ? 'Kopierad' : 'Kopiera'}
+      </button>
+    </div>
   )
 }
