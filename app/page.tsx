@@ -9,14 +9,16 @@ export default function HomePage() {
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    const checkUserPreferences = async () => {
+    const redirect = async () => {
+      // Prioritetsordning (P2-3):
+      // 1) Server-sparad defaultDashboardId (explicit "hem"-val per user)
+      // 2) localStorage `nd.lastVisitedDashboard` (senaste sluggen)
+      // 3) Fallback: /dashboards-listan
       try {
-        // Check if user has a home dashboard preference
         const response = await fetch('/api/user/preferences')
         const data = await response.json()
 
         if (data.success && data.preferences?.defaultDashboardId) {
-          // User has a home dashboard, get the dashboard to get its slug
           const dashboardResponse = await fetch('/api/dashboards')
           const dashboardData = await dashboardResponse.json()
 
@@ -32,18 +34,32 @@ export default function HomePage() {
           }
         }
 
-        // No home dashboard preference, redirect to dashboards overview
+        // Ingen server-preference — försök localStorage
+        const lastSlug = typeof window !== 'undefined'
+          ? window.localStorage.getItem('nd.lastVisitedDashboard')
+          : null
+
+        if (lastSlug) {
+          // Verifiera att dashboarden fortfarande finns innan vi redirectar
+          const verifyResponse = await fetch(`/api/dashboards/${lastSlug}?structureOnly=true`)
+          if (verifyResponse.ok) {
+            router.push(`/dashboard/${lastSlug}`)
+            return
+          }
+          // Stale entry — rensa
+          window.localStorage.removeItem('nd.lastVisitedDashboard')
+        }
+
         router.push('/dashboards')
       } catch (error) {
-        console.error('Failed to check user preferences:', error)
-        // On error, redirect to dashboards overview
+        console.error('Failed to determine home destination:', error)
         router.push('/dashboards')
       } finally {
         setChecking(false)
       }
     }
 
-    checkUserPreferences()
+    redirect()
   }, [router])
 
   return (

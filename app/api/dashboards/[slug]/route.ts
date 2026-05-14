@@ -52,9 +52,12 @@ export async function GET(
     }
     
     // Bump view_count atomically (fire-and-forget; failures only log).
-    // Tidigare gjordes detta via updateDashboard som var SELECT+UPDATE i
-    // 2 round-trips. Nu ett enradigt UPDATE.
-    void db.incrementDashboardView(dashboard.id)
+    // Hoppas över när structureOnly=true — sådana anrop är intern probing
+    // (initial page load, stale-check i `/`-redirect) och bör inte räknas
+    // som en faktisk dashboard-visning.
+    if (!structureOnly) {
+      void db.incrementDashboardView(dashboard.id)
+    }
 
     return NextResponse.json({
       success: true,
