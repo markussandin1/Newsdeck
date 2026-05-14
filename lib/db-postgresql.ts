@@ -8,264 +8,33 @@ import {
   logApiRequest as adminLogApiRequest,
   getApiRequestLogs as adminGetApiRequestLogs,
 } from './db/admin'
+import {
+  addNewsItem as newsItemsAdd,
+  addNewsItems as newsItemsAddMany,
+  getNewsItems as newsItemsGetAll,
+  getRecentNewsItems as newsItemsGetRecent,
+  deleteNewsItem as newsItemsDelete,
+  getNewsItemsPaginated as newsItemsGetPaginated,
+  getNewsItemsByWorkflow as newsItemsByWorkflow,
+  getNewsItemsByWorkflows as newsItemsByWorkflows,
+  getUniqueWorkflowIds as newsItemsUniqueWorkflowIds,
+  getUniqueSources as newsItemsUniqueSources,
+  getUniqueMunicipalities as newsItemsUniqueMunicipalities,
+  migrateCreatedInDb as newsItemsMigrateCreatedInDb,
+} from './db/news-items'
 
 // Re-export pool-helpern så kallsidor som importerar getPool fran
 // '@/lib/db-postgresql' fortsatter funka.
 export { getPool }
 
 export const persistentDb = {
-  // News items
-  addNewsItem: async (item: NewsItem) => {
-    const pool = getPool()
-    const itemWithTimestamp = {
-      ...item,
-      createdInDb: new Date().toISOString()
-    }
-
-    try {
-      const result = await pool.query(
-        `INSERT INTO news_items (
-          source_id, workflow_id, source, timestamp, title, description,
-          news_value, category, severity, location, extra, raw, created_in_db
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING db_id`,
-        [
-          item.id || null,
-          item.workflowId,
-          item.source,
-          item.timestamp,
-          item.title,
-          item.description || null,
-          item.newsValue,
-          item.category || null,
-          item.severity || null,
-          JSON.stringify(item.location || {}),
-          JSON.stringify({ ...(item.extra || {}), trafficCamera: item.trafficCamera }),
-          JSON.stringify(item.raw || {}),
-          itemWithTimestamp.createdInDb,
-        ]
-      )
-
-      // Return item with generated db_id
-      return {
-        ...itemWithTimestamp,
-        dbId: result.rows[0].db_id
-      }
-    } catch (error) {
-      logger.error('db.addNewsItem.error', { error, itemId: item.id })
-      throw error
-    }
-  },
-
-  addNewsItems: async (items: NewsItem[]) => {
-    const pool = getPool()
-    const client = await pool.connect()
-
-    try {
-      await client.query('BEGIN')
-
-      const itemsWithTimestamp = items.map(item => ({
-        ...item,
-        createdInDb: item.createdInDb || new Date().toISOString()
-      }))
-
-      // Build all rows as a flat array for a single batch INSERT
-      const rows = itemsWithTimestamp.map(item => [
-        item.id || null,
-        item.workflowId,
-        item.source,
-        item.timestamp,
-        item.title,
-        item.description || null,
-        item.newsValue,
-        item.category || null,
-        item.severity || null,
-        JSON.stringify(item.location || {}),
-        JSON.stringify({ ...(item.extra || {}), trafficCamera: item.trafficCamera }),
-        JSON.stringify(item.raw || {}),
-        item.createdInDb,
-      ])
-
-      const chunks = buildBatchInsert(rows)
-      const insertedItems: typeof itemsWithTimestamp = []
-      let itemOffset = 0
-
-      for (const chunk of chunks) {
-        const result = await client.query(
-          `INSERT INTO news_items (
-            source_id, workflow_id, source, timestamp, title, description,
-            news_value, category, severity, location, extra, raw, created_in_db
-          ) VALUES ${chunk.text}
-          RETURNING db_id`,
-          chunk.values
-        )
-
-        // Map returned db_ids back to items by positional order
-        for (let i = 0; i < result.rows.length; i++) {
-          insertedItems.push({
-            ...itemsWithTimestamp[itemOffset + i],
-            dbId: result.rows[i].db_id
-          })
-        }
-        itemOffset += result.rows.length
-      }
-
-      await client.query('COMMIT')
-      return insertedItems
-    } catch (error) {
-      await client.query('ROLLBACK')
-      logger.error('db.addNewsItems.error', { error, count: items.length })
-      throw error
-    } finally {
-      client.release()
-    }
-  },
-
-  getNewsItems: async () => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `SELECT
-          db_id as "dbId",
-          source_id as "id",
-          workflow_id as "workflowId",
-          source, timestamp, title, description,
-          news_value as "newsValue",
-          category, severity, location, extra, raw,
-          created_in_db as "createdInDb"
-        FROM news_items
-        ORDER BY created_in_db DESC, timestamp DESC`
-      )
-
-      return result.rows.map(row => {
-        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
-        const trafficCamera = extra?.trafficCamera
-        
-        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
-        // or just leave it. For now, we extract it to top level.
-        return {
-          ...row,
-          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-          extra,
-          trafficCamera,
-          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-        }
-      })
-    } catch (error) {
-      logger.error('db.getNewsItems.error', { error })
-      throw error
-    }
-  },
-
-  getRecentNewsItems: async (limit = 10) => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `SELECT
-          db_id as "dbId",
-          source_id as "id",
-          workflow_id as "workflowId",
-          source, timestamp, title, description,
-          news_value as "newsValue",
-          category, severity, location, extra, raw,
-          created_in_db as "createdInDb"
-        FROM news_items
-        ORDER BY created_in_db DESC, timestamp DESC
-        LIMIT $1`,
-        [limit]
-      )
-
-      return result.rows.map(row => {
-        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
-        const trafficCamera = extra?.trafficCamera
-        
-        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
-        // or just leave it. For now, we extract it to top level.
-        return {
-          ...row,
-          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-          extra,
-          trafficCamera,
-          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-        }
-      })
-    } catch (error) {
-      logger.error('db.getRecentNewsItems.error', { error })
-      throw error
-    }
-  },
-
-  deleteNewsItem: async (dbId: string) => {
-    const pool = getPool()
-    const client = await pool.connect()
-
-    try {
-      await client.query('BEGIN')
-
-      // Delete from news_items table (CASCADE will handle column_data)
-      const deleteResult = await client.query(
-        'DELETE FROM news_items WHERE db_id = $1',
-        [dbId]
-      )
-
-      if (deleteResult.rowCount === 0) {
-        logger.warn('db.deleteNewsItem.notFound', { dbId })
-        await client.query('ROLLBACK')
-        return false
-      }
-
-      await client.query('COMMIT')
-      logger.info('db.deleteNewsItem.success', { dbId })
-      return true
-    } catch (error) {
-      await client.query('ROLLBACK')
-      logger.error('db.deleteNewsItem.error', { error, dbId })
-      throw error
-    } finally {
-      client.release()
-    }
-  },
-
-  getNewsItemsPaginated: async (limit = 50, offset = 0) => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `SELECT
-          db_id as "dbId",
-          source_id as "id",
-          workflow_id as "workflowId",
-          source, timestamp, title, description,
-          news_value as "newsValue",
-          category, severity, location, extra, raw,
-          created_in_db as "createdInDb"
-        FROM news_items
-        ORDER BY created_in_db DESC, timestamp DESC
-        LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      )
-
-      return result.rows.map(row => {
-        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
-        const trafficCamera = extra?.trafficCamera
-        
-        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
-        // or just leave it. For now, we extract it to top level.
-        return {
-          ...row,
-          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-          extra,
-          trafficCamera,
-          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-        }
-      })
-    } catch (error) {
-      logger.error('db.getNewsItemsPaginated.error', { error })
-      throw error
-    }
-  },
+  // News items (P2-1 steg 4 — implementation i lib/db/news-items.ts)
+  addNewsItem: newsItemsAdd,
+  addNewsItems: newsItemsAddMany,
+  getNewsItems: newsItemsGetAll,
+  getRecentNewsItems: newsItemsGetRecent,
+  deleteNewsItem: newsItemsDelete,
+  getNewsItemsPaginated: newsItemsGetPaginated,
 
   // Dashboards
   addDashboard: async (dashboard: Dashboard) => {
@@ -847,131 +616,12 @@ export const persistentDb = {
     return []
   },
 
-  // Get news items for specific workflow
-  getNewsItemsByWorkflow: async (workflowId: string) => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `SELECT
-          db_id as "dbId",
-          source_id as "id",
-          workflow_id as "workflowId",
-          source, timestamp, title, description,
-          news_value as "newsValue",
-          category, severity, location, extra, raw,
-          created_in_db as "createdInDb"
-        FROM news_items
-        WHERE workflow_id = $1
-        ORDER BY created_in_db DESC, timestamp DESC`,
-        [workflowId]
-      )
-
-      return result.rows.map(row => {
-        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
-        const trafficCamera = extra?.trafficCamera
-        
-        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
-        // or just leave it. For now, we extract it to top level.
-        return {
-          ...row,
-          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-          extra,
-          trafficCamera,
-          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-        }
-      })
-    } catch (error) {
-      logger.error('db.getNewsItemsByWorkflow.error', { error, workflowId })
-      throw error
-    }
-  },
-
-  // Get news items for multiple workflows
-  getNewsItemsByWorkflows: async (workflowIds: string[]) => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `SELECT
-          db_id as "dbId",
-          source_id as "id",
-          workflow_id as "workflowId",
-          source, timestamp, title, description,
-          news_value as "newsValue",
-          category, severity, location, extra, raw,
-          created_in_db as "createdInDb"
-        FROM news_items
-        WHERE workflow_id = ANY($1)
-        ORDER BY created_in_db DESC, timestamp DESC`,
-        [workflowIds]
-      )
-
-      return result.rows.map(row => {
-        const extra = typeof row.extra === 'string' ? JSON.parse(row.extra) : row.extra
-        const trafficCamera = extra?.trafficCamera
-        
-        // Remove trafficCamera from extra to avoid duplication/clutter if desired, 
-        // or just leave it. For now, we extract it to top level.
-        return {
-          ...row,
-          location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-          extra,
-          trafficCamera,
-          raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw
-        }
-      })
-    } catch (error) {
-      logger.error('db.getNewsItemsByWorkflows.error', { error })
-      throw error
-    }
-  },
-
-  // Get unique values for admin interface
-  getUniqueWorkflowIds: async () => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        'SELECT DISTINCT workflow_id FROM news_items ORDER BY workflow_id'
-      )
-      return result.rows.map(row => row.workflow_id)
-    } catch (error) {
-      logger.error('db.getUniqueWorkflowIds.error', { error })
-      throw error
-    }
-  },
-
-  getUniqueSources: async () => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        'SELECT DISTINCT source FROM news_items ORDER BY source'
-      )
-      return result.rows.map(row => row.source)
-    } catch (error) {
-      logger.error('db.getUniqueSources.error', { error })
-      throw error
-    }
-  },
-
-  getUniqueMunicipalities: async () => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `SELECT DISTINCT location->>'municipality' as municipality
-        FROM news_items
-        WHERE location->>'municipality' IS NOT NULL
-        ORDER BY municipality`
-      )
-      return result.rows.map(row => row.municipality)
-    } catch (error) {
-      logger.error('db.getUniqueMunicipalities.error', { error })
-      throw error
-    }
-  },
+  // News items by workflow + admin-distincts (P2-1 steg 4)
+  getNewsItemsByWorkflow: newsItemsByWorkflow,
+  getNewsItemsByWorkflows: newsItemsByWorkflows,
+  getUniqueWorkflowIds: newsItemsUniqueWorkflowIds,
+  getUniqueSources: newsItemsUniqueSources,
+  getUniqueMunicipalities: newsItemsUniqueMunicipalities,
 
   // Utility functions
   clearAllData: async () => {
@@ -997,23 +647,8 @@ export const persistentDb = {
   // Cleanup old news items. Default retention: 30 dagar (P2-17).
   cleanupOldItems: adminCleanupOldItems,
 
-  // Migration: Add createdInDb to existing items
-  migrateCreatedInDb: async () => {
-    const pool = getPool()
-
-    try {
-      const result = await pool.query(
-        `UPDATE news_items
-        SET created_in_db = timestamp
-        WHERE created_in_db IS NULL`
-      )
-
-      return { success: true, updated: result.rowCount || 0 }
-    } catch (error) {
-      logger.error('db.migrateCreatedInDb.error', { error })
-      throw error
-    }
-  },
+  // Migration: Add createdInDb to existing items (P2-1 steg 4)
+  migrateCreatedInDb: newsItemsMigrateCreatedInDb,
 
   // Sync column data from general news storage
   syncColumnDataFromGeneral: async (columnId: string) => {
