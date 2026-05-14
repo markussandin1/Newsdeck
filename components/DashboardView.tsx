@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
+import { Dashboard as DashboardType, NewsItem as NewsItemType } from '@/lib/types'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardStream } from '@/lib/dashboard/hooks/useDashboardStream'
 import { usePendingImagePolling } from '@/lib/dashboard/hooks/usePendingImagePolling'
@@ -18,6 +18,8 @@ import { useViewMode } from '@/lib/dashboard/hooks/useViewMode'
 import { useCurrentUser } from '@/lib/dashboard/hooks/useCurrentUser'
 import { useColumnSearch } from '@/lib/dashboard/hooks/useColumnSearch'
 import { useDashboardNavigation } from '@/lib/dashboard/hooks/useDashboardNavigation'
+import { useColumnEditing } from '@/lib/dashboard/hooks/useColumnEditing'
+import { useAddColumnModal } from '@/lib/dashboard/hooks/useAddColumnModal'
 import { ThemeToggle } from './theme-toggle'
 import NewsItemModal from './NewsItemModal'
 import { Menu, MoreVertical, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react'
@@ -147,19 +149,26 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     copyColumnFeedUrl,
   } = useClipboard()
 
-  // Modal state
-  const [showAddColumnModal, setShowAddColumnModal] = useState(false)
-  const [newColumnTitle, setNewColumnTitle] = useState('')
-  const [newColumnDescription, setNewColumnDescription] = useState('')
-  const [newColumnFlowId, setNewColumnFlowId] = useState('')
-  const [showWorkflowInput, setShowWorkflowInput] = useState(false)
-  const [urlExtracted, setUrlExtracted] = useState(false)
-  const [showArchivedColumns, setShowArchivedColumns] = useState(false)
-  const [editingColumn, setEditingColumn] = useState<string | null>(null)
-  const [editTitle, setEditTitle] = useState('')
-  const [editDescription, setEditDescription] = useState('')
-  const [editFlowId, setEditFlowId] = useState('')
-  const [showExtractionSuccess, setShowExtractionSuccess] = useState(false)
+  // Column-editing inline-state (egen hook)
+  const {
+    editingColumn,
+    editTitle,
+    editDescription,
+    editFlowId,
+    showExtractionSuccess,
+    setEditTitle,
+    setEditDescription,
+    setEditFlowId,
+    setShowExtractionSuccess,
+    startEditing,
+    cancelEditing,
+    saveColumn: handleSaveColumn,
+  } = useColumnEditing({ updateColumn })
+
+  // Add-column-modal state (egen hook)
+  const addColumnModal = useAddColumnModal()
+
+  // Ovriga modal-/UI-state
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItemType | null>(null)
   const [showCreateDashboardModal, setShowCreateDashboardModal] = useState(false)
   const [newDashboardName, setNewDashboardName] = useState('')
@@ -174,11 +183,12 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
-    if (showAddColumnModal) {
+    if (addColumnModal.isOpen) {
       const activeCols = dashboard?.columns?.filter(col => !col.isArchived) || []
-      setShowWorkflowInput(activeCols.length === 0)
+      addColumnModal.setShowWorkflowInput(activeCols.length === 0)
     }
-  }, [showAddColumnModal, dashboard?.columns])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addColumnModal.isOpen, dashboard?.columns])
 
   // Close column menu on click outside
   useEffect(() => {
@@ -209,18 +219,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     return Object.values(columnData).reduce((total, items) => total + items.length, 0)
   }
 
-  const startEditing = (column: DashboardColumn) => {
-    setEditingColumn(column.id)
-    setEditTitle(column.title)
-    setEditDescription(column.description || '')
-    setEditFlowId(column.flowId || '')
-  }
-
-  const handleSaveColumn = async (columnId: string, title: string, description?: string, flowId?: string) => {
-    await updateColumn(columnId, title, description, flowId)
-    setEditingColumn(null)
-    setEditFlowId('')
-  }
+  // startEditing + handleSaveColumn lever i useColumnEditing (ovan).
 
   // Dashboard-nivå-navigation extraherat till useDashboardNavigation (P1-3 steg 6)
   const { navigateToDashboard, createDashboard } = useDashboardNavigation()
@@ -463,7 +462,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
                 </div>
                 <div className="text-muted-foreground mb-4">Inga kolumner ännu</div>
                 <button
-                  onClick={() => setShowAddColumnModal(true)}
+                  onClick={addColumnModal.open}
                   className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 smooth-transition text-sm font-medium"
                 >
                   + Lägg till kolumn
@@ -499,7 +498,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
                   onEditFlowIdChange={setEditFlowId}
                   onShowExtractionSuccess={setShowExtractionSuccess}
                   onStartEditing={startEditing}
-                  onCancelEditing={() => setEditingColumn(null)}
+                  onCancelEditing={cancelEditing}
                   onSaveColumn={handleSaveColumn}
                   onArchiveColumn={removeColumn}
                   onToggleSound={toggleColumnSound}
@@ -517,7 +516,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
 
             {/* Add Column placeholder */}
             <button
-              onClick={() => setShowAddColumnModal(true)}
+              onClick={addColumnModal.open}
               className="nd-col-add"
               aria-label="Lägg till kolumn"
             >
@@ -531,28 +530,32 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
 
       {/* Modals */}
       <AddColumnModal
-        isOpen={showAddColumnModal}
-        showArchivedColumns={showArchivedColumns}
-        showWorkflowInput={showWorkflowInput}
-        newColumnTitle={newColumnTitle}
-        newColumnFlowId={newColumnFlowId}
-        urlExtracted={urlExtracted}
+        isOpen={addColumnModal.isOpen}
+        showArchivedColumns={addColumnModal.showArchivedTab}
+        showWorkflowInput={addColumnModal.showWorkflowInput}
+        newColumnTitle={addColumnModal.newColumnTitle}
+        newColumnFlowId={addColumnModal.newColumnFlowId}
+        urlExtracted={addColumnModal.urlExtracted}
         createdColumnId={createdColumnId}
         archivedColumns={archivedColumns}
         copiedId={copiedId}
         activeColumnCount={activeColumnCount}
-        onClose={() => setShowAddColumnModal(false)}
-        onTabChange={setShowArchivedColumns}
-        onWorkflowInputToggle={setShowWorkflowInput}
-        onTitleChange={setNewColumnTitle}
-        onDescriptionChange={setNewColumnDescription}
-        onFlowIdChange={setNewColumnFlowId}
-        onUrlExtractedChange={setUrlExtracted}
+        onClose={addColumnModal.close}
+        onTabChange={addColumnModal.setShowArchivedTab}
+        onWorkflowInputToggle={addColumnModal.setShowWorkflowInput}
+        onTitleChange={addColumnModal.setNewColumnTitle}
+        onDescriptionChange={addColumnModal.setNewColumnDescription}
+        onFlowIdChange={addColumnModal.setNewColumnFlowId}
+        onUrlExtractedChange={addColumnModal.setUrlExtracted}
         onCreatedColumnIdChange={setCreatedColumnId}
-        onSubmit={() => addColumn(newColumnTitle, newColumnDescription, newColumnFlowId)}
+        onSubmit={() => addColumn(
+          addColumnModal.newColumnTitle,
+          addColumnModal.newColumnDescription,
+          addColumnModal.newColumnFlowId,
+        )}
         onRestore={async (columnId) => {
           await restoreColumn(columnId)
-          setShowAddColumnModal(false)
+          addColumnModal.close()
         }}
         onCopyId={copyToClipboard}
       />
@@ -645,7 +648,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
         lastUpdate={lastUpdate}
         onClose={() => setShowMobileMenu(false)}
         onNavigateToDashboard={navigateToDashboard}
-        onOpenAddColumn={() => setShowAddColumnModal(true)}
+        onOpenAddColumn={addColumnModal.open}
         onOpenCreateDashboard={() => setShowCreateDashboardModal(true)}
         onRefresh={fetchColumnData}
       />
