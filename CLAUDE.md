@@ -127,7 +127,7 @@ interface NewsItem {
 - Falls back to in-memory storage when DATABASE_URL unavailable (development only)
 
 **API Routes** (`app/api/`):
-- `/api/workflows` - **Primärt ingestion-API** (POST med columnId eller workflowId, kräver API-nyckel)
+- `/api/workflows` - **Primärt ingestion-API** (POST med `columnId`, kräver API-nyckel)
 - `/api/columns` - Column management (CRUD); GET är publik, POST är borttagen (använd /api/workflows)
 - `/api/dashboards` - Dashboard management (returns max 500 most recent items per column)
   - `?structureOnly=true` - Skip column data, return only dashboard structure (used by initial page load)
@@ -143,7 +143,7 @@ interface NewsItem {
 - Feed-ikoner (Rss) i kolumn-header och dashboard-header kopierar URL till clipboard
 
 **Ingestion Pipeline** (`lib/services/ingestion.ts`):
-- Tar emot `columnId` (primärt) eller `workflowId` (bakåtkompatibilitet)
+- Tar emot `columnId` direkt. Det är ENDA routing-mekanismen — workflowId-routing-vägen (flowId-lookup via dashboard-listan) är borttagen (P1-5). Workflows-noden måste skicka `columnId`.
 - Sparar `location`-objektet rakt av till JSONB. Ingen validering eller mappning av geo-koder sker i Newsdeck — eventuell geo-berikning ska ske i Workflows innan posten skickas hit.
 - Reservtabellerna `countries`, `regions`, `municipalities` finns kvar i databasen men används inte längre av koden.
 
@@ -370,13 +370,9 @@ POST /api/workflows
 - Kräver API-nyckel i `Authorization: Bearer <key>`-header
 - `severity` är en fri textsträng (inga enum-krav)
 - `location` sparas rakt av i JSONB — geo-koder valideras inte och används inte för filtrering, men kan användas för framtida berikning från egen geo-service.
-- Retroaktiv routing via `workflowId` stöds fortfarande för bakåtkompatibilitet men fasas ut
+- `workflowId` accepteras inte längre som routing-mekanism. Skicka alltid `columnId`.
 
 **GET /api/columns/{id}** - Hämta kolumndata (publik, ingen auth)
-
-### Bakåtkompatibilitet — workflowId-routing (fasas ut)
-
-Äldre integreringar kan skicka `workflowId` istället för `columnId`. Systemet matchar då mot kolumner vars `flowId` stämmer överens. Stödet finns kvar men ny kod ska alltid använda `columnId` direkt.
 
 ## Header Architecture
 

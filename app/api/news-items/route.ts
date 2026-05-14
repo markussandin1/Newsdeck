@@ -18,13 +18,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await ingestNewsItems(body, db)
-    const descriptor = result.columnId
-      ? `column ${result.columnId}`
-      : `workflow ${result.workflowId}`
+    const descriptor = `column ${result.columnId}`
 
     logger.info('api.news-items.success', {
       columnId: result.columnId,
-      workflowId: result.workflowId,
       itemsAdded: result.itemsAdded,
       columnsUpdated: result.columnsUpdated,
       matchingColumns: result.matchingColumns,
