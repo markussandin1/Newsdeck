@@ -1128,6 +1128,10 @@ html.light {
   color: var(--nd-ink);
 }
 .nd-modal > header {
+  /* Sticky så Stäng-knappen alltid syns även när man scrollar i långa
+     händelser. Bakgrunden tar över så innehåll under inte skiner igenom. */
+  position: sticky; top: 0; z-index: 2;
+  background: var(--nd-surface);
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
@@ -1148,13 +1152,51 @@ html.light {
   white-space: nowrap;
 }
 .nd-modal .nd-mh-x {
-  color: var(--nd-ink-mute);
+  color: var(--nd-ink);
   font-size: 14px;
-  padding: 4px 8px; border-radius: 6px;
-  background: none; border: 0; cursor: pointer;
+  padding: 6px 10px; border-radius: 6px;
+  background: var(--nd-surface-2); border: 1px solid var(--nd-line-soft);
+  cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px;
+  /* WCAG-touch-target — alltid minst 44×44px */
+  min-width: 44px; min-height: 44px;
+  font-family: var(--nd-font-ui);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
-.nd-modal .nd-mh-x:hover { background: var(--nd-surface-2); color: var(--nd-ink); }
+.nd-modal .nd-mh-x:hover { background: var(--nd-line-soft); color: var(--nd-ink); }
+.nd-modal .nd-mh-x:focus-visible {
+  outline: 2px solid var(--nd-accent);
+  outline-offset: 2px;
+}
+.nd-modal .nd-mh-x-label { font-size: 13px; }
+
+/* Mobil-anpassning av modalen — bättre stäng-affordance */
+@media (max-width: 640px) {
+  .nd-modal-wrap {
+    /* Mindre padding så modalen får mer plats; aldrig 0 så bakgrunden
+       fortfarande är tappbar för stäng. */
+    padding: 8px;
+  }
+  .nd-modal {
+    /* Lite mer höjd nu när vi har sticky header som "äter" toppen */
+    max-height: 95vh;
+  }
+  .nd-modal > header {
+    padding: 10px 12px;
+  }
+  .nd-modal .nd-mh-prio {
+    /* Frigör utrymme för en större Stäng-knapp på trånga skärmar */
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+}
+/* På riktigt små skärmar (iPhone SE etc) — visa bara X-ikonen */
+@media (max-width: 380px) {
+  .nd-modal .nd-mh-x-label { display: none; }
+}
 
 .nd-modal .nd-mbody { padding: 20px 24px 12px; }
 .nd-modal .nd-mbody h2 {
