@@ -590,23 +590,48 @@ export const persistentDb = {
 
   updateDashboard: async (id: string, updates: Partial<Dashboard>) => {
     const pool = getPool()
+    const client = await pool.connect()
 
     try {
-      const existing = await persistentDb.getDashboard(id)
+      await client.query('BEGIN')
+
+      // Lock the row for the duration of the transaction. Two simultaneous
+      // updates (eg. double-clicking a save button) are serialised so neither
+      // reads stale data and overwrites the other.
+      const existingRes = await client.query(
+        `SELECT
+          id, name, slug, columns, view_count as "viewCount",
+          last_viewed as "lastViewed", created_at as "createdAt"
+        FROM dashboards
+        WHERE id = $1
+        FOR UPDATE`,
+        [id]
+      )
+
+      const existing = existingRes.rows[0]
+        ? {
+            ...existingRes.rows[0],
+            columns: typeof existingRes.rows[0].columns === 'string'
+              ? JSON.parse(existingRes.rows[0].columns)
+              : (existingRes.rows[0].columns || [])
+          }
+        : null
 
       if (!existing && (id === MAIN_DASHBOARD_ID || id === 'main-dashboard')) {
+        await client.query('COMMIT')
         const newDashboard = { ...DEFAULT_DASHBOARD, ...updates }
         await persistentDb.addDashboard(newDashboard)
         return newDashboard
       }
 
       if (!existing) {
+        await client.query('COMMIT')
         return null
       }
 
       const updated = { ...existing, ...updates }
 
-      await pool.query(
+      await client.query(
         `UPDATE dashboards SET
           name = $1,
           slug = $2,
@@ -624,10 +649,14 @@ export const persistentDb = {
         ]
       )
 
+      await client.query('COMMIT')
       return updated
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {})
       logger.error('db.updateDashboard.error', { error, id })
       throw error
+    } finally {
+      client.release()
     }
   },
 
