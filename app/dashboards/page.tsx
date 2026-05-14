@@ -12,6 +12,7 @@ type DashboardWithStats = Dashboard & {
   columnCount?: number
   followerCount?: number
   isFollowing?: boolean
+  isMain?: boolean
 }
 
 export default function DashboardsPage() {
@@ -239,12 +240,26 @@ export default function DashboardsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {dashboards.map((dashboard) => (
-              <div key={dashboard.id} className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-display font-semibold text-foreground mb-1">
-                      {dashboard.name}
-                    </h3>
+              <div
+                key={dashboard.id}
+                className={`bg-card rounded-xl border shadow-sm hover:shadow-md transition-shadow p-6 ${
+                  dashboard.isMain
+                    ? 'border-blue-500/40 ring-1 ring-blue-500/20'
+                    : 'border-border'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-4 gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="text-lg font-display font-semibold text-foreground">
+                        {dashboard.name}
+                      </h3>
+                      {dashboard.isMain && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                          Huvuddashboard
+                        </span>
+                      )}
+                    </div>
                     {dashboard.description && (
                       <p className="text-sm text-muted-foreground mb-3">{dashboard.description}</p>
                     )}
