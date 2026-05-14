@@ -1,16 +1,19 @@
 /**
  * useAddColumnModal Hook
  *
- * Ager all state for "Lagg till kolumn"-modalen:
+ * Ager state for "Lagg till kolumn"-modalen:
  *   - isOpen, showArchivedTab (vilken tab i modalen)
- *   - newColumnTitle / newColumnDescription / newColumnFlowId (formdata)
- *   - showWorkflowInput (visa workflow-URL-input)
- *   - urlExtracted (har vi extraherat ett flowId fran URL:en)
+ *   - newColumnTitle / newColumnDescription (formdata)
  *
- * Lifecyklen for modalen:
- *   1. open() — formdata behalls fran forra gangen (matchar tidigare beteende)
+ * Lifecycle:
+ *   1. open() — formdata behalls fran forra gangen
  *   2. close() — formdata behalls
- *   3. reset() — nollstall alla falt (anvands efter lyckad submit)
+ *   3. reset() — nollstaller fait (anvands efter lyckad submit)
+ *
+ * Notera: tidigare hanterade hooken aven workflow-URL-input + flowId
+ * extraktion. Det rev vi sedan P1-5 (workflowId-routing borttagen) —
+ * Workflows postar nu via columnId, sa det fanns inget for modalen att
+ * gora forrun kolumnen ar skapad.
  */
 
 import { useState } from 'react'
@@ -18,11 +21,8 @@ import { useState } from 'react'
 export function useAddColumnModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [showArchivedTab, setShowArchivedTab] = useState(false)
-  const [showWorkflowInput, setShowWorkflowInput] = useState(false)
-  const [urlExtracted, setUrlExtracted] = useState(false)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [newColumnDescription, setNewColumnDescription] = useState('')
-  const [newColumnFlowId, setNewColumnFlowId] = useState('')
 
   const open = () => setIsOpen(true)
   const close = () => setIsOpen(false)
@@ -30,25 +30,16 @@ export function useAddColumnModal() {
   const reset = () => {
     setNewColumnTitle('')
     setNewColumnDescription('')
-    setNewColumnFlowId('')
-    setUrlExtracted(false)
-    setShowWorkflowInput(false)
   }
 
   return {
     isOpen,
     showArchivedTab,
-    showWorkflowInput,
-    urlExtracted,
     newColumnTitle,
     newColumnDescription,
-    newColumnFlowId,
     setShowArchivedTab,
-    setShowWorkflowInput,
-    setUrlExtracted,
     setNewColumnTitle,
     setNewColumnDescription,
-    setNewColumnFlowId,
     open,
     close,
     reset,
