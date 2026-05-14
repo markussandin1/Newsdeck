@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Dashboard } from '@/lib/types'
 import { GlobalHeader } from '@/components/GlobalHeader'
+import { UserMenu } from '@/components/UserMenu'
 
 type DashboardWithStats = Dashboard & {
   columnCount?: number
@@ -142,12 +143,28 @@ export default function DashboardsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Global Header */}
+      {/* Global Header (desktop only — lg:grid intern) */}
       <GlobalHeader
         contextContent={pageContext}
         userName={userName}
         onLogout={handleLogout}
       />
+
+      {/* Mobile header — `/dashboards` är ENDA sida som behöver detta
+          eftersom DashboardView har sin egen mobil-layout. P1-9-fix:
+          tidigare lade vi den i GlobalHeader vilket gav dubbla headers
+          på dashboard-sidan. */}
+      <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between gap-3 px-4 py-2 border-b border-border bg-background">
+        <Link href="/dashboards" className="flex items-center gap-2 min-w-0" aria-label="Newsdeck">
+          <Image src="/newsdeck-icon.svg" alt="" width={24} height={24} className="shrink-0" />
+          <span className="font-semibold text-foreground truncate">Dashboards</span>
+        </Link>
+        <UserMenu
+          userName={userName || 'User'}
+          dashboardId=""
+          onLogout={handleLogout}
+        />
+      </div>
 
       {/* Filter Tabs */}
       <div className="bg-card border-b border-border">
