@@ -30,8 +30,8 @@ export function MobileDragPreview({
         transform: 'rotate(2deg) scale(0.8)',
       }}
     >
-      <div className="w-80 bg-white border-2 border-blue-500 rounded-xl shadow-2xl opacity-90">
-        <div className="glass border-b border-slate-200/50 p-4 rounded-t-xl">
+      <div className="w-80 bg-card border-2 border-blue-500 rounded-xl shadow-2xl opacity-90">
+        <div className="glass border-b border-border/50 p-4 rounded-t-xl">
           <div className="flex justify-between items-start ml-6">
             <div className="flex items-center gap-2 flex-1">
               <div className="flex-1">

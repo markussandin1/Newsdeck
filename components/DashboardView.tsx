@@ -361,10 +361,10 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
                   {activeColumnIndex > 0 && (
                     <button
                       onClick={prevColumn}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white active:bg-slate-100 shadow-lg rounded-full p-3 transition-all"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-card/90 hover:bg-card active:bg-muted border border-border shadow-lg rounded-full p-3 transition-all"
                       aria-label="Föregående kolumn"
                     >
-                      <ChevronLeft className="h-6 w-6 text-slate-700" />
+                      <ChevronLeft className="h-6 w-6 text-foreground" />
                     </button>
                   )}
                   {activeColumnIndex < activeColumns.length - 1 && (
@@ -604,7 +604,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
       )}
 
       {/* Real-time connection indicator */}
-      <div className="fixed bottom-4 right-4 bg-white rounded-full shadow-lg px-3 py-2 text-xs text-muted-foreground border">
+      <div className="fixed bottom-4 right-4 bg-card rounded-full shadow-lg px-3 py-2 text-xs text-muted-foreground border border-border">
         <div className="flex items-center gap-2">
           {connectionStatus === 'connected' && (
             <><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div><span>Live</span></>
