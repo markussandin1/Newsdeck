@@ -122,8 +122,16 @@ interface NewsItem {
 ### Key Architecture Components
 
 **Database Layer** (`lib/`):
-- `db-postgresql.ts` - PostgreSQL storage implementation (production)
-- `db.ts` - Database interface/abstraction
+- `db.ts` - Database interface/abstraction (publik API mot resten av appen)
+- `db-postgresql.ts` - `persistentDb`-objektet som re-exporterar funktioner från `lib/db/`-modulerna nedan. Innehåller bara orkestrerande helpers (`clearAllData`, `syncAllColumnsDataFromGeneral`, `isConnected`).
+- `db/pool.ts` - Pg-pool-skapande (Unix socket i prod, TCP lokalt via Cloud SQL Proxy)
+- `db/constants.ts` - `MAIN_DASHBOARD_ID`, `DEFAULT_DASHBOARD`
+- `db/batch.ts` - `buildBatchInsert` (chunkar bulk-INSERTs under pg-parametertaket)
+- `db/news-items.ts` - CRUD mot `news_items`
+- `db/column-data.ts` - CRUD mot `column_data` (denormaliserad cache)
+- `db/dashboards.ts` - CRUD mot `dashboards` + kolumnhantering (kolumner ligger som JSONB i raden)
+- `db/user.ts` - User preferences + dashboard follows
+- `db/admin.ts` - Drift-helpers (cleanup, API request log)
 - Falls back to in-memory storage when DATABASE_URL unavailable (development only)
 
 **API Routes** (`app/api/`):
@@ -392,7 +400,7 @@ POST /api/workflows
 
 **Global Header Component**:
 - `components/GlobalHeader.tsx` - Unified header used across all pages
-- Accepts `contextContent` prop för sidspecifikt innehåll
+- Compound-komponent med tre zoner: `<GlobalHeader.Left>`, `<GlobalHeader.Center>`, `<GlobalHeader.Right>` (P3-10)
 - Used by: `DashboardHeader.tsx` och `app/dashboards/page.tsx`
 
 ## Weather Display
