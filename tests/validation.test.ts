@@ -15,7 +15,6 @@ const createMockDb = (): {
   const addNewsItemsCalls: any[][] = []
 
   const db: IngestionDb = {
-    getDashboards: async () => [],
     getColumnData: async () => [],
     setColumnData: async (columnId, items) => {
       setColumnDataCalls.push({ columnId, items })
@@ -50,7 +49,7 @@ const getStoredItem = (batchCalls: Array<Record<string, any[]>>, columnId: strin
 }
 
 describe('NewsItem Validation', () => {
-  test('requires either columnId or workflowId', async () => {
+  test('requires columnId', async () => {
     const { db } = createMockDb()
 
     await assert.rejects(
@@ -59,7 +58,7 @@ describe('NewsItem Validation', () => {
         assert.ok(error instanceof IngestionError)
         assert.equal(
           (error as IngestionError).message,
-          'Either columnId or workflowId is required in request body'
+          'columnId is required in request body'
         )
         return true
       }
@@ -81,19 +80,23 @@ describe('NewsItem Validation', () => {
     assert.equal(result.columnId, 'col-123')
   })
 
-  test('accepts valid workflowId', async () => {
+  test('rejects workflowId-only payload (legacy routing borttagen)', async () => {
     const { db } = createMockDb()
 
-    const result = await ingestNewsItems(
-      {
-        workflowId: 'workflow-123',
-        items: [{ title: 'Test News' }]
-      },
-      db
+    await assert.rejects(
+      () => ingestNewsItems(
+        { workflowId: 'workflow-123', items: [{ title: 'Test News' }] },
+        db
+      ),
+      (error: unknown) => {
+        assert.ok(error instanceof IngestionError)
+        assert.equal(
+          (error as IngestionError).message,
+          'columnId is required in request body'
+        )
+        return true
+      }
     )
-
-    assert.equal(result.itemsAdded, 1)
-    assert.equal(result.workflowId, 'workflow-123')
   })
 
   test('generates dbId for items', async () => {

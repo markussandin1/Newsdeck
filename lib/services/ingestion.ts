@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 
-import type { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
+import type { NewsItem } from '@/lib/types'
 import { newsdeckPubSub } from '@/lib/pubsub'
 import { eventQueue } from '@/lib/event-queue'
 import { trafficCameraService } from './traffic-camera-service'
@@ -17,7 +17,6 @@ export class IngestionError extends Error {
 }
 
 export interface IngestionDb {
-  getDashboards: () => Promise<Dashboard[]>
   getColumnData: (columnId: string) => Promise<NewsItem[] | undefined>
   setColumnData: (columnId: string, items: NewsItem[]) => Promise<void>
   addNewsItems: (items: NewsItem[]) => Promise<NewsItem[]>
@@ -27,8 +26,7 @@ export interface IngestionDb {
 }
 
 interface NormalisedPayload {
-  columnId?: string
-  workflowId?: string
+  columnId: string
   items: RawNewsItem[]
   extra: Record<string, unknown>
 }
@@ -50,8 +48,7 @@ interface RawNewsItem extends Record<string, unknown> {
 }
 
 export interface IngestionResult {
-  columnId?: string
-  workflowId?: string
+  columnId: string
   itemsAdded: number
   columnsUpdated: number
   matchingColumns: string[]
@@ -142,15 +139,8 @@ const normalisePayload = (body: unknown): NormalisedPayload => {
   const events = isRecord(payload.events) ? payload.events : undefined
 
   let columnId = toOptionalTrimmed(payload.columnId)
-  let workflowId = toOptionalTrimmed(payload.workflowId)
-
   if (events) {
     columnId = columnId ?? toOptionalTrimmed(events.columnId)
-    workflowId = workflowId ?? toOptionalTrimmed(events.workflowId)
-  }
-
-  if (!workflowId) {
-    workflowId = toOptionalTrimmed(payload.flowId)
   }
 
   let rawItems: RawNewsItem[] | undefined
@@ -169,37 +159,15 @@ const normalisePayload = (body: unknown): NormalisedPayload => {
 
   const extra = isRecord(payload.extra) ? payload.extra : {}
 
-  if (!columnId && !workflowId) {
-    throw new IngestionError('Either columnId or workflowId is required in request body')
+  if (!columnId) {
+    throw new IngestionError('columnId is required in request body')
   }
 
   return {
     columnId,
-    workflowId,
     items: rawItems,
     extra
   }
-}
-
-const resolveMatchingColumns = (
-  dashboards: Dashboard[],
-  workflowId: string | undefined
-): string[] => {
-  if (!workflowId) {
-    return []
-  }
-
-  const matching = new Set<string>()
-
-  dashboards.forEach(dashboard => {
-    (dashboard.columns || []).forEach((column: DashboardColumn) => {
-      if (column.flowId === workflowId) {
-        matching.add(column.id)
-      }
-    })
-  })
-
-  return Array.from(matching)
 }
 
 export const ingestNewsItems = async (
@@ -207,15 +175,10 @@ export const ingestNewsItems = async (
   db: IngestionDb,
   options: IngestionOptions = {}
 ): Promise<IngestionResult> => {
-  const { columnId, workflowId, items, extra } = normalisePayload(body)
+  const { columnId, items, extra } = normalisePayload(body)
 
   const now = options.now ?? new Date()
   const createdTimestamp = now.toISOString()
-  const resolvedWorkflowId = columnId ?? workflowId
-
-  if (!resolvedWorkflowId) {
-    throw new IngestionError('Unable to resolve workflow or column identifier from payload')
-  }
 
   const validatedItems = await Promise.all(items.map(async (item) => {
     if (!item || typeof item !== 'object') {
@@ -269,8 +232,8 @@ export const ingestNewsItems = async (
     return {
       id: toOptionalTrimmed(item.id),
       dbId: uuidv4(),
-      workflowId: resolvedWorkflowId,
-      flowId: toOptionalTrimmed(item.flowId) ?? workflowId,
+      workflowId: columnId,
+      flowId: toOptionalTrimmed(item.flowId),
       source: isNonEmptyString(item.source) ? item.source : 'workflows',
       url: resolveUrl(item),
       timestamp,
@@ -295,14 +258,7 @@ export const ingestNewsItems = async (
     } satisfies NewsItem
   }))
 
-  const matchingColumns = new Set<string>()
-
-  if (columnId) {
-    matchingColumns.add(columnId)
-  } else {
-    const dashboards = await db.getDashboards()
-    resolveMatchingColumns(dashboards, workflowId).forEach(id => matchingColumns.add(id))
-  }
+  const matchingColumns = new Set<string>([columnId])
 
   const insertedItems = await db.addNewsItems(validatedItems)
 
@@ -335,7 +291,6 @@ export const ingestNewsItems = async (
 
   return {
     columnId,
-    workflowId,
     itemsAdded: validatedItems.length,
     columnsUpdated,
     matchingColumns: columnIdsArray,

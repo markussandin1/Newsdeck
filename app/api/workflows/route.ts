@@ -52,13 +52,12 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Extract workflowId from body for rate limiting
-  const workflowId = (body && typeof body === 'object' && 'workflowId' in body)
-    ? (body as { workflowId?: string }).workflowId
+  // Extract columnId from body for rate limiting (per-column key, IP fallback)
+  const columnId = (body && typeof body === 'object' && 'columnId' in body)
+    ? (body as { columnId?: string }).columnId
     : null
 
-  // Check rate limit
-  const rateLimitIdentifier = getRateLimitIdentifier(workflowId, ipAddress)
+  const rateLimitIdentifier = getRateLimitIdentifier(columnId, ipAddress)
   const rateLimit = await checkRateLimit(rateLimitIdentifier)
 
   if (!rateLimit.success) {
@@ -104,7 +103,6 @@ export async function POST(request: NextRequest) {
     const result = await ingestNewsItems(body, db)
     logger.info('api.workflows.success', {
       columnId: result.columnId,
-      workflowId: result.workflowId,
       itemsAdded: result.itemsAdded,
       columnsUpdated: result.columnsUpdated,
       matchingColumns: result.matchingColumns,
