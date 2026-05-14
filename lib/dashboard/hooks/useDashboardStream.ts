@@ -11,19 +11,15 @@ interface UseDashboardStreamProps {
 
 interface UseDashboardStreamReturn {
   connectionStatus: ConnectionStatus
-  startPolling: (columnId: string) => void
-  stopPolling: (columnId: string) => void
   stopAllPolling: () => void
 }
 
 /**
- * Server-Sent Events hook – replaces useDashboardPolling.
+ * Server-Sent Events hook.
  *
  * Maintains a single persistent SSE connection to /api/stream for all
- * active (non-archived) columns. Returns the same interface as
- * useDashboardPolling so MainDashboard.tsx requires minimal changes.
- *
- * Reconnects with exponential back-off (1 s → 2 s → 4 s … max 30 s).
+ * active (non-archived) columns. Reconnects with exponential back-off
+ * (1 s → 2 s → 4 s … max 30 s).
  */
 export function useDashboardStream({
   columns,
@@ -206,22 +202,6 @@ export function useDashboardStream({
   }, [])
 
   // -------------------------------------------------------------------------
-  // Compatibility shims for useDashboardPolling interface
-  // (SSE manages all columns in one connection, so per-column start/stop
-  //  simply reconnects the whole stream)
-  // -------------------------------------------------------------------------
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const startPolling = useCallback((_columnId: string) => {
-    // Individual column start is a no-op in SSE mode;
-    // the stream reconnect in the main useEffect handles it.
-  }, [])
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const stopPolling = useCallback((_columnId: string) => {
-    // Individual column stop is a no-op; call stopAllPolling to tear down.
-  }, [])
-
-  // -------------------------------------------------------------------------
   // Connect on mount, reconnect when columns or geo filters change
   // -------------------------------------------------------------------------
   useEffect(() => {
@@ -268,8 +248,6 @@ export function useDashboardStream({
 
   return {
     connectionStatus,
-    startPolling,
-    stopPolling,
     stopAllPolling,
   }
 }
