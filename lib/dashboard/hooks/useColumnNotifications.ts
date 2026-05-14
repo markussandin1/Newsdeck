@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type { NewsItem, DashboardColumn } from '@/lib/types'
 import type { NotificationSettings, DesktopNotificationPermission } from '@/lib/dashboard/types'
 import { getCategory } from '@/lib/categories'
+import { clientLogger } from '@/lib/logger.client'
 
 interface UseColumnNotificationsProps {
   settings: NotificationSettings
@@ -44,20 +45,12 @@ export function useColumnNotifications({
   useEffect(() => {
     const audio = new Audio('/52pj7t0b7w3-notification-sfx-10.mp3')
     audio.volume = 0.5
-
-    // Try to preload and enable audio
     audio.load()
 
-    // Check if user has made an audio preference choice
     const audioPreference = localStorage.getItem('audioEnabled')
 
-    // Test if audio can play (autoplay policy check)
     const testAudio = async () => {
-      // If user has explicitly disabled audio, don't show prompt
-      if (audioPreference === 'false') {
-        console.log('🔇 Audio disabled by user preference')
-        return
-      }
+      if (audioPreference === 'false') return
 
       // If user has already enabled audio, try to initialize silently
       if (audioPreference === 'true') {
@@ -66,25 +59,22 @@ export function useColumnNotifications({
           audio.pause()
           audio.currentTime = 0
           setAudioReady(true)
-          console.log('✅ Audio initialized successfully from saved preference')
           return
-        } catch (error) {
-          console.log('⚠️ Audio blocked despite saved preference:', error)
+        } catch {
+          // Audio blocked despite saved preference — fall through to autoplay-test
         }
       }
 
-      // First-time visit or previous attempt failed - test autoplay
+      // First-time visit or previous attempt failed — test autoplay
       try {
         await audio.play()
         audio.pause()
         audio.currentTime = 0
         setAudioReady(true)
-        console.log('✅ Audio initialized successfully')
-        // Save successful autoplay
         localStorage.setItem('audioEnabled', 'true')
-      } catch (error) {
-        console.log('⚠️ Audio blocked by autoplay policy. User interaction needed:', error)
-        // Only show prompt if user hasn't made a choice yet and sound notifications are enabled
+      } catch {
+        // Blocked by autoplay policy — bara visa prompt om anvandaren inte
+        // tidigare valt och om ljud i grunden ar aktiverat
         if (!audioPreference && settings.global.masterEnabled && settings.global.defaultSoundEnabled) {
           setShowAudioPrompt(true)
         }
@@ -95,61 +85,39 @@ export function useColumnNotifications({
     testAudio()
   }, [settings.global.masterEnabled, settings.global.defaultSoundEnabled])
 
-  // Play sound
   const playSound = useCallback(() => {
     if (audioRef.current) {
-      console.log('🔔 Playing notification sound')
       audioRef.current.currentTime = 0
-      audioRef.current.play().catch(e => {
-        console.warn('⚠️ Could not play notification sound:', e)
+      audioRef.current.play().catch(error => {
+        clientLogger.warn('notifications.playSound.failed', { error: String(error) })
         setShowAudioPrompt(true)
       })
     }
   }, [])
 
-  // Handle new items - determine what notifications to show
   const handleNewItems = useCallback((columnId: string, items: NewsItem[]) => {
-    // Master toggle check
-    if (!settings.global.masterEnabled) {
-      console.log(`🔇 Notifications disabled globally`)
-      return
-    }
+    if (!settings.global.masterEnabled) return
 
-    // Find the column to get its title
-    const column = columns.find(c => c.id === columnId)
-    const columnTitle = column?.title || 'Kolumn'
-
-    // Filter items by newsValue threshold
     const notifiableItems = items.filter(
-      item => item.newsValue >= settings.global.newsValueThreshold
+      item => item.newsValue >= settings.global.newsValueThreshold,
     )
+    if (notifiableItems.length === 0) return
 
-    if (notifiableItems.length === 0) {
-      console.log(`🔇 No items meet newsValue threshold (${settings.global.newsValueThreshold})`)
-      return
-    }
-
-    // Get column-specific settings (or defaults)
     const columnSettings = settings.columns[columnId] || {
       soundEnabled: settings.global.defaultSoundEnabled,
-      desktopEnabled: settings.global.defaultDesktopEnabled
+      desktopEnabled: settings.global.defaultDesktopEnabled,
     }
 
-    // Play sound if enabled
     if (columnSettings.soundEnabled && audioReady) {
       playSound()
-    } else if (columnSettings.soundEnabled && !audioReady) {
-      console.log('🔇 Sound enabled but audio not ready')
     }
 
-    // Show desktop notification if enabled and permission granted
     if (columnSettings.desktopEnabled && desktopPermission === 'granted') {
-      // Use the highest priority item for the notification
-      const topItem = notifiableItems.reduce((best, item) =>
-        item.newsValue > best.newsValue ? item : best
-      , notifiableItems[0])
+      const topItem = notifiableItems.reduce(
+        (best, item) => (item.newsValue > best.newsValue ? item : best),
+        notifiableItems[0],
+      )
 
-      // Build notification body with source and category
       const category = topItem.category
         ? getCategory(topItem.category)?.label || topItem.category
         : 'Nyhet'
@@ -159,57 +127,42 @@ export function useColumnNotifications({
         title: topItem.title,
         body,
         tag: `newsdeck-${columnId}-${topItem.dbId}`,
-        data: { columnId, itemId: topItem.dbId }
+        data: { columnId, itemId: topItem.dbId },
       })
-
-      // If there are more items, show a count
-      if (notifiableItems.length > 1) {
-        console.log(`📢 ${notifiableItems.length - 1} more items in ${columnTitle}`)
-      }
-    } else if (columnSettings.desktopEnabled && desktopPermission !== 'granted') {
-      console.log(`🔇 Desktop notifications enabled but permission is: ${desktopPermission}`)
     }
-  }, [settings, columns, audioReady, desktopPermission, playSound, showDesktopNotification])
+  }, [settings, audioReady, desktopPermission, playSound, showDesktopNotification])
 
-  // Test notification - useful for settings modal.
-  // Always attempts to play sound + show desktop notification regardless of
-  // current settings, since the user explicitly clicked "test". The click
-  // counts as a user gesture so the browser allows audio playback even if
-  // the autoplay init failed earlier.
+  /**
+   * Test-notis ignorerar settings — klicket racker som user gesture sa
+   * webblasaren tillater audio playback aven om autoplay tidigare misslyckats.
+   */
   const testNotification = useCallback(() => {
-    // Attempt to play sound regardless of settings/audioReady — this click IS
-    // the required user gesture, so autoplay policies should permit it.
     if (audioRef.current) {
-      console.log('🔔 Testing notification sound')
       audioRef.current.currentTime = 0
       audioRef.current.play()
         .then(() => {
-          // Successful play implies audio is now unlocked; remember it.
           if (!audioReady) {
             setAudioReady(true)
             localStorage.setItem('audioEnabled', 'true')
-            console.log('✅ Audio unlocked by test-button gesture')
           }
         })
-        .catch(e => {
-          console.warn('⚠️ Test playback failed:', e)
+        .catch(error => {
+          clientLogger.warn('notifications.testSound.failed', { error: String(error) })
           setShowAudioPrompt(true)
         })
-    } else {
-      console.warn('⚠️ Audio element not initialised yet')
     }
 
-    // Always attempt a desktop notification if permission is granted.
     if (desktopPermission === 'granted') {
       showDesktopNotification({
         title: 'Testnotis',
         body: 'Newsdeck • Notiser fungerar!',
-        tag: 'newsdeck-test'
+        tag: 'newsdeck-test',
       })
-    } else {
-      console.log(`🔕 Desktop notification permission: ${desktopPermission}`)
     }
   }, [audioReady, desktopPermission, showDesktopNotification])
+
+  // Suppress unused warning — columns prop kept for back-compat
+  void columns
 
   const enableAudio = useCallback(async () => {
     try {
@@ -220,17 +173,15 @@ export function useColumnNotifications({
         localStorage.setItem('audioEnabled', 'true')
         setAudioReady(true)
         setShowAudioPrompt(false)
-        console.log('✅ Audio enabled by user')
       }
-    } catch (e) {
-      console.error('Failed to enable audio:', e)
+    } catch (error) {
+      clientLogger.error('notifications.enableAudio.failed', { error: String(error) })
     }
   }, [])
 
   const disableAudio = useCallback(() => {
     localStorage.setItem('audioEnabled', 'false')
     setShowAudioPrompt(false)
-    console.log('🔇 Audio disabled by user')
   }, [])
 
   const dismissAudioPrompt = useCallback(() => {
@@ -249,5 +200,4 @@ export function useColumnNotifications({
   }
 }
 
-// Legacy exports for backwards compatibility during migration
 export type { UseColumnNotificationsProps, UseColumnNotificationsReturn }

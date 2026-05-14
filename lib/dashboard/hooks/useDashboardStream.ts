@@ -138,7 +138,6 @@ export function useDashboardStream({
       setConnectionStatus('connected')
       backoffRef.current = 1000 // reset back-off on successful connection
       isInitialConnectionRef.current = false
-      console.log('SSE: connection opened', { url })
     }
 
     source.onmessage = (event) => {
@@ -151,19 +150,17 @@ export function useDashboardStream({
         }
 
         if (data.type === 'items' && data.columnId && data.items && data.items.length > 0) {
-          console.log(`SSE: received ${data.items.length} items for column ${data.columnId}`)
           handleItems(data.columnId, data.items)
         }
         // heartbeat and connected messages are intentionally ignored
       } catch (err) {
-        console.error('SSE: failed to parse message', err, event.data)
+        console.error('SSE: failed to parse message', err)
       }
     }
 
     source.onerror = () => {
       if (isStoppedRef.current) return
 
-      console.warn('SSE: connection error, scheduling reconnect in', backoffRef.current, 'ms')
       setConnectionStatus('disconnected')
 
       source.close()
