@@ -40,6 +40,13 @@ export default function DashboardPage() {
     }
   }, [fetchDashboard, slug])
 
+  // Persist senaste besökta dashboard så `/`-redirect kan hoppa hit nästa gång (P2-3)
+  useEffect(() => {
+    if (slug && typeof window !== 'undefined') {
+      window.localStorage.setItem('nd.lastVisitedDashboard', slug)
+    }
+  }, [slug])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
