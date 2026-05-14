@@ -77,6 +77,9 @@ export function ColumnContent({
           Behöver du justera kolumnen? Klicka på <span aria-hidden>⋮</span>-menyn uppe till höger
           för inställningar, ljudnotiser och feed-URL.
         </div>
+        <div className="nd-col-empty-hint">
+          Första gången? Läs <a href="/docs" className="underline hover:no-underline">hur du fyller kolumnen med händelser via Workflows</a>.
+        </div>
       </div>
     )
   }

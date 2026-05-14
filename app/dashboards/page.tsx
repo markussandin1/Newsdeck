@@ -215,20 +215,25 @@ export default function DashboardsPage() {
               }
             </p>
             {activeTab === 'mine' && (
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
-                >
-                  Skapa min första dashboard
-                </button>
-                <button
-                  onClick={() => setActiveTab('all')}
-                  className="px-6 py-3 border border-border text-foreground rounded-lg hover:bg-muted font-medium"
-                >
-                  Utforska publika dashboards →
-                </button>
-              </div>
+              <>
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+                  >
+                    Skapa min första dashboard
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('all')}
+                    className="px-6 py-3 border border-border text-foreground rounded-lg hover:bg-muted font-medium"
+                  >
+                    Utforska publika dashboards →
+                  </button>
+                </div>
+                <p className="text-sm text-muted-foreground mt-6">
+                  Ny här? Läs <Link href="/docs" className="underline hover:no-underline text-foreground">hur Newsdeck fungerar</Link> — så du vet hur kolumnerna fylls med händelser via Workflows.
+                </p>
+              </>
             )}
           </div>
         ) : (
