@@ -1,8 +1,8 @@
 /**
- * Dashboard-specific types and interfaces for MainDashboard refactoring
+ * Dashboard-specific types and interfaces for DashboardView refactoring
  *
  * This file defines the type contracts for the upcoming hooks and components
- * that will be extracted from MainDashboard.tsx
+ * that will be extracted from DashboardView.tsx
  */
 
 import { Dashboard, NewsItem, DashboardColumn } from '@/lib/types'
@@ -182,7 +182,7 @@ export interface DashboardModalsState {
 /**
  * Props for the main dashboard component
  */
-export interface MainDashboardProps {
+export interface DashboardViewProps {
   dashboard: Dashboard
   onDashboardUpdate: (dashboard: Dashboard) => void
 }
