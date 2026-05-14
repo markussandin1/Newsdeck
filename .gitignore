@@ -74,6 +74,10 @@ temp/
 fix-column-data-schema.sql
 init-db.sql
 
+# Personal scratchpads / planning docs (inte versionerat)
+REVIEW_PLAN.md
+docs/systempromt-json-agent.md
+
 # Prevent duplicate CLAUDE.md (case-sensitivity issue on macOS)
 claude.md
 
