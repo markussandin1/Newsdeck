@@ -18,6 +18,10 @@ interface UserMenuProps {
 export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNotificationSettings }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // P3-5: fokus-bar fingerar tangentbordsnav. Refs samlas in via callback
+  // i varje meny-item så vi kan call .focus() programmatiskt.
+  const itemRefs = useRef<Array<HTMLElement | null>>([]);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
 
@@ -34,18 +38,62 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // Handle keyboard navigation
+  // Tangentbordsnavigation (P3-5, WCAG 2.1 AA):
+  // - Escape stänger menyn och returnerar fokus till triggern
+  // - ArrowDown/ArrowUp flyttar fokus mellan items, wrap-around
+  // - Home/End hoppar till första/sista
+  // - Tab stänger menyn så vidare tab tar användaren ut ur menyn
   useEffect(() => {
+    if (!isOpen) return;
+
+    // När menyn öppnas, fokusera första item så piltangenter kan börja navigera.
+    const t = setTimeout(() => itemRefs.current.find(Boolean)?.focus(), 0);
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+      const items = itemRefs.current.filter((el): el is HTMLElement => !!el);
+      if (items.length === 0) return;
+      const activeIndex = items.indexOf(document.activeElement as HTMLElement);
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
         setIsOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (event.key === 'Tab') {
+        // Låt naturlig tab-ordning ta vid, men stäng menyn så fokus inte
+        // återgår dit vid nästa Tab.
+        setIsOpen(false);
+        return;
+      }
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        const next = activeIndex < 0 ? 0 : (activeIndex + 1) % items.length;
+        items[next]?.focus();
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        const prev = activeIndex < 0 ? items.length - 1 : (activeIndex - 1 + items.length) % items.length;
+        items[prev]?.focus();
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        items[0]?.focus();
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        items[items.length - 1]?.focus();
       }
     };
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-    }
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen]);
+
+  // Återställ ref-arrayen mellan render-passar så stale refs inte ligger kvar
+  itemRefs.current = [];
+  const registerItem = (el: HTMLElement | null) => {
+    if (el && !itemRefs.current.includes(el)) itemRefs.current.push(el);
+  };
 
   const handleLogout = async () => {
     if (onLogout) {
@@ -60,10 +108,12 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
     <div className="relative" ref={menuRef}>
       {/* Trigger: Avatar + Name + Chevron */}
       <button
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
         aria-label={`User menu for ${userName}`}
         aria-expanded={isOpen}
+        aria-haspopup="menu"
         title={userName}
       >
         <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center text-sm font-semibold text-primary-foreground">
@@ -84,6 +134,8 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12, ease: 'easeOut' }}
+            role="menu"
+            aria-label="Användarmeny"
             className="absolute right-0 top-full mt-2 w-60 bg-background/85 backdrop-blur-md rounded-xl shadow-soft-lg border border-border/20 py-2 z-50"
           >
             {/* User Info Section */}
@@ -101,9 +153,11 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
 
               {/* Dashboard Settings */}
               <Link
+                ref={registerItem}
+                role="menuitem"
                 href={`/admin?dashboardId=${dashboardId}`}
                 onClick={() => setIsOpen(false)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted focus:bg-muted focus:outline-none transition-colors"
               >
                 <Settings className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-body text-foreground">Dashboard-inställningar</span>
@@ -112,11 +166,13 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
               {/* Notification Settings */}
               {onOpenNotificationSettings && (
                 <button
+                  ref={registerItem}
+                  role="menuitem"
                   onClick={() => {
                     onOpenNotificationSettings();
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted focus:bg-muted focus:outline-none transition-colors text-left"
                 >
                   <Bell className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-body text-foreground">Notiser</span>
@@ -158,8 +214,10 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
             {/* Logout */}
             <div className="border-t border-border/50 pt-1">
               <button
+                ref={registerItem}
+                role="menuitem"
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left text-destructive"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted focus:bg-muted focus:outline-none transition-colors text-left text-destructive"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="text-sm font-body">Logga ut</span>
