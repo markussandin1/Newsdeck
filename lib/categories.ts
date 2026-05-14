@@ -353,10 +353,88 @@ export const CATEGORIES: Record<CategoryKey, CategoryDefinition> = {
 }
 
 /**
- * Hämta kategori-definition för en given nyckel
+ * Pseudo-definitioner som visas när Workflows skickar in gruppnamn
+ * ("Trafik", "Brand", …) istället för en specifik CategoryKey.
+ *
+ * Bakgrund: AI-noden har historiskt skickat in storstavade gruppnamn
+ * eller varianter (Brand, Trafik, Övrigt, Kollektivtrafik, …). Dessa
+ * matchar inte CategoryKey-enumen exakt och resulterade i att kortet
+ * renderades utan emoji/etikett. Tills Workflows-prompten är uppdaterad
+ * och historisk data hunnit rulla ut faller vi tillbaka på dessa här
+ * — bättre med en grupp-ikon än ingen ikon alls.
+ */
+const GROUP_FALLBACKS: Record<string, CategoryDefinition> = {
+  trafik: {
+    key: 'annan',
+    label: 'Trafik',
+    icon: '🚗',
+    group: 'traffic',
+    description: 'Trafik-relaterad händelse (oklassificerad)',
+  },
+  brand: CATEGORIES.brand,
+  brott: {
+    key: 'annan',
+    label: 'Brott',
+    icon: '🚨',
+    group: 'crime',
+    description: 'Brottsrelaterad händelse (oklassificerad)',
+  },
+  kollektivtrafik: {
+    key: 'annan',
+    label: 'Kollektivtrafik',
+    icon: '🚆',
+    group: 'rail',
+    description: 'Kollektivtrafik-störning (oklassificerad)',
+  },
+  väder: {
+    key: 'annan',
+    label: 'Väder',
+    icon: '🌧️',
+    group: 'weather',
+    description: 'Väder-relaterad händelse (oklassificerad)',
+  },
+  vader: {
+    // utan å för fall där input saknar diakritik
+    key: 'annan',
+    label: 'Väder',
+    icon: '🌧️',
+    group: 'weather',
+    description: 'Väder-relaterad händelse (oklassificerad)',
+  },
+  övrigt: CATEGORIES.annan,
+  ovrigt: CATEGORIES.annan,
+}
+
+/**
+ * Hämta kategori-definition för en given nyckel.
+ *
+ * Tolerant lookup (P2/kategori-fix):
+ *  1. Exakt match mot CategoryKey
+ *  2. Case-insensitive match (lowercase)
+ *  3. Trimmat + lowercase
+ *  4. Gruppnamns-fallback (Trafik → 🚗-pseudokategori)
+ *  5. undefined (visar inget kategori-pill)
+ *
+ * Detta gör att items som kom in med "Brand", "Trafik" eller
+ * "Kollektivtrafik" ändå får en relevant ikon och etikett i UI:t,
+ * även om vi inte vet exakt subkategori.
  */
 export function getCategory(key: string): CategoryDefinition | undefined {
-  return CATEGORIES[key as CategoryKey]
+  if (!key) return undefined
+
+  // 1. Exakt match
+  const exact = CATEGORIES[key as CategoryKey]
+  if (exact) return exact
+
+  // 2-3. Trim + lowercase
+  const normalized = key.trim().toLowerCase()
+  if (normalized !== key) {
+    const lower = CATEGORIES[normalized as CategoryKey]
+    if (lower) return lower
+  }
+
+  // 4. Gruppnamns-fallback
+  return GROUP_FALLBACKS[normalized]
 }
 
 /**
@@ -364,8 +442,7 @@ export function getCategory(key: string): CategoryDefinition | undefined {
  */
 export function getCategoryIcon(category?: string): string {
   if (!category) return '📍'
-  const def = getCategory(category.toLowerCase())
-  return def?.icon || '📍'
+  return getCategory(category)?.icon || '📍'
 }
 
 /**
