@@ -1,24 +1,17 @@
 'use client'
 
 import { DashboardColumn } from '@/lib/types'
-import { extractWorkflowId } from '@/lib/dashboard/utils'
 import { Button } from '@/components/ui/button'
-import {
-  Settings, X, Copy, Check, Save, Archive, Trash2, Link2, CheckCircle
-} from 'lucide-react'
+import { Settings, X, Copy, Check, Save, Archive } from 'lucide-react'
 
 interface ColumnEditFormProps {
   column: DashboardColumn
   editTitle: string
   editDescription: string
-  editFlowId: string
   copiedId: string | null
-  showExtractionSuccess: boolean
   onEditTitleChange: (value: string) => void
   onEditDescriptionChange: (value: string) => void
-  onEditFlowIdChange: (value: string) => void
-  onShowExtractionSuccess: (value: boolean) => void
-  onSave: (columnId: string, title: string, description?: string, flowId?: string) => void
+  onSave: (columnId: string, title: string, description?: string) => void
   onCancel: () => void
   onArchive: (columnId: string) => void
   onCopyId: (text: string | undefined, columnId: string, columnTitle: string) => void
@@ -28,13 +21,9 @@ export function ColumnEditForm({
   column,
   editTitle,
   editDescription,
-  editFlowId,
   copiedId,
-  showExtractionSuccess,
   onEditTitleChange,
   onEditDescriptionChange,
-  onEditFlowIdChange,
-  onShowExtractionSuccess,
   onSave,
   onCancel,
   onArchive,
@@ -60,7 +49,7 @@ export function ColumnEditForm({
 
       <form onSubmit={(e) => {
         e.preventDefault()
-        onSave(column.id, editTitle, editDescription, editFlowId)
+        onSave(column.id, editTitle, editDescription)
       }} className="space-y-3">
         {/* Kolumn-ID — primär status, visas överst */}
         <div className="p-2 bg-muted rounded-md border border-border">
@@ -73,6 +62,7 @@ export function ColumnEditForm({
               type="text"
               value={column.id}
               readOnly
+              onFocus={(e) => e.target.select()}
               className="flex-1 px-2 py-1.5 text-xs bg-background border border-input rounded font-mono text-foreground"
             />
             <Button
@@ -85,7 +75,7 @@ export function ColumnEditForm({
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground mt-1">
-            Ange detta ID i din Workflow under steget &quot;Send to Newsdeck&quot;.
+            Klistra in detta ID i Newsdeck Publisher-noden i Workflows.
           </p>
         </div>
 
@@ -115,64 +105,6 @@ export function ColumnEditForm({
             rows={2}
           />
         </div>
-
-        {/* Koppla mot Workflow ID — deprecated, dold som standard */}
-        <details open={!!editFlowId} className="group">
-          <summary className="cursor-pointer list-none flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground select-none">
-            <Link2 className="h-3 w-3" />
-            Koppla mot Workflow ID (deprecated)
-          </summary>
-          <div className="mt-2 space-y-2">
-            {editFlowId ? (
-              <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-md">
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="h-4 w-4 text-emerald-600" />
-                  <span className="text-emerald-600 font-medium">Ansluten</span>
-                  <Button
-                    type="button"
-                    onClick={() => onEditFlowIdChange('')}
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto h-auto p-1 text-xs hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Koppla från
-                  </Button>
-                </div>
-                <div className="text-[10px] text-emerald-700 mt-1">
-                  Workflow-ID: <code className="bg-white px-1 rounded">{editFlowId}</code>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <input
-                  type="text"
-                  value={editFlowId}
-                  onChange={(e) => onEditFlowIdChange(e.target.value)}
-                  onBlur={(e) => {
-                    const extracted = extractWorkflowId(e.target.value)
-                    onEditFlowIdChange(extracted)
-                    if (extracted && extracted !== e.target.value) {
-                      onShowExtractionSuccess(true)
-                      setTimeout(() => onShowExtractionSuccess(false), 3000)
-                    }
-                  }}
-                  className="w-full px-2 py-1.5 font-body text-xs border border-input rounded font-mono focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
-                  placeholder="Klistra in workflow-URL från Workflows-appen"
-                />
-                {showExtractionSuccess && (
-                  <div className="text-[10px] text-success flex items-center gap-1">
-                    <Check className="h-3 w-3" />
-                    Workflow-ID extraherat från URL
-                  </div>
-                )}
-                <p className="text-[10px] text-muted-foreground">
-                  Fyll denna kolumn automatiskt med nyheter från en AI-workflow
-                </p>
-              </div>
-            )}
-          </div>
-        </details>
 
         <div className="flex gap-2 pt-2 border-t border-border">
           <Button
