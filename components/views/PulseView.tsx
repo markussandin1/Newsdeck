@@ -112,7 +112,19 @@ export function PulseView({ columns, columnData, onSelectItem }: PulseViewProps)
       <main className="nd-pulse-main" style={{ flex: 1, overflowY: 'auto' }}>
         <div className="nd-pulse-axis" />
         {Object.keys(grouped).length === 0 && (
-          <div className="nd-pulse-empty">Inga händelser matchar filtret.</div>
+          <div className="nd-pulse-empty">
+            <div className="nd-pulse-empty-ic">🔍</div>
+            <div className="nd-pulse-empty-t">
+              {allItems.length === 0 ? 'Inga händelser ännu' : 'Inga träffar'}
+            </div>
+            <div className="nd-pulse-empty-d">
+              {allItems.length === 0
+                ? 'När händelser kommer in i någon av dina kolumner visas de här som ett kronologiskt flöde.'
+                : (filterCols.size > 0 || minPrio > 1)
+                  ? <>Inga händelser matchar nuvarande filter. Prova att <button type="button" className="nd-pulse-empty-reset" onClick={() => { setFilterCols(new Set()); setMinPrio(1) }}>återställa filtret</button>.</>
+                  : 'Inga händelser i tidsfönstret än.'}
+            </div>
+          </div>
         )}
         {bucketOrder.filter(b => grouped[b]?.length).map(bucket => (
           <section key={bucket} className="nd-pulse-bucket">
