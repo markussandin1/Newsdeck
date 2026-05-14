@@ -661,6 +661,26 @@ export const persistentDb = {
   },
 
   /**
+   * Atomically bump view_count and last_viewed in a single UPDATE.
+   * Used on every dashboard GET — avoids the SELECT+UPDATE round-trip of
+   * the generic updateDashboard.
+   */
+  incrementDashboardView: async (id: string): Promise<void> => {
+    const pool = getPool()
+    try {
+      await pool.query(
+        `UPDATE dashboards
+         SET view_count = COALESCE(view_count, 0) + 1,
+             last_viewed = NOW()
+         WHERE id = $1`,
+        [id]
+      )
+    } catch (error) {
+      logger.error('db.incrementDashboardView.error', { error, id })
+    }
+  },
+
+  /**
    * Delete a dashboard by id. Refuses to delete the main/default dashboard.
    * Also removes any associated dashboard_follows rows (column_data lives keyed
    * by columnId so the rows are orphaned — they don't show anywhere once the
