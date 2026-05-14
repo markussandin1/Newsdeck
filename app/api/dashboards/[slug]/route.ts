@@ -51,12 +51,11 @@ export async function GET(
       }
     }
     
-    // Update last viewed timestamp and view count
-    await db.updateDashboard(dashboard.id, {
-      lastViewed: new Date().toISOString(),
-      viewCount: (dashboard.viewCount || 0) + 1
-    })
-    
+    // Bump view_count atomically (fire-and-forget; failures only log).
+    // Tidigare gjordes detta via updateDashboard som var SELECT+UPDATE i
+    // 2 round-trips. Nu ett enradigt UPDATE.
+    void db.incrementDashboardView(dashboard.id)
+
     return NextResponse.json({
       success: true,
       dashboard,
