@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json().catch(() => ({}))
-    const daysToKeep = typeof body.daysToKeep === 'number' ? body.daysToKeep : 2
+    // Default retention: 30 dagar (P2-17). Tidigare 2 dagar — för aggressivt
+    // för en redaktionsdashboard där användare återbesöker händelser.
+    const daysToKeep = typeof body.daysToKeep === 'number' ? body.daysToKeep : 30
 
     logger.info('api.admin.cleanup.start', { daysToKeep })
 

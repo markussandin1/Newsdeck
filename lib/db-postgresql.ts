@@ -1146,8 +1146,8 @@ export const persistentDb = {
     }
   },
 
-  // Cleanup old news items
-  cleanupOldItems: async (olderThanDays = 2) => {
+  // Cleanup old news items. Default retention: 30 dagar (P2-17).
+  cleanupOldItems: async (olderThanDays = 30) => {
     const pool = getPool()
     const client = await pool.connect()
 
