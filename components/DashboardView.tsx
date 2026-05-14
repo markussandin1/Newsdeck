@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardStream } from '@/lib/dashboard/hooks/useDashboardStream'
@@ -17,6 +17,7 @@ import { useColumnDragDrop } from '@/lib/dashboard/hooks/useColumnDragDrop'
 import { useViewMode } from '@/lib/dashboard/hooks/useViewMode'
 import { useCurrentUser } from '@/lib/dashboard/hooks/useCurrentUser'
 import { useColumnSearch } from '@/lib/dashboard/hooks/useColumnSearch'
+import { useDashboardNavigation } from '@/lib/dashboard/hooks/useDashboardNavigation'
 import { ThemeToggle } from './theme-toggle'
 import NewsItemModal from './NewsItemModal'
 import { Menu, MoreVertical, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react'
@@ -40,7 +41,6 @@ interface DashboardViewProps {
 }
 
 export default function DashboardView({ dashboard, onDashboardUpdate }: DashboardViewProps) {
-  const router = useRouter()
   const pathname = usePathname()
 
   // Dashboard data management
@@ -222,25 +222,8 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     setEditFlowId('')
   }
 
-  const createDashboard = async (name: string, description?: string) => {
-    try {
-      const response = await fetch('/api/dashboards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description })
-      })
-      const data = await response.json()
-      if (data.success) {
-        router.push(`/dashboard/${data.dashboard.slug}`)
-      }
-    } catch (error) {
-      console.error('Failed to create dashboard:', error)
-    }
-  }
-
-  const navigateToDashboard = useCallback((slug: string) => {
-    router.push(`/dashboard/${slug}`)
-  }, [router])
+  // Dashboard-nivå-navigation extraherat till useDashboardNavigation (P1-3 steg 6)
+  const { navigateToDashboard, createDashboard } = useDashboardNavigation()
 
   // Drag & drop — extraherat till useColumnDragDrop (P1-3 steg 2)
   const {
