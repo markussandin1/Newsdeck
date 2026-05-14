@@ -1,10 +1,7 @@
 /**
- * Admin/operations-funktioner (P2-1 steg 3):
+ * Admin/operations-funktioner:
  *  - cleanupOldItems: ta bort news_items + column_data äldre än N dagar
- *  - logApiRequest: strukturerad audit-loggning (skickar via logger,
- *    persisterar inte längre)
- *  - getApiRequestLogs: läs historiska rader från api_request_logs
- *    (admin-vyn använder dem för diagnostik)
+ *  - logApiRequest: strukturerad audit-loggning till Cloud Logging
  *
  * Dessa hör inte hemma på datalager-nivå utan är drift-helpers; egen
  * modul gör det enklare att hitta dem.
@@ -66,52 +63,4 @@ export async function logApiRequest(log: ApiRequestLogEntry) {
     success: log.success,
     errorMessage: log.errorMessage,
   })
-}
-
-export async function getApiRequestLogs(
-  limit = 100,
-  filters?: { success?: boolean; endpoint?: string },
-) {
-  const pool = getPool()
-
-  try {
-    let query = `
-      SELECT
-        id, endpoint, method, status_code as "statusCode", success,
-        request_body as "requestBody", response_body as "responseBody",
-        error_message as "errorMessage", ip_address as "ipAddress",
-        user_agent as "userAgent", created_at as "createdAt"
-      FROM api_request_logs
-    `
-    const params: (boolean | string | number)[] = []
-    const conditions: string[] = []
-
-    if (filters?.success !== undefined) {
-      conditions.push(`success = $${params.length + 1}`)
-      params.push(filters.success)
-    }
-
-    if (filters?.endpoint) {
-      conditions.push(`endpoint = $${params.length + 1}`)
-      params.push(filters.endpoint)
-    }
-
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ')
-    }
-
-    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`
-    params.push(limit)
-
-    const result = await pool.query(query, params)
-
-    return result.rows.map((row) => ({
-      ...row,
-      requestBody: typeof row.requestBody === 'string' ? JSON.parse(row.requestBody) : row.requestBody,
-      responseBody: typeof row.responseBody === 'string' ? JSON.parse(row.responseBody) : row.responseBody,
-    }))
-  } catch (error) {
-    logger.error('db.getApiRequestLogs.error', { error })
-    throw error
-  }
 }

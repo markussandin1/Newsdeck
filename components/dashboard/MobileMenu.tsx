@@ -161,14 +161,14 @@ export function MobileMenu({
               </button>
 
               <Link
-                href={`/admin?dashboardId=${dashboard.id}`}
+                href="/docs"
                 onClick={onClose}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left hover:bg-slate-50 text-slate-700"
               >
                 <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center">
                   <Settings className="h-4 w-4" />
                 </div>
-                <span className="font-medium">Inställningar</span>
+                <span className="font-medium">Dokumentation</span>
               </Link>
             </div>
 
