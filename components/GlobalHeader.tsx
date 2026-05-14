@@ -87,7 +87,7 @@ export function GlobalHeader({
           ha navigation. Persona: nyhetsredaktör — vi prioriterar Newsdeck-
           identitet + snabb access till profil/notisinställningar. */}
       <div
-        className={`lg:hidden flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--nd-line)] bg-[var(--nd-bg)] ${className}`}
+        className={`lg:hidden sticky top-0 z-50 flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--nd-line)] bg-[var(--nd-bg)] ${className}`}
       >
         <Link href="/dashboards" className="flex items-center gap-2 min-w-0" aria-label="Newsdeck">
           <Image
