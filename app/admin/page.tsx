@@ -1,187 +1,30 @@
 'use client'
 
-import { useCallback, useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Dashboard, DashboardColumn, NewsItem } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, ArrowLeft, Upload, Trash2, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
+import { useAdminData } from './useAdminData'
 
 function AdminPageContent() {
-  const searchParams = useSearchParams()
-  const dashboardIdFromUrl = searchParams.get('dashboardId')
+  const {
+    dashboards,
+    selectedDashboard,
+    setSelectedDashboard,
+    columns,
+    selectedColumn,
+    setSelectedColumn,
+    recentItems,
+    isLoading,
+    itemsLoading,
+    isAuthenticated,
+    fetchRecentItems,
+  } = useAdminData()
 
-  const [dashboards, setDashboards] = useState<Dashboard[]>([])
-  const [selectedDashboard, setSelectedDashboard] = useState<string>('')
-  const [columns, setColumns] = useState<DashboardColumn[]>([])
-  const [selectedColumn, setSelectedColumn] = useState<string>('')
   const [jsonInput, setJsonInput] = useState('')
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [recentItems, setRecentItems] = useState<NewsItem[]>([])
-  const [itemsLoading, setItemsLoading] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-
-  const fetchDashboards = useCallback(async () => {
-    try {
-      const response = await fetch('/api/dashboards')
-      const result = await response.json() as {
-        success: boolean
-        dashboards?: (Dashboard & { columnCount?: number })[]
-      }
-      if (result.success && Array.isArray(result.dashboards)) {
-        console.log(`🔍 Admin: Found ${result.dashboards.length} dashboards`)
-        const normalizedDashboards = result.dashboards.map(dashboardItem => {
-          const { columnCount, ...dashboardWithoutCount } = dashboardItem
-          void columnCount
-          return dashboardWithoutCount
-        })
-        setDashboards(normalizedDashboards)
-
-        // Priority: URL param > main dashboard > first dashboard
-        if (dashboardIdFromUrl && normalizedDashboards.find(d => d.id === dashboardIdFromUrl)) {
-          console.log(`🎯 Admin: Auto-selecting dashboard from URL: ${dashboardIdFromUrl}`)
-          setSelectedDashboard(dashboardIdFromUrl)
-        } else if (!selectedDashboard) {
-          const mainDash = normalizedDashboards.find(d => d.id === 'main-dashboard')
-          if (mainDash) {
-            console.log(`🎯 Admin: Auto-selecting main dashboard`)
-            setSelectedDashboard(mainDash.id)
-          } else if (normalizedDashboards.length > 0) {
-            console.log(`🎯 Admin: Auto-selecting first dashboard: ${normalizedDashboards[0].name}`)
-            setSelectedDashboard(normalizedDashboards[0].id)
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch dashboards:', error)
-    }
-  }, [selectedDashboard, dashboardIdFromUrl])
-
-  const fetchColumns = useCallback(async (dashboardId: string) => {
-    if (!dashboardId) return
-
-    try {
-      let endpoint
-
-      if (dashboardId === 'main-dashboard') {
-        endpoint = '/api/dashboards/main-dashboard'
-      } else {
-        // Find the dashboard object to get its slug
-        const dashboard = dashboards.find(d => d.id === dashboardId)
-        if (dashboard && dashboard.slug) {
-          endpoint = `/api/dashboards/${dashboard.slug}`
-        } else {
-          console.error(`Dashboard with ID ${dashboardId} not found or has no slug.`)
-          return
-        }
-      }
-
-      console.log(`🔍 Admin: Fetching columns for dashboard ${dashboardId} from ${endpoint}`)
-
-      const response = await fetch(endpoint)
-      const result = await response.json() as {
-        success: boolean
-        dashboard?: Dashboard
-        error?: string
-      }
-      if (result.success && result.dashboard) {
-        const dashboard = result.dashboard
-        console.log(`✅ Admin: Found ${(dashboard.columns || []).length} columns for dashboard ${dashboardId}`)
-        setColumns(dashboard.columns || [])
-        if (dashboard.columns && dashboard.columns.length > 0) {
-          setSelectedColumn(dashboard.columns[0].id)
-        } else {
-          setSelectedColumn('')
-        }
-      } else {
-        console.error('Failed to fetch dashboard:', result.error)
-        setColumns([])
-        setSelectedColumn('')
-      }
-    } catch (error) {
-      console.error('Failed to fetch columns:', error)
-      setColumns([])
-      setSelectedColumn('')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [dashboards])
-
-  const fetchRecentItems = useCallback(async (dashboardId?: string) => {
-    setItemsLoading(true)
-    try {
-      const targetDashboard = dashboardId || selectedDashboard
-      console.log(`🔍 Admin: Fetching recent items for dashboard ${targetDashboard}`)
-
-      if (!targetDashboard) {
-        // No dashboard selected, show all items
-        const response = await fetch('/api/news-items')
-        const result = await response.json() as { success: boolean; items: NewsItem[] }
-        if (result.success) {
-          console.log(`✅ Admin: Found ${result.items.length} total items (no dashboard filter)`)
-          setRecentItems(result.items.slice(0, 50))
-        }
-        return
-      }
-
-      // Get dashboard columns
-      const dashboard = dashboards.find(d => d.id === targetDashboard)
-      if (!dashboard || !dashboard.columns || dashboard.columns.length === 0) {
-        console.log(`⚠️ Admin: Dashboard ${targetDashboard} has no columns`)
-        setRecentItems([])
-        return
-      }
-
-      // Fetch items from each column's data
-      const columnIds = dashboard.columns.filter(col => !col.isArchived).map((col: DashboardColumn) => col.id)
-      const allColumnItems: NewsItem[] = []
-
-      // Use the correct endpoint based on dashboard
-      let endpoint
-      if (targetDashboard === 'main-dashboard') {
-        endpoint = '/api/dashboards/main-dashboard'
-      } else {
-        endpoint = `/api/dashboards/${dashboard.slug}`
-      }
-
-      const dashboardResponse = await fetch(endpoint)
-      const dashboardResult = await dashboardResponse.json() as {
-        success: boolean
-        columnData?: Record<string, NewsItem[]>
-      }
-
-      if (dashboardResult.success && dashboardResult.columnData) {
-        // Collect all items from all columns
-        for (const columnId of columnIds) {
-          const columnItems = dashboardResult.columnData[columnId] || []
-          allColumnItems.push(...columnItems)
-        }
-
-        // Remove duplicates based on dbId and sort by newest first
-        const uniqueItems = Array.from(
-          new Map(allColumnItems.map(item => [item.dbId || item.id, item])).values()
-        ).sort((a, b) => {
-          const timeA = new Date(a.createdInDb || a.timestamp).getTime()
-          const timeB = new Date(b.createdInDb || b.timestamp).getTime()
-          return timeB - timeA
-        })
-
-        console.log(`✅ Admin: Found ${uniqueItems.length} unique items for dashboard ${targetDashboard} (${columnIds.length} columns)`)
-        setRecentItems(uniqueItems.slice(0, 50))
-      } else {
-        console.log(`⚠️ Admin: No column data found for dashboard ${targetDashboard}`)
-        setRecentItems([])
-      }
-    } catch (error) {
-      console.error('Failed to fetch recent items:', error)
-      setRecentItems([])
-    } finally {
-      setItemsLoading(false)
-    }
-  }, [dashboards, selectedDashboard])
 
   const deleteItem = async (dbId: string, originalId: string) => {
     console.log(`🗑️ ADMIN: Delete button clicked for item dbId: ${dbId}, originalId: ${originalId}`)
@@ -217,40 +60,6 @@ function AdminPageContent() {
       console.error('Failed to delete news item:', error)
       setFeedback({ type: 'error', message: 'Kunde inte ta bort händelsen' })
     }
-  }
-
-  // Check authentication status
-  const checkAuth = useCallback(async () => {
-    try {
-      // Try a simple authenticated endpoint to check session
-      const response = await fetch('/api/auth/session')
-      setIsAuthenticated(response.ok)
-    } catch (error) {
-      console.error('Failed to check auth:', error)
-      setIsAuthenticated(false)
-    }
-  }, [])
-
-  // Initial fetch on mount only
-  useEffect(() => {
-    fetchDashboards()
-    checkAuth()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Fetch columns and items when dashboard changes
-  useEffect(() => {
-    if (selectedDashboard && dashboards.length > 0) {
-      console.log(`🔄 Admin: Dashboard changed to ${selectedDashboard}, fetching columns and recent items...`)
-      setSelectedColumn('') // Reset column selection when dashboard changes
-      fetchColumns(selectedDashboard)
-      fetchRecentItems(selectedDashboard)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDashboard])
-
-  const handleDashboardChange = (dashboardId: string) => {
-    setSelectedDashboard(dashboardId)
   }
 
   const exampleData = [
@@ -462,7 +271,7 @@ function AdminPageContent() {
             </label>
             <select
               value={selectedDashboard}
-              onChange={(e) => handleDashboardChange(e.target.value)}
+              onChange={(e) => setSelectedDashboard(e.target.value)}
               className="flex-1 p-2 border border-border rounded bg-background text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="">Välj dashboard...</option>
