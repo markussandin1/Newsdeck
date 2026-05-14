@@ -70,6 +70,10 @@ export function ColumnContent({
             ? <>Väntar på händelser till <code>{columnId.slice(0, 8)}…</code></>
             : <>Väntar på händelser…</>}
         </div>
+        <div className="nd-col-empty-hint">
+          Behöver du justera kolumnen? Klicka på <span aria-hidden>⋮</span>-menyn uppe till höger
+          för inställningar, ljudnotiser och feed-URL.
+        </div>
       </div>
     )
   }
