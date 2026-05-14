@@ -1,76 +1,12 @@
 import { NewsItem, Dashboard, DashboardColumn } from './types'
 import { logger } from './logger'
 import { getPool } from './db/pool'
+import { MAIN_DASHBOARD_ID, DEFAULT_DASHBOARD } from './db/constants'
+import { buildBatchInsert } from './db/batch'
 
 // Re-export pool-helpern så kallsidor som importerar getPool fran
 // '@/lib/db-postgresql' fortsatter funka.
 export { getPool }
-
-const MAIN_DASHBOARD_ID = '00000000-0000-4000-a000-000000000001'
-
-// Default dashboard that always exists
-const DEFAULT_DASHBOARD: Dashboard = {
-  id: MAIN_DASHBOARD_ID,
-  name: 'Huvuddashboard',
-  slug: 'main',
-  description: 'Din huvuddashboard för nyhetsövervakning',
-  columns: [],
-  createdAt: new Date().toISOString(),
-  viewCount: 0,
-  isDefault: true,
-  createdBy: 'system',
-  createdByName: 'System'
-}
-
-// ─── Batch insert helpers ─────────────────────────────────────────────────────
-
-/**
- * Result from buildBatchInsert – ready to pass to client.query().
- */
-interface BatchInsertResult {
-  text: string
-  values: unknown[]
-}
-
-/**
- * Build a single parameterised multi-row VALUES clause.
- *
- * @param rows        - Array of value arrays. Each inner array is one row.
- * @param chunkSize   - Max rows per query chunk (default 1 000, keeps us well
- *                      under PostgreSQL's 65 535 parameter limit).
- * @returns Array of {text, values} objects, one per chunk. Usually just one.
- *
- * @example
- *   const chunks = buildBatchInsert([
- *     ['col1', 'dbId1', '{}', now],
- *     ['col2', 'dbId2', '{}', now],
- *   ])
- *   for (const { text, values } of chunks) {
- *     await client.query(text, values)
- *   }
- */
-function buildBatchInsert(
-  rows: unknown[][],
-  chunkSize = 1_000
-): BatchInsertResult[] {
-  if (rows.length === 0) return []
-
-  const cols = rows[0].length
-  const chunks: BatchInsertResult[] = []
-
-  for (let start = 0; start < rows.length; start += chunkSize) {
-    const chunk = rows.slice(start, start + chunkSize)
-    const valuePlaceholders = chunk
-      .map((_, rowIdx) =>
-        `(${Array.from({ length: cols }, (_, colIdx) => `$${rowIdx * cols + colIdx + 1}`).join(', ')})`
-      )
-      .join(', ')
-    const values = chunk.flat()
-    chunks.push({ text: valuePlaceholders, values })
-  }
-
-  return chunks
-}
 
 export const persistentDb = {
   // News items
