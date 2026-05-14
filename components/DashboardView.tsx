@@ -181,15 +181,6 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
   const [openColumnMenuId, setOpenColumnMenuId] = useState<string | null>(null)
   const userName = useCurrentUser()
 
-  // Initialize workflow input checkbox when modal opens
-  useEffect(() => {
-    if (addColumnModal.isOpen) {
-      const activeCols = dashboard?.columns?.filter(col => !col.isArchived) || []
-      addColumnModal.setShowWorkflowInput(activeCols.length === 0)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addColumnModal.isOpen, dashboard?.columns])
-
   // Close column menu on click outside
   useEffect(() => {
     if (!openColumnMenuId) return
@@ -532,26 +523,19 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
       <AddColumnModal
         isOpen={addColumnModal.isOpen}
         showArchivedColumns={addColumnModal.showArchivedTab}
-        showWorkflowInput={addColumnModal.showWorkflowInput}
         newColumnTitle={addColumnModal.newColumnTitle}
-        newColumnFlowId={addColumnModal.newColumnFlowId}
-        urlExtracted={addColumnModal.urlExtracted}
+        newColumnDescription={addColumnModal.newColumnDescription}
         createdColumnId={createdColumnId}
         archivedColumns={archivedColumns}
         copiedId={copiedId}
-        activeColumnCount={activeColumnCount}
         onClose={addColumnModal.close}
         onTabChange={addColumnModal.setShowArchivedTab}
-        onWorkflowInputToggle={addColumnModal.setShowWorkflowInput}
         onTitleChange={addColumnModal.setNewColumnTitle}
         onDescriptionChange={addColumnModal.setNewColumnDescription}
-        onFlowIdChange={addColumnModal.setNewColumnFlowId}
-        onUrlExtractedChange={addColumnModal.setUrlExtracted}
         onCreatedColumnIdChange={setCreatedColumnId}
         onSubmit={() => addColumn(
           addColumnModal.newColumnTitle,
           addColumnModal.newColumnDescription,
-          addColumnModal.newColumnFlowId,
         )}
         onRestore={async (columnId) => {
           await restoreColumn(columnId)
