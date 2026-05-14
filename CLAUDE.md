@@ -191,6 +191,20 @@ UI:t refererar aldrig till P1–P5 — bara `newsValue` (siffra) och namnen ovan
 
 ## Database Management
 
+### Migrations
+
+Newsdeck använder ett enkelt migration-runner-script (`scripts/migrate.mjs`, P3-1) som spårar applicerade migrations i tabellen `schema_migrations`.
+
+```bash
+npm run db:migrate:status   # visa vilka migrations som körts/pending
+npm run db:migrate:dry-run  # lista pending utan att köra dem
+npm run db:migrate          # applicera alla pending migrations
+```
+
+Lägg nya migrations i `db/migrations/NNN_namn.sql` med numerisk prefix. Runnern kör dem i bokstavsordning, en transaktion per fil (undantag: `CREATE INDEX CONCURRENTLY` körs utan transaktion).
+
+Befintliga migrations 001–012 markerades som applicerade på prod när runnern infördes — så `db:migrate` är en no-op tills nästa migration läggs till.
+
 ### Accessing Production Database
 
 **Interactive SQL shell**:
