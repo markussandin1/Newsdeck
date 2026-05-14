@@ -16,6 +16,7 @@ import { useColumnOperations } from '@/lib/dashboard/hooks/useColumnOperations'
 import { useClipboard } from '@/lib/dashboard/hooks/useClipboard'
 import { useColumnDragDrop } from '@/lib/dashboard/hooks/useColumnDragDrop'
 import { useViewMode } from '@/lib/dashboard/hooks/useViewMode'
+import { useCurrentUser } from '@/lib/dashboard/hooks/useCurrentUser'
 import { ThemeToggle } from './theme-toggle'
 import NewsItemModal from './NewsItemModal'
 import { Menu, MoreVertical, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react'
@@ -169,7 +170,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
   // viewMode + localStorage + cross-tab-sync extraherat till useViewMode (P1-3 steg 3)
   const [viewMode, setViewMode] = useViewMode()
   const [openColumnMenuId, setOpenColumnMenuId] = useState<string | null>(null)
-  const [userName, setUserName] = useState<string | null>(null)
+  const userName = useCurrentUser()
 
   // Initialize workflow input checkbox when modal opens
   useEffect(() => {
@@ -178,22 +179,6 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
       setShowWorkflowInput(activeCols.length === 0)
     }
   }, [showAddColumnModal, dashboard?.columns])
-
-  // Fetch user session
-  useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        const response = await fetch('/api/auth/session')
-        const session = await response.json()
-        if (session?.user) {
-          setUserName(session.user.name || session.user.email?.split('@')[0] || null)
-        }
-      } catch (error) {
-        console.error('Failed to fetch session:', error)
-      }
-    }
-    fetchSession()
-  }, [])
 
   // Close column menu on click outside
   useEffect(() => {
