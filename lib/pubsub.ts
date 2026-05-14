@@ -1,19 +1,6 @@
-import { PubSub } from '@google-cloud/pubsub'
+import { PubSub, type Topic } from '@google-cloud/pubsub'
 import type { NewsItem } from './types'
 import { logger } from './logger'
-
-// P3-3: GCP_PROJECT_ID är obligatorisk i produktion. Tidigare hade vi
-// en hårdkodad fallback 'newsdeck-473620' vilket gjorde det enkelt att
-// glömma att sätta variabeln i en annan miljö (staging, lokal test, etc).
-const GCP_PROJECT_ID = process.env.GCP_PROJECT_ID
-if (!GCP_PROJECT_ID && process.env.NODE_ENV === 'production') {
-  // I prod kraschar vi tidigt så vi inte tyst pekar mot fel projekt.
-  throw new Error('GCP_PROJECT_ID environment variable must be set in production')
-}
-
-const pubsub = new PubSub({
-  projectId: GCP_PROJECT_ID
-})
 
 const TOPIC_NAME = 'newsdeck-news-items'
 
@@ -23,8 +10,36 @@ export interface NewsUpdateMessage {
   timestamp: string
 }
 
+// P3-3: GCP_PROJECT_ID är obligatorisk i produktion, men checken sker
+// lazy vid första publish-anrop — INTE vid modul-import. Build-tiden
+// (Next.js "Collecting page data") importerar route-moduler utan att
+// köra dem, och env-variabeln finns inte där. Tidigare throw vid import
+// gjorde build:n omöjlig.
+let pubsubInstance: PubSub | null = null
+let topicInstance: Topic | null = null
+
+function getTopic(): Topic | null {
+  if (topicInstance) return topicInstance
+
+  const projectId = process.env.GCP_PROJECT_ID
+  if (!projectId) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('pubsub.missingProjectId', {
+        hint: 'Set GCP_PROJECT_ID in Cloud Run env. Pub/Sub publishing disabled until then.',
+      })
+    }
+    return null
+  }
+
+  if (!pubsubInstance) pubsubInstance = new PubSub({ projectId })
+  topicInstance = pubsubInstance.topic(TOPIC_NAME)
+  return topicInstance
+}
+
 class NewsDeckPubSub {
-  private topic = pubsub.topic(TOPIC_NAME)
+  private get topic(): Topic | null {
+    return getTopic()
+  }
 
   /**
    * Publish news items update to Pub/Sub
@@ -36,6 +51,13 @@ class NewsDeckPubSub {
       return
     }
 
+    const topic = this.topic
+    if (!topic) {
+      // GCP_PROJECT_ID saknas; loggas redan i getTopic. Hoppa över publishen
+      // istället för att krascha ingestion.
+      return
+    }
+
     try {
       const message: NewsUpdateMessage = {
         columnIds,
@@ -43,7 +65,7 @@ class NewsDeckPubSub {
         timestamp: new Date().toISOString()
       }
 
-      const messageId = await this.topic.publishMessage({
+      const messageId = await topic.publishMessage({
         json: message
       })
 
@@ -62,8 +84,10 @@ class NewsDeckPubSub {
    * Verify that Pub/Sub topic exists and is accessible
    */
   async verifyConnection(): Promise<boolean> {
+    const topic = this.topic
+    if (!topic) return false
     try {
-      const [exists] = await this.topic.exists()
+      const [exists] = await topic.exists()
       if (!exists) {
         logger.warn('pubsub.topicNotFound', { topic: TOPIC_NAME })
         return false
