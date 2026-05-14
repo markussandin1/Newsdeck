@@ -10,9 +10,7 @@ export async function GET(request: NextRequest) {
     if (verifyApiKey(request)) {
       const dashboards = await db.getDashboards()
       return NextResponse.json({
-        dashboards: dashboards
-          .filter((d: { isArchived?: boolean }) => !d.isArchived)
-          .map((d: { id: string; name: string }) => ({ id: d.id, name: d.name }))
+        dashboards: dashboards.map(d => ({ id: d.id, name: d.name }))
       })
     }
 
