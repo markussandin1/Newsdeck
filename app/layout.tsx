@@ -1,20 +1,13 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
-import { Outfit, DM_Sans, JetBrains_Mono, Inter_Tight } from 'next/font/google'
+import { JetBrains_Mono, Inter_Tight } from 'next/font/google'
 
-const outfit = Outfit({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-display',
-})
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-body',
-})
-
+// Konsoliderat typografisystem (P1-8): Inter Tight för all UI/text,
+// JetBrains Mono för metadata/siffror. Tidigare användes parallellt
+// Outfit (--font-display) och DM Sans (--font-body) - båda är borta.
+// Tailwind-klasserna font-display, font-body och font-ui är alla
+// alias mot Inter Tight (se tailwind.config.ts).
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400'],
@@ -66,7 +59,7 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={`${outfit.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${interTight.variable} bg-gray-50 min-h-screen`}>
+      <body className={`${jetbrainsMono.variable} ${interTight.variable} bg-gray-50 min-h-screen`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

@@ -108,10 +108,11 @@
 
 @layer base {
   :root {
-    /* Typography - Editorial Sharp */
-    --font-display: var(--font-display);    /* Outfit */
-    --font-body: var(--font-body);          /* DM Sans */
-    --font-mono: var(--font-mono);          /* JetBrains Mono */
+    /* Typografi (P1-8): Inter Tight + JetBrains Mono.
+       --font-display och --font-body är alias mot --font-ui för bakåtkompatibilitet. */
+    --font-display: var(--font-ui);
+    --font-body: var(--font-ui);
+    --font-mono: var(--font-mono);
 
     /* Base colors */
     --background: 200 50% 98%;          /* #F5FAFC - Very light cool blue-gray */
