@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { Dashboard as DashboardType } from '@/lib/types'
-import MainDashboard from '@/components/MainDashboard'
+import DashboardView from '@/components/DashboardView'
 
 export default function DashboardPage() {
   const params = useParams()
@@ -91,7 +91,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <MainDashboard
+    <DashboardView
       dashboard={dashboard}
       onDashboardUpdate={setDashboard}
     />

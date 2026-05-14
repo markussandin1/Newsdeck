@@ -1,7 +1,7 @@
 /**
  * Dashboard utility functions
  *
- * Helper functions extracted from MainDashboard.tsx for reusability
+ * Helper functions extracted from DashboardView.tsx for reusability
  * and better testability.
  */
 

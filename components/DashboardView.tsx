@@ -31,12 +31,12 @@ import { MobileDragPreview } from './dashboard/MobileDragPreview'
 import { PulseView } from './views/PulseView'
 import { GridView } from './views/GridView'
 
-interface MainDashboardProps {
+interface DashboardViewProps {
   dashboard: DashboardType
   onDashboardUpdate: (dashboard: DashboardType) => void
 }
 
-export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDashboardProps) {
+export default function DashboardView({ dashboard, onDashboardUpdate }: DashboardViewProps) {
   const router = useRouter()
   const pathname = usePathname()
 
