@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
       errorMessage: `Rate limit exceeded: ${rateLimit.limit} requests per minute`,
       ipAddress,
       userAgent,
-      requestBody: body
     })
 
     return NextResponse.json(
@@ -120,14 +119,12 @@ export async function POST(request: NextRequest) {
       ...result
     }
 
-    // Log successful request
+    // Log successful request (metadata only — body/response loggas inte)
     await db.logApiRequest({
       endpoint: '/api/workflows',
       method: 'POST',
       statusCode: 200,
       success: true,
-      requestBody: body,
-      responseBody: response,
       ipAddress,
       userAgent
     })
@@ -143,7 +140,6 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         statusCode: error.status,
         success: false,
-        requestBody: body,
         errorMessage: error.message,
         ipAddress,
         userAgent
@@ -163,7 +159,6 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       statusCode: 500,
       success: false,
-      requestBody: body,
       errorMessage: error instanceof Error ? error.message : 'Unexpected server error',
       ipAddress,
       userAgent

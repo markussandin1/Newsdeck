@@ -1361,49 +1361,27 @@ export const persistentDb = {
     }
   },
 
-  // API request logging
+  // API request logging — saniterad metadata, aldrig payload.
+  // Tidigare implementation persisterade request_body/response_body i sin
+  // helhet till api_request_logs. Den är riven. Nu loggas bara endpoint,
+  // method, statusCode och success via strukturerad logger så Cloud
+  // Logging är källan för analys.
   logApiRequest: async (log: {
     endpoint: string
     method: string
     statusCode: number
     success: boolean
-    requestBody?: unknown
-    responseBody?: unknown
     errorMessage?: string
     ipAddress?: string
     userAgent?: string
   }) => {
-    // Temporarily disabled for local testing - table schema mismatch
-    // TODO: Re-enable after running migration to add missing columns
-    logger.debug('db.logApiRequest.skipped', { endpoint: log.endpoint, method: log.method, statusCode: log.statusCode })
-    return
-
-    /*
-    const pool = getPool()
-
-    try {
-      await pool.query(
-        `INSERT INTO api_request_logs (
-          endpoint, method, status_code, success, request_body,
-          response_body, error_message, ip_address, user_agent, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
-        [
-          log.endpoint,
-          log.method,
-          log.statusCode,
-          log.success,
-          JSON.stringify(log.requestBody || {}),
-          JSON.stringify(log.responseBody || {}),
-          log.errorMessage || null,
-          log.ipAddress || null,
-          log.userAgent || null
-        ]
-      )
-    } catch (error) {
-      // Don't throw - logging should never break the API
-      logger.error('db.logApiRequest.error', { error })
-    }
-    */
+    logger.info('api.request', {
+      endpoint: log.endpoint,
+      method: log.method,
+      statusCode: log.statusCode,
+      success: log.success,
+      errorMessage: log.errorMessage,
+    })
   },
 
   getApiRequestLogs: async (limit = 100, filters?: { success?: boolean; endpoint?: string }) => {
