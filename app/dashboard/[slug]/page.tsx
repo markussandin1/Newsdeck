@@ -47,9 +47,13 @@ export default function DashboardPage() {
     }
   }, [slug])
 
-  if (isLoading) {
+  // Visa fullscreen-loading bara nar vi inte har nagon dashboard alls.
+  // Vid byte mellan dashboards behaller vi den gamla synlig tills nya
+  // datan kommit in — eliminerar vita-flash-hoppet (anvande tidigare
+  // bg-slate-50 som krockade med morka temat).
+  if (isLoading && !dashboard) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 mb-4 mx-auto">
             <Image
@@ -60,21 +64,21 @@ export default function DashboardPage() {
               className="w-full h-full object-contain animate-pulse"
             />
           </div>
-          <div className="text-slate-600">Laddar dashboard...</div>
+          <div className="text-muted-foreground">Laddar dashboard...</div>
         </div>
       </div>
     )
   }
 
-  if (error) {
+  if (error && !dashboard) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
-          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-lg flex items-center justify-center mb-4 mx-auto">
+          <div className="w-12 h-12 bg-red-500/15 text-red-500 rounded-lg flex items-center justify-center mb-4 mx-auto">
             ❌
           </div>
-          <h1 className="text-xl font-semibold text-slate-900 mb-2">Dashboard hittades inte</h1>
-          <p className="text-slate-600 mb-4">{error}</p>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Dashboard hittades inte</h1>
+          <p className="text-muted-foreground mb-4">{error}</p>
           <Link
             href="/dashboard/main"
             className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 smooth-transition"
