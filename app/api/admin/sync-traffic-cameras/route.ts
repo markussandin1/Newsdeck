@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger'
 import { getPool } from '@/lib/db-postgresql';
 import { verifySession, sessionUnauthorizedResponse } from '@/lib/api-auth';
 
@@ -16,7 +17,7 @@ export async function POST() {
   const pool = getPool();
 
   try {
-    console.log('🔄 Starting traffic camera data sync...');
+    logger.info('api.admin.syncTrafficCameras.start');
 
     // Find all items with trafficCamera status='ready' in news_items
     const findResult = await pool.query(`
@@ -32,7 +33,7 @@ export async function POST() {
       HAVING COUNT(cd.id) > 0
     `);
 
-    console.log(`📊 Found ${findResult.rows.length} items to sync`);
+    logger.info("api.admin.syncTrafficCameras.foundItems", { count: findResult.rows.length });
 
     let syncedCount = 0;
     let totalRowsUpdated = 0;
@@ -55,7 +56,7 @@ export async function POST() {
       }
     }
 
-    console.log(`✅ Synced ${syncedCount} items (${totalRowsUpdated} column_data rows updated)`);
+    logger.info("api.admin.syncTrafficCameras.done", { synced: syncedCount, columnDataUpdated: totalRowsUpdated });
 
     return NextResponse.json({
       success: true,
@@ -65,7 +66,7 @@ export async function POST() {
     });
 
   } catch (error) {
-    console.error('❌ Sync failed:', error);
+    logger.error('api.admin.syncTrafficCameras.error', { error });
     return NextResponse.json(
       {
         success: false,

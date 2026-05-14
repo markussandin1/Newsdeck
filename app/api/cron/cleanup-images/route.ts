@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { runDailyCleanup } from '@/lib/services/image-cleanup-service';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   // Verify request comes from Cloud Scheduler
@@ -18,17 +19,17 @@ export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
-    console.error('CRON_SECRET not configured');
+    logger.error('api.cron.cleanupImages.missingSecret');
     return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
   }
 
   if (!authHeader || authHeader !== cronSecret) {
-    console.warn('Unauthorized cron request attempt');
+    logger.warn('api.cron.cleanupImages.unauthorized');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    console.log('🕐 Starting scheduled image cleanup...');
+    logger.info('api.cron.cleanupImages.start');
     await runDailyCleanup();
 
     return NextResponse.json({
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Cleanup cron job failed:', error);
+    logger.error('api.cron.cleanupImages.error', { error });
     return NextResponse.json(
       {
         error: 'Cleanup failed',

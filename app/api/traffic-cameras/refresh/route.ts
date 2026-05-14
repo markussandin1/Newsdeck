@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db-postgresql';
 import { queueImageUpload } from '@/lib/services/image-queue-service';
 import { trafficCameraService } from '@/lib/services/traffic-camera-service';
+import { logger } from '@/lib/logger';
 
 const REFRESH_COOLDOWN = 60; // sekunder
 
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
       message: 'Image refresh queued. Status will update when processing is complete.'
     });
   } catch (error) {
-    console.error('Refresh error:', error);
+    logger.error('api.trafficCameras.refresh.error', { error });
     return NextResponse.json(
       { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
