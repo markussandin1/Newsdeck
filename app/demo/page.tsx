@@ -294,7 +294,7 @@ export default function DemoPage() {
               <NewsItem
                 key={item.id}
                 item={item}
-                onClick={() => setSelectedItem(item)}
+                onSelect={setSelectedItem}
               />
             ))}
           </div>

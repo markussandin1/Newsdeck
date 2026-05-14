@@ -85,10 +85,7 @@ export function ColumnContent({
     <>
       {visibleItems.map((item) => (
         <div key={`${columnId}-${item.dbId}`} className="mb-2">
-          <NewsItem
-            item={item}
-            onClick={() => onSelectNewsItem(item)}
-          />
+          <NewsItem item={item} onSelect={onSelectNewsItem} />
         </div>
       ))}
       {hasMore && (

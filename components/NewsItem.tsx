@@ -9,10 +9,17 @@ interface NewsItemProps {
   item: NewsItemType
   /** @deprecated kept for backwards compatibility — card is always compact now */
   compact?: boolean
-  onClick?: () => void
+  /**
+   * Skickar `item` direkt så att kallaren kan reusa en stabil callback
+   * (`useCallback`-baserad) och inte tvingas skapa nya pilfunktioner per
+   * item. Det gör att React.memo nedan faktiskt biter och varje
+   * NewsItem-kort inte re-renderas vid varje state-change i parent.
+   */
+  onSelect?: (item: NewsItemType) => void
 }
 
-function NewsItem({ item, onClick }: NewsItemProps) {
+function NewsItem({ item, onSelect }: NewsItemProps) {
+  const onClick = onSelect ? () => onSelect(item) : undefined
   const [isNew, setIsNew] = useState(item.isNew || false)
 
   useEffect(() => {
