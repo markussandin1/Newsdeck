@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { db } from '@/lib/db'
 import { NewsItem } from '@/lib/types'
 import { auth } from '@/auth'
@@ -46,7 +47,7 @@ export async function GET(
           const batchData = await db.getColumnDataBatch(columnIds, COLUMN_ITEM_LIMIT)
           Object.assign(columnData, batchData)
         } catch (error) {
-          console.error('Error fetching column data batch:', error)
+          logger.error('api.dashboard.columnDataBatchError', { error })
         }
       }
     }
@@ -65,7 +66,7 @@ export async function GET(
       columnData
     })
   } catch (error) {
-    console.error('Error fetching dashboard:', error)
+    logger.error('api.dashboard.getError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -119,7 +120,7 @@ export async function PUT(
       dashboard: result
     })
   } catch (error) {
-    console.error('Error updating dashboard:', error)
+    logger.error('api.dashboard.updateError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -167,7 +168,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting dashboard:', error)
+    logger.error('api.dashboard.deleteError', { error })
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }

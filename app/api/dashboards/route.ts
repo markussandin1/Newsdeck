@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
 import { verifyApiKey } from '@/lib/api-auth'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         )
       } catch (error) {
         // Ignore follow errors in development but log for diagnostics
-        console.log('Skipping user follows in development', error)
+        logger.debug('api.dashboards.skipUserFollows', { error })
       }
     }
 
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
               : false
           } catch (error) {
             // Ignore follower errors in development but log for diagnostics
-            console.log('Skipping followers in development', error)
+            logger.debug('api.dashboards.skipFollowers', { error })
           }
         }
 
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
       dashboards: enrichedDashboards
     })
   } catch (error) {
-    console.error('Error fetching dashboards:', error)
+    logger.error('api.dashboards.getError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error creating dashboard:', error)
+    logger.error('api.dashboards.createError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
