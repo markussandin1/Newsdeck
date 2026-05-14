@@ -205,7 +205,7 @@ export function DashboardHeader({
       <button
         className={viewMode === 'columns' ? 'nd-active' : ''}
         onClick={() => setViewMode('columns')}
-        title="Kolumnvy"
+        title="Kolumner — bevaka kolumnvis, optimalt för löpande bevakning"
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="16" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg>
         Kolumner
@@ -213,7 +213,7 @@ export function DashboardHeader({
       <button
         className={viewMode === 'pulse' ? 'nd-active' : ''}
         onClick={() => setViewMode('pulse')}
-        title="Kronologisk vy"
+        title="Pulse — kronologiskt flöde, alla händelser tidssorterade"
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></svg>
         Pulse
@@ -221,7 +221,7 @@ export function DashboardHeader({
       <button
         className={viewMode === 'grid' ? 'nd-active' : ''}
         onClick={() => setViewMode('grid')}
-        title="Rutnätsvy"
+        title="Grid — prioritetsöversikt, viktiga händelser visas större"
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         Grid
