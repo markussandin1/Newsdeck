@@ -110,10 +110,13 @@ export function usePendingImagePolling({
       pollTimeoutsRef.current.set(itemKey, timeout);
     });
 
-    // Cleanup on unmount
+    // Cleanup on unmount.
+    // Copy the ref's current value into a local so the cleanup closure does
+    // not chase a stale .current after the component re-renders.
+    const timeouts = pollTimeoutsRef.current;
     return () => {
-      pollTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
-      pollTimeoutsRef.current.clear();
+      timeouts.forEach((timeout) => clearTimeout(timeout));
+      timeouts.clear();
     };
   }, [columnData, updateColumnData]);
 }
