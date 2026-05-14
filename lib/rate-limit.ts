@@ -1,53 +1,42 @@
 /**
- * Rate limiting for API endpoints
+ * In-memory sliding-window rate limiting for API endpoints.
  *
- * Uses PostgreSQL for rate limiting (no external dependencies).
- * Simple sliding window implementation with database cleanup.
- * Reuses the main database connection pool from db-postgresql.ts
+ * Tidigare implementation gjorde BEGIN/DELETE/SELECT/INSERT/COMMIT mot
+ * PostgreSQL för varje request → hundratals onödiga transaktioner per
+ * minut under last. Eftersom Cloud Run är konfigurerad med max-instances=1
+ * räcker en process-lokal Map som store.
+ *
+ * VIKTIGT: Om max-instances höjs över 1 måste detta flyttas till en delad
+ * store (Redis/Upstash) eller per-instance-limits blir per-instans i stället
+ * för globalt.
  */
 
-import { getPool } from './db-postgresql'
+const RATE_LIMIT_MAX_REQUESTS = 500
+const RATE_LIMIT_WINDOW_MS = 60 * 1000
 
-// Rate limit configuration
-// Conservative limit that protects against workflow bugs while allowing normal operation
-// Adjust based on actual production traffic patterns
-const RATE_LIMIT_MAX_REQUESTS = 500 // requests per window
-const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute in milliseconds
+// identifier → array of millisecond timestamps inom nuvarande fönster.
+const requestLog = new Map<string, number[]>()
 
-// Initialize rate limiting table on module load
-if (process.env.DATABASE_URL) {
-  console.log('✅ Rate limiting enabled with PostgreSQL (shared pool)')
-
-  // Create rate_limit_log table if it doesn't exist
-  initRateLimitTable().catch(err => {
-    console.error('Failed to initialize rate limit table:', err)
-  })
-} else {
-  console.warn('⚠️  Rate limiting disabled: DATABASE_URL not set')
-  console.warn('   This is OK for local development, but REQUIRED in production!')
-}
-
-/**
- * Initialize rate limiting table
- */
-async function initRateLimitTable(): Promise<void> {
-  if (!process.env.DATABASE_URL) return
-
-  try {
-    const pool = getPool()
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS rate_limit_log (
-        identifier TEXT NOT NULL,
-        timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (identifier, timestamp)
-      );
-
-      -- Index for fast cleanup and counting
-      CREATE INDEX IF NOT EXISTS idx_rate_limit_timestamp
-      ON rate_limit_log(timestamp DESC);
-    `)
-  } catch (error) {
-    console.error('Error creating rate_limit_log table:', error)
+// Periodisk GC så identifierar som blir tysta inte ackumulerar minne.
+// Map:en är vanligtvis bara några hundra entries så kostnaden är minimal.
+const GC_INTERVAL_MS = 5 * 60 * 1000
+let gcTimer: ReturnType<typeof setInterval> | null = null
+function ensureGc() {
+  if (gcTimer) return
+  gcTimer = setInterval(() => {
+    const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS
+    Array.from(requestLog.entries()).forEach(([key, timestamps]) => {
+      const fresh = timestamps.filter(t => t >= cutoff)
+      if (fresh.length === 0) {
+        requestLog.delete(key)
+      } else {
+        requestLog.set(key, fresh)
+      }
+    })
+  }, GC_INTERVAL_MS)
+  // Don't keep the process alive just for the GC timer
+  if (typeof gcTimer === 'object' && 'unref' in gcTimer) {
+    ;(gcTimer as { unref: () => void }).unref()
   }
 }
 
@@ -59,104 +48,46 @@ export interface RateLimitResult {
 }
 
 /**
- * Check rate limit for a given identifier
+ * Check rate limit for a given identifier.
  *
  * @param identifier - Unique identifier (e.g., IP address, workflow ID)
- * @returns Rate limit result with success status and metadata
  */
 export async function checkRateLimit(identifier: string): Promise<RateLimitResult> {
+  ensureGc()
+
   const now = Date.now()
-  const windowStart = now - RATE_LIMIT_WINDOW_MS
+  const cutoff = now - RATE_LIMIT_WINDOW_MS
   const resetTime = now + RATE_LIMIT_WINDOW_MS
 
-  // If rate limiting is not configured, allow all requests (development)
-  if (!process.env.DATABASE_URL) {
+  const existing = requestLog.get(identifier) || []
+  // Filter out timestamps äldre än fönstret
+  const fresh = existing.filter(t => t >= cutoff)
+
+  if (fresh.length >= RATE_LIMIT_MAX_REQUESTS) {
+    requestLog.set(identifier, fresh)
     return {
-      success: true,
+      success: false,
       limit: RATE_LIMIT_MAX_REQUESTS,
-      remaining: RATE_LIMIT_MAX_REQUESTS,
+      remaining: 0,
       reset: resetTime,
     }
   }
 
-  try {
-    // Get shared database pool
-    const pool = getPool()
+  fresh.push(now)
+  requestLog.set(identifier, fresh)
 
-    // Start transaction for atomic check-and-insert
-    const client = await pool.connect()
-
-    try {
-      await client.query('BEGIN')
-
-      // Clean up old entries (older than window) for this identifier
-      await client.query(
-        `DELETE FROM rate_limit_log
-         WHERE identifier = $1 AND timestamp < $2`,
-        [identifier, new Date(windowStart)]
-      )
-
-      // Count requests in current window
-      const countResult = await client.query(
-        `SELECT COUNT(*)::int as count
-         FROM rate_limit_log
-         WHERE identifier = $1 AND timestamp >= $2`,
-        [identifier, new Date(windowStart)]
-      )
-
-      const currentCount = countResult.rows[0]?.count || 0
-      const remaining = Math.max(0, RATE_LIMIT_MAX_REQUESTS - currentCount - 1)
-
-      // Check if rate limit exceeded
-      if (currentCount >= RATE_LIMIT_MAX_REQUESTS) {
-        await client.query('COMMIT')
-        client.release()
-
-        return {
-          success: false,
-          limit: RATE_LIMIT_MAX_REQUESTS,
-          remaining: 0,
-          reset: resetTime,
-        }
-      }
-
-      // Log this request
-      await client.query(
-        `INSERT INTO rate_limit_log (identifier, timestamp)
-         VALUES ($1, $2)`,
-        [identifier, new Date(now)]
-      )
-
-      await client.query('COMMIT')
-      client.release()
-
-      return {
-        success: true,
-        limit: RATE_LIMIT_MAX_REQUESTS,
-        remaining,
-        reset: resetTime,
-      }
-    } catch (error) {
-      await client.query('ROLLBACK')
-      client.release()
-      throw error
-    }
-  } catch (error) {
-    console.error('Rate limit check failed:', error)
-    // On error, allow the request (fail open)
-    return {
-      success: true,
-      limit: RATE_LIMIT_MAX_REQUESTS,
-      remaining: RATE_LIMIT_MAX_REQUESTS,
-      reset: resetTime,
-    }
+  return {
+    success: true,
+    limit: RATE_LIMIT_MAX_REQUESTS,
+    remaining: Math.max(0, RATE_LIMIT_MAX_REQUESTS - fresh.length),
+    reset: resetTime,
   }
 }
 
 /**
- * Get the identifier for rate limiting
+ * Get the identifier for rate limiting.
  * Uses workflow ID if available (for internal workflows),
- * falls back to IP address
+ * falls back to IP address.
  */
 export function getRateLimitIdentifier(
   workflowId: string | null | undefined,
@@ -166,4 +97,9 @@ export function getRateLimitIdentifier(
     return `workflow:${workflowId}`
   }
   return `ip:${ipAddress}`
+}
+
+// Test-only helper. Återställer state mellan tester utan att exponera Map:en.
+export function __resetRateLimitForTests(): void {
+  requestLog.clear()
 }
