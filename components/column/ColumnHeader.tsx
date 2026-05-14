@@ -56,9 +56,14 @@ export function ColumnHeader({
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
-          <span className={`nd-col-live ${isLive ? 'nd-on' : ''}`} title={isLive ? 'Live' : 'Vilande'}>
+          <span
+            className={`nd-col-live ${isLive ? 'nd-on' : ''}`}
+            title={isLive
+              ? 'Live — kolumnen har händelser och tar emot uppdateringar i realtid'
+              : 'Vilande — väntar på första händelsen'}
+          >
             <span className="nd-col-live-dot" />
-            Live
+            {isLive ? 'Live' : 'Vilande'}
           </span>
           <div className="relative">
             <Button

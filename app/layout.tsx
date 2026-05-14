@@ -55,11 +55,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    // P3-11: undvik FOUC vid mörkt tema. defaultTheme i ThemeProvider är
+    // 'dark' så vi sätter `class="dark"` och `color-scheme: dark` redan i
+    // HTML innan React hydrerar. Annars blinkar appen vit i ett par
+    // hundra millisekunder vid första laddningen.
+    <html lang="en" suppressHydrationWarning className="dark" style={{ colorScheme: 'dark' }}>
       <head>
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={`${jetbrainsMono.variable} ${interTight.variable} bg-gray-50 min-h-screen`}>
+      <body
+        className={`${jetbrainsMono.variable} ${interTight.variable} min-h-screen`}
+        style={{ background: 'oklch(0.16 0.02 245)' }}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
