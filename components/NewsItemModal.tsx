@@ -9,6 +9,7 @@ import { NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import { getPriority, timeExact } from '@/lib/design-system'
 import { getCategory } from '@/lib/categories'
 import { formatFullTime, isUrl, getHostname } from '@/lib/time-utils'
+import { TechRow } from './news-item-modal/TechRow'
 
 // Dynamically import LeafletMap to avoid SSR issues
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
@@ -369,39 +370,5 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
         </motion.div>
       </motion.div>
     </AnimatePresence>
-  )
-}
-
-interface TechRowProps {
-  label: string
-  value: string
-  field: string
-  copiedField: string | null
-  onCopy: (value: string, field: string) => void
-}
-
-function TechRow({ label, value, field, copiedField, onCopy }: TechRowProps) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <span style={{
-        fontFamily: 'var(--nd-font-mono)', fontSize: 10,
-        textTransform: 'uppercase', letterSpacing: '0.04em',
-        color: 'var(--nd-ink-mute)', minWidth: 96,
-      }}>{label}</span>
-      <code style={{
-        flex: 1, fontFamily: 'var(--nd-font-mono)', fontSize: 11.5,
-        color: 'var(--nd-ink)', background: 'var(--nd-surface)',
-        padding: '4px 8px', borderRadius: 4,
-        border: '1px solid var(--nd-line-soft)',
-        wordBreak: 'break-all',
-      }}>{value}</code>
-      <button
-        onClick={() => onCopy(value, field)}
-        className="nd-btn nd-btn-ghost"
-        style={{ padding: '4px 10px', fontSize: 11 }}
-      >
-        {copiedField === field ? 'Kopierad' : 'Kopiera'}
-      </button>
-    </div>
   )
 }
