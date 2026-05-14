@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eventQueue } from '@/lib/event-queue'
 import type { NewsUpdateMessage } from '@/lib/pubsub'
 import { logger } from '@/lib/logger'
+import { verifyPubsubOidc } from '@/lib/pubsub-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,10 +10,18 @@ export const dynamic = 'force-dynamic'
 /**
  * Webhook endpoint for Google Cloud Pub/Sub push subscriptions
  *
- * This receives news updates published to Pub/Sub and adds them to the event queue
- * for delivery to frontend clients via long polling.
+ * Receives news updates published to Pub/Sub and adds them to the event queue
+ * for delivery to frontend clients via SSE. Requires OIDC token authentication
+ * — the push subscription must be configured with a service account and
+ * PUBSUB_PUSH_AUDIENCE must match the configured audience.
  */
 export async function POST(request: NextRequest) {
+  // Verify Pub/Sub OIDC token before doing any work
+  const authOk = await verifyPubsubOidc(request.headers.get('authorization'))
+  if (!authOk) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     // Parse Pub/Sub message format
     const body = await request.json()
