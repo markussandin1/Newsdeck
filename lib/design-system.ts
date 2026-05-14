@@ -3,11 +3,11 @@
 // Use for JS-side computations (priority colors, column color mapping).
 
 export const PRIORITY_COLORS = {
-  5: { color: 'oklch(0.66 0.22 25)',  soft: 'oklch(0.66 0.22 25 / 0.12)',  label: 'P1', name: 'Kritisk' },
-  4: { color: 'oklch(0.78 0.17 65)',  soft: 'oklch(0.78 0.17 65 / 0.12)',  label: 'P2', name: 'Hög' },
-  3: { color: 'oklch(0.76 0.13 220)', soft: 'oklch(0.76 0.13 220 / 0.12)', label: 'P3', name: 'Medel' },
-  2: { color: 'oklch(0.60 0.02 250)', soft: 'oklch(0.60 0.02 250 / 0.12)', label: 'P4', name: 'Låg' },
-  1: { color: 'oklch(0.55 0.01 250)', soft: 'oklch(0.55 0.01 250 / 0.10)', label: 'P5', name: 'Låg' },
+  5: { color: 'oklch(0.66 0.22 25)',  soft: 'oklch(0.66 0.22 25 / 0.12)',  name: 'Kritisk' },
+  4: { color: 'oklch(0.78 0.17 65)',  soft: 'oklch(0.78 0.17 65 / 0.12)',  name: 'Hög' },
+  3: { color: 'oklch(0.76 0.13 220)', soft: 'oklch(0.76 0.13 220 / 0.12)', name: 'Medel' },
+  2: { color: 'oklch(0.60 0.02 250)', soft: 'oklch(0.60 0.02 250 / 0.12)', name: 'Låg' },
+  1: { color: 'oklch(0.55 0.01 250)', soft: 'oklch(0.55 0.01 250 / 0.10)', name: 'Låg' },
 } as const
 
 export type PriorityLevel = keyof typeof PRIORITY_COLORS

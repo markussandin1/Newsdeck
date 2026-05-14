@@ -12,8 +12,8 @@ interface ColumnHeaderProps {
   copiedFeedId: string | null
   /** Number of items with newsValue >= 4 received in the last hour */
   criticalCount?: number
-  /** True if any of the items in the 1h window is a P1 (newsValue === 5) — switches the row colour to red */
-  hasP1?: boolean
+  /** True if any of the items in the 1h window has newsValue === 5 — switches the row colour to red */
+  hasCritical?: boolean
   /** When true, the live-indicator chip pulses green; otherwise muted */
   isLive?: boolean
   onOpenMenu: (columnId: string) => void
@@ -29,7 +29,7 @@ export function ColumnHeader({
   isSoundMuted,
   copiedFeedId,
   criticalCount = 0,
-  hasP1 = false,
+  hasCritical = false,
   isLive = false,
   onOpenMenu,
   onStartEditing,
@@ -113,7 +113,7 @@ export function ColumnHeader({
       </div>
 
       {criticalCount > 0 && (
-        <div className={`nd-col-crit ${hasP1 ? 'nd-has-p1' : ''}`}>
+        <div className={`nd-col-crit ${hasCritical ? 'nd-has-critical' : ''}`}>
           {criticalCount === 1
             ? '1 stor händelse senaste timmen'
             : `${criticalCount} stora händelser senaste timmen`}
