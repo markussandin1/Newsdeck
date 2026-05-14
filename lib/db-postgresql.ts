@@ -9,6 +9,14 @@ import {
   getApiRequestLogs as adminGetApiRequestLogs,
 } from './db/admin'
 import {
+  setColumnData as columnDataSet,
+  getColumnData as columnDataGet,
+  getColumnDataBatch as columnDataGetBatch,
+  setColumnDataBatch as columnDataSetBatch,
+  appendColumnDataBatch as columnDataAppendBatch,
+  syncColumnDataFromGeneral as columnDataSyncFromGeneral,
+} from './db/column-data'
+import {
   addNewsItem as newsItemsAdd,
   addNewsItems as newsItemsAddMany,
   getNewsItems as newsItemsGetAll,
@@ -330,245 +338,12 @@ export const persistentDb = {
     }
   },
 
-  // Column data management
-  setColumnData: async (columnId: string, items: NewsItem[]) => {
-    const pool = getPool()
-    const client = await pool.connect()
-
-    try {
-      await client.query('BEGIN')
-
-      // Clear existing column data
-      await client.query(
-        'DELETE FROM column_data WHERE column_id = $1',
-        [columnId]
-      )
-
-      // Build rows for a single batch INSERT
-      const now = new Date().toISOString()
-      const rows: unknown[][] = []
-      for (const item of items) {
-        if (!item.dbId) {
-          logger.warn('db.setColumnData.missingDbId', { itemId: item.id })
-          continue
-        }
-        rows.push([columnId, item.dbId, JSON.stringify(item), now])
-      }
-
-      const chunks = buildBatchInsert(rows)
-      for (const chunk of chunks) {
-        await client.query(
-          `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
-          VALUES ${chunk.text}
-          ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
-            data = EXCLUDED.data,
-            created_at = EXCLUDED.created_at`,
-          chunk.values
-        )
-      }
-
-      await client.query('COMMIT')
-    } catch (error) {
-      await client.query('ROLLBACK')
-      logger.error('db.setColumnData.error', { error, columnId })
-      throw error
-    } finally {
-      client.release()
-    }
-  },
-
-  getColumnData: async (columnId: string, limit?: number) => {
-    const pool = getPool()
-
-    try {
-      const query = limit
-        ? `SELECT data, news_item_db_id
-           FROM column_data
-           WHERE column_id = $1
-           ORDER BY created_at DESC LIMIT $2`
-        : `SELECT data, news_item_db_id
-           FROM column_data
-           WHERE column_id = $1
-           ORDER BY created_at DESC`
-
-      const params: (string | number)[] = [columnId]
-      if (limit) params.push(limit)
-
-      const result = await pool.query(query, params)
-
-      return result.rows.map(row => {
-        const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
-        return {
-          ...data,
-          dbId: row.news_item_db_id,
-        }
-      })
-    } catch (error) {
-      logger.error('db.getColumnData.error', { error, columnId })
-      throw error
-    }
-  },
-
-  // Batch column data operations (optimized for performance)
-  // Uses a single SQL query with ROW_NUMBER() window function to enforce per-column limit
-  getColumnDataBatch: async (columnIds: string[], limit: number = 500) => {
-    const pool = await getPool()
-
-    try {
-      if (columnIds.length === 0) {
-        return {}
-      }
-
-      const query = `
-        SELECT column_id, data, news_item_db_id
-        FROM (
-          SELECT column_id, data, news_item_db_id,
-                 ROW_NUMBER() OVER (PARTITION BY column_id ORDER BY created_at DESC) AS rn
-          FROM column_data
-          WHERE column_id = ANY($1)
-        ) ranked
-        WHERE rn <= $2
-        ORDER BY column_id, rn
-      `
-
-      const result = await pool.query(query, [columnIds, limit])
-
-      const columnData: Record<string, NewsItem[]> = {}
-
-      columnIds.forEach(id => {
-        columnData[id] = []
-      })
-
-      result.rows.forEach(row => {
-        const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
-        if (!columnData[row.column_id]) {
-          columnData[row.column_id] = []
-        }
-        columnData[row.column_id].push({
-          ...data,
-          dbId: row.news_item_db_id,
-        })
-      })
-
-      return columnData
-    } catch (error) {
-      logger.error('db.getColumnDataBatch.error', { error, columnCount: columnIds.length })
-      throw error
-    }
-  },
-
-  setColumnDataBatch: async (columnData: Record<string, NewsItem[]>) => {
-    const pool = await getPool()
-    const client = await pool.connect()
-
-    try {
-      const columnIds = Object.keys(columnData)
-
-      if (columnIds.length === 0) {
-        return
-      }
-
-      await client.query('BEGIN')
-
-      // Clear existing data for all columns in one query
-      await client.query(
-        'DELETE FROM column_data WHERE column_id = ANY($1)',
-        [columnIds]
-      )
-
-      // Build all rows across all columns for a single batch INSERT
-      const now = new Date().toISOString()
-      const rows: unknown[][] = []
-
-      for (const columnId of columnIds) {
-        const items = columnData[columnId]
-        for (const item of items) {
-          if (!item.dbId) {
-            logger.warn('db.setColumnDataBatch.missingDbId', { columnId, itemId: item.id })
-            continue
-          }
-          rows.push([columnId, item.dbId, JSON.stringify(item), now])
-        }
-      }
-
-      // One (or a few) queries instead of N×M individual inserts
-      // (4 params per row → chunks of 1 000 rows = 4 000 params max)
-      const chunks = buildBatchInsert(rows)
-      for (const chunk of chunks) {
-        await client.query(
-          `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
-          VALUES ${chunk.text}
-          ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
-            data = EXCLUDED.data,
-            created_at = EXCLUDED.created_at`,
-          chunk.values
-        )
-      }
-
-      await client.query('COMMIT')
-      logger.info('db.setColumnDataBatch.success', { columnCount: columnIds.length })
-    } catch (error) {
-      await client.query('ROLLBACK')
-      logger.error('db.setColumnDataBatch.error', { error })
-      throw error
-    } finally {
-      client.release()
-    }
-  },
-
-  appendColumnDataBatch: async (columnData: Record<string, NewsItem[]>) => {
-    const pool = await getPool()
-    const client = await pool.connect()
-
-    try {
-      const columnIds = Object.keys(columnData)
-
-      if (columnIds.length === 0) {
-        return
-      }
-
-      await client.query('BEGIN')
-
-      // Build all rows across all columns for a single batch INSERT
-      const now = new Date().toISOString()
-      const rows: unknown[][] = []
-
-      for (const columnId of columnIds) {
-        const items = columnData[columnId]
-        for (const item of items) {
-          if (!item.dbId) {
-            logger.warn('db.appendColumnDataBatch.missingDbId', { columnId, itemId: item.id })
-            continue
-          }
-          rows.push([columnId, item.dbId, JSON.stringify(item), now])
-        }
-      }
-
-      // One (or a few) queries instead of N×M individual inserts
-      // (4 params per row → chunks of 1 000 rows = 4 000 params max)
-      const chunks = buildBatchInsert(rows)
-      for (const chunk of chunks) {
-        await client.query(
-          `INSERT INTO column_data (column_id, news_item_db_id, data, created_at)
-          VALUES ${chunk.text}
-          ON CONFLICT (column_id, news_item_db_id) DO UPDATE SET
-            data = EXCLUDED.data,
-            created_at = EXCLUDED.created_at`,
-          chunk.values
-        )
-      }
-
-      const totalInserted = rows.length
-      await client.query('COMMIT')
-      logger.info('db.appendColumnDataBatch.success', { columnCount: columnIds.length, totalInserted })
-    } catch (error) {
-      await client.query('ROLLBACK')
-      logger.error('db.appendColumnDataBatch.error', { error })
-      throw error
-    } finally {
-      client.release()
-    }
-  },
+  // Column data (P2-1 steg 5 — implementation i lib/db/column-data.ts)
+  setColumnData: columnDataSet,
+  getColumnData: columnDataGet,
+  getColumnDataBatch: columnDataGetBatch,
+  setColumnDataBatch: columnDataSetBatch,
+  appendColumnDataBatch: columnDataAppendBatch,
 
   // Column management
   addColumnToDashboard: async (dashboardId: string, column: DashboardColumn) => {
@@ -650,22 +425,8 @@ export const persistentDb = {
   // Migration: Add createdInDb to existing items (P2-1 steg 4)
   migrateCreatedInDb: newsItemsMigrateCreatedInDb,
 
-  // Sync column data from general news storage
-  syncColumnDataFromGeneral: async (columnId: string) => {
-    // P2-15: anvand workflow-id-index istallet for full table scan
-    // pa news_items. getNewsItemsByWorkflow hittar exakt de items
-    // som matchar columnId (i workflow_id-faltet) utan att rakna
-    // resten.
-    const columnItems = await persistentDb.getNewsItemsByWorkflow(columnId)
-
-    logger.debug('db.syncColumnData.start', { columnId, count: columnItems.length })
-
-    await persistentDb.setColumnData(columnId, columnItems)
-
-    logger.info('db.syncColumnData.completed', { columnId, updated: columnItems.length })
-
-    return { success: true, itemsFound: columnItems.length, columnId }
-  },
+  // Sync column data from news_items (P2-1 steg 5 — implementation i lib/db/column-data.ts)
+  syncColumnDataFromGeneral: columnDataSyncFromGeneral,
 
   // Sync all columns data from general news storage
   syncAllColumnsDataFromGeneral: async () => {
