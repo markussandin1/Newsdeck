@@ -651,18 +651,27 @@ html.light {
 }
 
 /* ——— Top bar (header) v2 ————————————————————————————————————————— */
+/* Default: dold. Tailwind-klassen 'hidden lg:grid' har samma specificity
+   som .nd-top och förlorade slaget — därför döljs den nu explicit på
+   mobil och visas bara från lg-breakpoint. Mobil använder DashboardViews
+   egen mobil-layout. */
 .nd-top {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 20px;
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--nd-line-soft);
-  background: oklch(from var(--nd-bg) l c h / 0.85);
-  backdrop-filter: blur(14px);
-  position: sticky; top: 0; z-index: 50;
-  font-family: var(--nd-font-ui);
-  color: var(--nd-ink);
+  display: none;
+}
+@media (min-width: 1024px) {
+  .nd-top {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--nd-line-soft);
+    background: oklch(from var(--nd-bg) l c h / 0.85);
+    backdrop-filter: blur(14px);
+    position: sticky; top: 0; z-index: 50;
+    font-family: var(--nd-font-ui);
+    color: var(--nd-ink);
+  }
 }
 .nd-top-l, .nd-top-c, .nd-top-r { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .nd-top-c { justify-content: center; }
