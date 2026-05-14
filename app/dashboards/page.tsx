@@ -145,10 +145,11 @@ export default function DashboardsPage() {
     <div className="min-h-screen bg-background">
       {/* Global Header (desktop only — lg:grid intern) */}
       <GlobalHeader
-        contextContent={pageContext}
         userName={userName}
         onLogout={handleLogout}
-      />
+      >
+        <GlobalHeader.Left>{pageContext}</GlobalHeader.Left>
+      </GlobalHeader>
 
       {/* Mobile header — `/dashboards` är ENDA sida som behöver detta
           eftersom DashboardView har sin egen mobil-layout. P1-9-fix:

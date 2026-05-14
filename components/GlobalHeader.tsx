@@ -1,51 +1,67 @@
 'use client';
 
-import { ReactNode } from 'react';
+import React, { Children, isValidElement, ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { UserMenu } from './UserMenu';
 import { DatabaseStatusIndicator } from './DatabaseStatusIndicator';
 
+/**
+ * Slot-mönster (P3-10): istället för contextContent/centerContent/rightContent-
+ * props pekar man ut zoner via subkomponenter. Det här gör call-sites mer
+ * läsbara — varje zons innehåll står med sitt eget JSX-block, och optional
+ * zoner kan helt enkelt utelämnas.
+ *
+ * Användning:
+ *   <GlobalHeader userName={name} dashboardId={id}>
+ *     <GlobalHeader.Left>...</GlobalHeader.Left>
+ *     <GlobalHeader.Center>...</GlobalHeader.Center>
+ *     <GlobalHeader.Right>...</GlobalHeader.Right>
+ *   </GlobalHeader>
+ */
+type SlotProps = { children: ReactNode };
+
+// Marker-komponenterna renderar inget själva — GlobalHeader plockar ut
+// deras `children` och placerar i rätt zon.
+const HeaderLeft: React.FC<SlotProps> = () => null;
+const HeaderCenter: React.FC<SlotProps> = () => null;
+const HeaderRight: React.FC<SlotProps> = () => null;
+
 interface GlobalHeaderProps {
-  /** Left zone: content right of the brand wordmark (dashboard picker etc.) */
-  contextContent: ReactNode;
-  /** Center zone: view switcher etc. */
-  centerContent?: ReactNode;
-  /** Right zone slot rendered before the user menu (status pill, search, bell etc.) */
-  rightContent?: ReactNode;
-  /** User name for the user menu */
+  children?: ReactNode;
   userName: string | null;
-  /** Dashboard ID (used for logout redirect) */
   dashboardId?: string;
-  /** Custom logout handler */
   onLogout?: () => void;
-  /** Callback to open notification settings modal */
   onOpenNotificationSettings?: () => void;
-  /** Additional class names */
   className?: string;
 }
 
 export function GlobalHeader({
-  contextContent,
-  centerContent,
-  rightContent,
+  children,
   userName,
   dashboardId = '',
   onLogout,
   onOpenNotificationSettings,
   className = '',
 }: GlobalHeaderProps) {
+  let left: ReactNode = null;
+  let center: ReactNode = null;
+  let right: ReactNode = null;
+
+  Children.forEach(children, child => {
+    if (!isValidElement(child)) return;
+    if (child.type === HeaderLeft) left = (child.props as SlotProps).children;
+    else if (child.type === HeaderCenter) center = (child.props as SlotProps).children;
+    else if (child.type === HeaderRight) right = (child.props as SlotProps).children;
+  });
+
   const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      window.location.href = '/api/auth/signout';
-    }
+    if (onLogout) onLogout();
+    else window.location.href = '/api/auth/signout';
   };
 
   return (
     <div className={`nd-top hidden lg:grid ${className}`}>
-      {/* Zone 1: Brand wordmark + context (dashboard picker etc.) */}
       <div className="nd-top-l">
         <Link href="/dashboards" className="nd-brand" aria-label="Newsdeck">
           <Image
@@ -60,15 +76,13 @@ export function GlobalHeader({
             <span className="nd-brand-s">Bonnier News</span>
           </span>
         </Link>
-        {contextContent}
+        {left}
       </div>
 
-      {/* Zone 2: Center content (view switcher) */}
-      <div className="nd-top-c">{centerContent}</div>
+      <div className="nd-top-c">{center}</div>
 
-      {/* Zone 3: Right controls */}
       <div className="nd-top-r">
-        {rightContent}
+        {right}
         <UserMenu
           userName={userName || 'User'}
           dashboardId={dashboardId}
@@ -81,3 +95,7 @@ export function GlobalHeader({
     </div>
   );
 }
+
+GlobalHeader.Left = HeaderLeft;
+GlobalHeader.Center = HeaderCenter;
+GlobalHeader.Right = HeaderRight;
