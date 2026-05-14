@@ -61,7 +61,9 @@ CREATE TABLE api_request_logs (
 CREATE INDEX idx_news_items_workflow_id ON news_items(workflow_id);
 CREATE INDEX idx_news_items_timestamp ON news_items(timestamp DESC);
 CREATE INDEX idx_news_items_created_in_db ON news_items(created_in_db DESC);
-CREATE INDEX idx_column_data_column_id ON column_data(column_id);
+-- Sammansatt index — stöder både column_id-filtrering och DESC-sortering
+-- som getColumnDataBatch (ROW_NUMBER() ... ORDER BY created_at DESC) gör.
+CREATE INDEX idx_column_data_column_id_created_at ON column_data(column_id, created_at DESC);
 CREATE INDEX idx_column_data_news_item_db_id ON column_data(news_item_db_id);
 
 -- Unique constraint to prevent duplicate source_ids
