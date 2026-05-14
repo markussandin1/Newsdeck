@@ -35,29 +35,3 @@ export const deepEqual = (obj1: unknown, obj2: unknown): boolean => {
   return false
 }
 
-/**
- * Extract workflow ID from a URL or return the input as-is
- *
- * Examples:
- * - "https://workflows.example.com/workflows/abc-123" -> "abc-123"
- * - "abc-123" -> "abc-123"
- */
-export const extractWorkflowId = (input: string): string => {
-  const trimmed = input.trim()
-
-  // If it looks like a URL, extract the UUID from it
-  if (trimmed.includes('://') || trimmed.includes('/workflows/')) {
-    // Match UUID pattern (8-4-4-4-12 hex digits)
-    const uuidMatch = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
-    if (uuidMatch) {
-      return uuidMatch[1]
-    }
-
-    // Fallback: take last segment after /
-    const segments = trimmed.split('/')
-    return segments[segments.length - 1]
-  }
-
-  // Otherwise return as-is (already a UUID or custom ID)
-  return trimmed
-}

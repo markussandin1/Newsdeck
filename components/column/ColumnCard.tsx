@@ -14,10 +14,8 @@ interface ColumnCardProps {
   isEditing: boolean
   editTitle: string
   editDescription: string
-  editFlowId: string
   copiedId: string | null
   copiedFeedId: string | null
-  showExtractionSuccess: boolean
   openColumnMenuId: string | null
   isDragged: boolean
   isDragOver: boolean
@@ -25,11 +23,9 @@ interface ColumnCardProps {
   hasFilterActive: boolean
   onEditTitleChange: (value: string) => void
   onEditDescriptionChange: (value: string) => void
-  onEditFlowIdChange: (value: string) => void
-  onShowExtractionSuccess: (value: boolean) => void
   onStartEditing: (column: DashboardColumn) => void
   onCancelEditing: () => void
-  onSaveColumn: (columnId: string, title: string, description?: string, flowId?: string) => void
+  onSaveColumn: (columnId: string, title: string, description?: string) => void
   onArchiveColumn: (columnId: string) => void
   onToggleSound: (columnId: string) => void
   onCopyId: (text: string | undefined, columnId: string, columnTitle: string) => void
@@ -49,10 +45,8 @@ export function ColumnCard({
   isEditing,
   editTitle,
   editDescription,
-  editFlowId,
   copiedId,
   copiedFeedId,
-  showExtractionSuccess,
   openColumnMenuId,
   isDragged,
   isDragOver,
@@ -60,8 +54,6 @@ export function ColumnCard({
   hasFilterActive,
   onEditTitleChange,
   onEditDescriptionChange,
-  onEditFlowIdChange,
-  onShowExtractionSuccess,
   onStartEditing,
   onCancelEditing,
   onSaveColumn,
@@ -133,13 +125,9 @@ export function ColumnCard({
             column={column}
             editTitle={editTitle}
             editDescription={editDescription}
-            editFlowId={editFlowId}
             copiedId={copiedId}
-            showExtractionSuccess={showExtractionSuccess}
             onEditTitleChange={onEditTitleChange}
             onEditDescriptionChange={onEditDescriptionChange}
-            onEditFlowIdChange={onEditFlowIdChange}
-            onShowExtractionSuccess={onShowExtractionSuccess}
             onSave={onSaveColumn}
             onCancel={onCancelEditing}
             onArchive={onArchiveColumn}

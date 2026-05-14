@@ -154,12 +154,8 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     editingColumn,
     editTitle,
     editDescription,
-    editFlowId,
-    showExtractionSuccess,
     setEditTitle,
     setEditDescription,
-    setEditFlowId,
-    setShowExtractionSuccess,
     startEditing,
     cancelEditing,
     saveColumn: handleSaveColumn,
@@ -475,10 +471,8 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
                   isEditing={editingColumn === column.id}
                   editTitle={editTitle}
                   editDescription={editDescription}
-                  editFlowId={editFlowId}
                   copiedId={copiedId}
                   copiedFeedId={copiedFeedId}
-                  showExtractionSuccess={showExtractionSuccess}
                   openColumnMenuId={openColumnMenuId}
                   isDragged={draggedColumn === column.id}
                   isDragOver={dragOverColumn === column.id && draggedColumn !== column.id}
@@ -486,8 +480,6 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
                   hasFilterActive={hasActiveSearch}
                   onEditTitleChange={setEditTitle}
                   onEditDescriptionChange={setEditDescription}
-                  onEditFlowIdChange={setEditFlowId}
-                  onShowExtractionSuccess={setShowExtractionSuccess}
                   onStartEditing={startEditing}
                   onCancelEditing={cancelEditing}
                   onSaveColumn={handleSaveColumn}
