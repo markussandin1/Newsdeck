@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { DashboardColumn } from '@/lib/types'
 import { db } from '@/lib/db'
 
@@ -11,7 +12,7 @@ export async function GET() {
       columns: mainDashboard.columns
     })
   } catch (error) {
-    console.error('Error fetching columns:', error)
+    logger.error('api.columns.getError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error creating column:', error)
+    logger.error('api.columns.createError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

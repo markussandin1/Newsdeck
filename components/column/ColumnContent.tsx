@@ -41,7 +41,10 @@ export function ColumnContent({
       },
       {
         root: null,
-        rootMargin: '200px', // Start loading when 200px from bottom
+        // P3-9: 100px (tidigare 200) trigger:ar laddning senare så användare
+        // hinner se botten innan nya items poppas in. Förhindrar visuella
+        // hopp vid snabb scroll på långa kolumner.
+        rootMargin: '100px',
         threshold: 0.1
       }
     )
