@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger'
 import type { CityCoordinates, SMHIForecastResponse, WeatherData } from '@/types/weather';
 import { getWeatherIcon } from '@/lib/utils/weatherIcons';
 
@@ -38,7 +39,7 @@ async function fetchWeatherForCity(city: CityCoordinates): Promise<WeatherData |
     });
 
     if (!response.ok) {
-      console.error(`SMHI API error for ${city.name}:`, response.status);
+      logger.warn("api.weather.smhiError", { city: city.name, status: response.status });
       return null;
     }
 
@@ -47,7 +48,7 @@ async function fetchWeatherForCity(city: CityCoordinates): Promise<WeatherData |
     // Get the first (current/nearest) forecast
     const currentForecast = data.timeSeries[0];
     if (!currentForecast) {
-      console.error(`No forecast data for ${city.name}`);
+      logger.warn("api.weather.noForecastData", { city: city.name });
       return null;
     }
 
@@ -67,7 +68,7 @@ async function fetchWeatherForCity(city: CityCoordinates): Promise<WeatherData |
       timestamp: currentForecast.validTime
     };
   } catch (error) {
-    console.error(`Error fetching weather for ${city.name}:`, error);
+    logger.error("api.weather.cityError", { city: city.name, error });
     return null;
   }
 }
@@ -108,7 +109,7 @@ export async function GET() {
 
     return NextResponse.json(responseData);
   } catch (error) {
-    console.error('Weather API error:', error);
+    logger.error('api.weather.error', { error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Error syncing columns:', error)
+    logger.error('api.syncColumns.error', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

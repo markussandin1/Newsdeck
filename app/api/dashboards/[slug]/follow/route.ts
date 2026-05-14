@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
 
@@ -41,7 +42,7 @@ export async function POST(
       message: 'Dashboard followed successfully'
     })
   } catch (error) {
-    console.error('Error following dashboard:', error)
+    logger.error('api.dashboard.follow.error', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -80,7 +81,7 @@ export async function DELETE(
       message: 'Dashboard unfollowed successfully'
     })
   } catch (error) {
-    console.error('Error unfollowing dashboard:', error)
+    logger.error('api.dashboard.unfollow.error', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
