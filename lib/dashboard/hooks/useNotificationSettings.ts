@@ -131,6 +131,26 @@ export function useNotificationSettings({
     }
   }, [settings, storageKey, isLoaded])
 
+  // P2-8: synka inställningar mellan flikar. När användaren ändrar i en
+  // flik (t.ex. mutar en kolumn) får andra öppna flikar samma uppdatering
+  // via storage-eventet utan att kräva omladdning.
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== storageKey || !event.newValue) return
+      try {
+        const parsed = JSON.parse(event.newValue) as NotificationSettings
+        setSettings({
+          global: { ...DEFAULT_NOTIFICATION_SETTINGS.global, ...parsed.global },
+          columns: { ...parsed.columns },
+        })
+      } catch (e) {
+        console.error('Failed to sync notification settings from storage event:', e)
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [storageKey])
+
   // Get column settings with fallback to global defaults
   const getColumnSettings = useCallback((columnId: string): ColumnNotificationSettings => {
     const columnSettings = settings.columns[columnId]

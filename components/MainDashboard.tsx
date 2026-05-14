@@ -204,6 +204,19 @@ export default function MainDashboard({ dashboard, onDashboardUpdate }: MainDash
     localStorage.setItem('nd.viewMode', viewMode)
   }, [viewMode])
 
+  // P2-8: synka viewMode mellan flikar via storage-event.
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== 'nd.viewMode' || !event.newValue) return
+      const next = event.newValue
+      if (next === 'columns' || next === 'pulse' || next === 'grid') {
+        setViewMode(next)
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
   // Close column menu on click outside
   useEffect(() => {
     if (!openColumnMenuId) return
