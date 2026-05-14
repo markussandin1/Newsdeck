@@ -282,14 +282,15 @@ export function DashboardHeader({
   return (
     <>
       <GlobalHeader
-        contextContent={brandContent}
-        centerContent={centerContent}
-        rightContent={rightContent}
         userName={userName}
         dashboardId={dashboard.id}
         onLogout={handleLogout}
         onOpenNotificationSettings={onOpenNotificationSettings}
-      />
+      >
+        <GlobalHeader.Left>{brandContent}</GlobalHeader.Left>
+        <GlobalHeader.Center>{centerContent}</GlobalHeader.Center>
+        <GlobalHeader.Right>{rightContent}</GlobalHeader.Right>
+      </GlobalHeader>
 
       {/* P2-9: designad confirm-modal ersätter window.confirm() */}
       {showDeleteConfirm && (

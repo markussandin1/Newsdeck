@@ -1,8 +1,6 @@
-import { NewsItem, Dashboard, DashboardColumn } from './types'
+import { DashboardColumn } from './types'
 import { logger } from './logger'
 import { getPool } from './db/pool'
-import { MAIN_DASHBOARD_ID, DEFAULT_DASHBOARD } from './db/constants'
-import { buildBatchInsert } from './db/batch'
 import {
   cleanupOldItems as adminCleanupOldItems,
   logApiRequest as adminLogApiRequest,
