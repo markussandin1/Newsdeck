@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { db } from '@/lib/db'
 import { verifySession, sessionUnauthorizedResponse } from '@/lib/api-auth'
 
@@ -33,7 +34,7 @@ export async function GET(
       count: columnData.length
     })
   } catch (error) {
-    console.error('Error fetching column data:', error)
+    logger.error('api.column.getError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -104,7 +105,7 @@ export async function PUT(
     })
 
   } catch (error) {
-    console.error('Error updating column:', error)
+    logger.error('api.column.updateError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -135,7 +136,7 @@ export async function DELETE(
     })
 
   } catch (error) {
-    console.error('Error clearing column data:', error)
+    logger.error('api.column.clearError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

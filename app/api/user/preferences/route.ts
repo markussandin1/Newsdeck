@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
 
@@ -23,7 +24,7 @@ export async function GET() {
       }
     })
   } catch (error) {
-    console.error('Error fetching user preferences:', error)
+    logger.error('api.userPreferences.getError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -66,7 +67,7 @@ export async function PUT(request: NextRequest) {
       preferences
     })
   } catch (error) {
-    console.error('Error updating user preferences:', error)
+    logger.error('api.userPreferences.updateError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

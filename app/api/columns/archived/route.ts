@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       columns: archivedColumns
     })
   } catch (error) {
-    console.error('Error fetching archived columns:', error)
+    logger.error('api.columns.archivedListError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { db } from '@/lib/db'
 
 export async function PUT(
@@ -28,7 +29,7 @@ export async function PUT(
       dashboard: updatedDashboard
     })
   } catch (error) {
-    console.error('Error archiving column:', error)
+    logger.error('api.column.archiveError', { error })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

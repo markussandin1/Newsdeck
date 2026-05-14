@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { auth } from '@/auth'
 
 export async function GET() {
@@ -21,7 +22,7 @@ export async function GET() {
       }
     })
   } catch (error) {
-    console.error('Error checking session:', error)
+    logger.error('api.auth.session.error', { error })
     return NextResponse.json(
       { authenticated: false, error: 'Internal server error' },
       { status: 500 }

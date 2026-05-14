@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import { getDetailedDatabaseHealth } from '@/lib/db-health'
 
 export async function GET() {
@@ -16,7 +17,7 @@ export async function GET() {
       action
     })
   } catch (error) {
-    console.error('Error getting database status:', error)
+    logger.error('api.status.database.error', { error })
     return NextResponse.json(
       {
         success: false,
