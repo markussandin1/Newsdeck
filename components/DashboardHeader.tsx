@@ -45,31 +45,34 @@ export function DashboardHeader({
   const router = useRouter();
   const [feedCopied, setFeedCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   const isMainDashboard = dashboard.id === 'main-dashboard' || dashboard.slug === 'main'
 
-  const deleteCurrentDashboard = async () => {
+  const openDeleteConfirm = () => {
     if (isMainDashboard) return
-    const ok = window.confirm(
-      `Är du säker på att du vill radera dashboarden "${dashboard.name}"?\n\nKolumnerna i dashboarden försvinner men händelserna (events) finns kvar i databasen. Denna åtgärd kan inte ångras.`
-    )
-    if (!ok) return
+    setDeleteError(null)
+    setShowDeleteConfirm(true)
+  }
+
+  const performDelete = async () => {
+    setDeleteError(null)
     try {
       setIsDeleting(true)
       const res = await fetch(`/api/dashboards/${dashboard.slug}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        alert(data.error || 'Kunde inte radera dashboarden')
+        setDeleteError(data.error || 'Kunde inte radera dashboarden')
         return
       }
       router.push('/dashboard/main')
     } catch (error) {
       console.error('Failed to delete dashboard:', error)
-      alert('Kunde inte radera dashboarden')
+      setDeleteError('Kunde inte radera dashboarden')
     } finally {
       setIsDeleting(false)
-      setShowDashboardDropdown(false)
     }
   }
 
@@ -185,12 +188,12 @@ export function DashboardHeader({
             </button>
             {!isMainDashboard && (
               <button
-                onClick={deleteCurrentDashboard}
+                onClick={() => { setShowDashboardDropdown(false); openDeleteConfirm() }}
                 disabled={isDeleting}
                 className="w-full px-4 py-2.5 text-left hover:bg-[var(--nd-surface-2)] flex items-center gap-3 text-[oklch(0.7_0.2_25)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span className="text-sm">{isDeleting ? 'Raderar…' : 'Radera dashboard'}</span>
+                <span className="text-sm">Radera dashboard</span>
               </button>
             )}
           </div>
@@ -277,14 +280,71 @@ export function DashboardHeader({
   );
 
   return (
-    <GlobalHeader
-      contextContent={brandContent}
-      centerContent={centerContent}
-      rightContent={rightContent}
-      userName={userName}
-      dashboardId={dashboard.id}
-      onLogout={handleLogout}
-      onOpenNotificationSettings={onOpenNotificationSettings}
-    />
+    <>
+      <GlobalHeader
+        contextContent={brandContent}
+        centerContent={centerContent}
+        rightContent={rightContent}
+        userName={userName}
+        dashboardId={dashboard.id}
+        onLogout={handleLogout}
+        onOpenNotificationSettings={onOpenNotificationSettings}
+      />
+
+      {/* P2-9: designad confirm-modal ersätter window.confirm() */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dashboard-title"
+          onClick={() => !isDeleting && setShowDeleteConfirm(false)}
+        >
+          <div
+            className="w-full max-w-md mx-4 rounded-xl border border-[var(--nd-line)] bg-[var(--nd-surface)] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-[var(--nd-line)] flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[oklch(0.7_0.2_25_/_0.15)] flex items-center justify-center">
+                <Trash2 className="w-4 h-4 text-[oklch(0.7_0.2_25)]" />
+              </div>
+              <h2 id="delete-dashboard-title" className="text-base font-semibold text-foreground">
+                Radera dashboard
+              </h2>
+            </div>
+            <div className="px-5 py-4 text-sm text-muted-foreground space-y-2">
+              <p>
+                Är du säker på att du vill radera <strong className="text-foreground">&quot;{dashboard.name}&quot;</strong>?
+              </p>
+              <p>
+                Kolumnerna i dashboarden försvinner men händelserna finns kvar i databasen.
+                Denna åtgärd kan inte ångras.
+              </p>
+              {deleteError && (
+                <p className="text-[oklch(0.7_0.2_25)] font-medium pt-2">{deleteError}</p>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-[var(--nd-line)] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="px-3 py-1.5 rounded-md text-sm text-foreground hover:bg-[var(--nd-surface-2)] disabled:opacity-50"
+              >
+                Avbryt
+              </button>
+              <button
+                type="button"
+                onClick={performDelete}
+                disabled={isDeleting}
+                className="px-3 py-1.5 rounded-md text-sm font-semibold text-white bg-[oklch(0.6_0.2_25)] hover:bg-[oklch(0.55_0.2_25)] disabled:opacity-50"
+              >
+                {isDeleting ? 'Raderar…' : 'Radera permanent'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
