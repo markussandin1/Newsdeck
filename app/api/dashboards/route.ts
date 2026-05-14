@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { auth } from '@/auth'
 import { verifyApiKey } from '@/lib/api-auth'
 import { logger } from '@/lib/logger'
+import { MAIN_DASHBOARD_ID } from '@/lib/db/constants'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,14 +24,17 @@ export async function GET(request: NextRequest) {
     // Filter dashboards based on query (skip in development)
     let filteredDashboards = dashboards
     if (mine && session?.user?.email && process.env.NODE_ENV !== 'development') {
-      // Get dashboards created by user OR followed by user
+      // Get dashboards created by user OR followed by user. Huvuddashboarden
+      // tas alltid med — den ar app-bred och fungerar som default for alla.
       const userId = session.user.email
       try {
         const following = await db.getUserDashboardFollows(userId)
         const followingIds = new Set(following.map(f => f.dashboardId))
 
         filteredDashboards = dashboards.filter(d =>
-          d.createdBy === userId || followingIds.has(d.id)
+          d.id === MAIN_DASHBOARD_ID
+          || d.createdBy === userId
+          || followingIds.has(d.id)
         )
       } catch (error) {
         // Ignore follow errors in development but log for diagnostics
@@ -61,10 +65,18 @@ export async function GET(request: NextRequest) {
           ...dashboard,
           columnCount: dashboard.columns.filter((col: { isArchived?: boolean }) => !col.isArchived).length,
           followerCount,
-          isFollowing
+          isFollowing,
+          isMain: dashboard.id === MAIN_DASHBOARD_ID,
         }
       })
     )
+
+    // Pin:a huvuddashboarden överst — den är app-bred default och ska sticka ut.
+    enrichedDashboards.sort((a, b) => {
+      if (a.isMain && !b.isMain) return -1
+      if (!a.isMain && b.isMain) return 1
+      return 0
+    })
 
     return NextResponse.json({
       success: true,
