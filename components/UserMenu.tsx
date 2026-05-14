@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Settings, LogOut, User, Sun, Moon, ChevronDown, Bell } from 'lucide-react';
+import { Settings, LogOut, Sun, Moon, ChevronDown, Bell } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -96,17 +96,8 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
 
             {/* Menu Items */}
             <div className="py-1">
-              {/* Profile (placeholder - can be implemented later) */}
-              <button
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left"
-                onClick={() => {
-                  // Profile action - placeholder
-                  setIsOpen(false);
-                }}
-              >
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-body text-foreground">Profil</span>
-              </button>
+              {/* Profil-knappen togs bort (P2-14): den var en no-op.
+                  Användarens namn + e-post visas redan i sektionen ovan. */}
 
               {/* Dashboard Settings */}
               <Link

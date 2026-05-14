@@ -210,6 +210,15 @@ export function NotificationSettingsModal({
                 </span>
               )}
             </div>
+
+            {/* P2-12: Tydlig Chrome-begränsning så icke-Chrome-användare
+                inte tror att appen är trasig. */}
+            {desktopPermission === 'unsupported' && (
+              <div className="pl-8 text-xs text-muted-foreground leading-relaxed">
+                Desktop-notiser kräver Chrome på dator. Ljudnotiser fungerar i alla
+                webbläsare.
+              </div>
+            )}
           </div>
 
           {/* Divider */}
