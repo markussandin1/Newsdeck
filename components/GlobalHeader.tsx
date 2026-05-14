@@ -30,7 +30,6 @@ const HeaderRight: React.FC<SlotProps> = () => null;
 interface GlobalHeaderProps {
   children?: ReactNode;
   userName: string | null;
-  dashboardId?: string;
   onLogout?: () => void;
   onOpenNotificationSettings?: () => void;
   className?: string;
@@ -39,7 +38,6 @@ interface GlobalHeaderProps {
 export function GlobalHeader({
   children,
   userName,
-  dashboardId = '',
   onLogout,
   onOpenNotificationSettings,
   className = '',
@@ -85,7 +83,6 @@ export function GlobalHeader({
         {right}
         <UserMenu
           userName={userName || 'User'}
-          dashboardId={dashboardId}
           onLogout={handleLogout}
           onOpenNotificationSettings={onOpenNotificationSettings}
         />

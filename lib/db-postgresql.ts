@@ -4,7 +4,6 @@ import { getPool } from './db/pool'
 import {
   cleanupOldItems as adminCleanupOldItems,
   logApiRequest as adminLogApiRequest,
-  getApiRequestLogs as adminGetApiRequestLogs,
 } from './db/admin'
 import {
   getUserPreferences as userGetPrefs,
@@ -151,11 +150,9 @@ export const persistentDb = {
   followDashboard: userFollow,
   unfollowDashboard: userUnfollow,
 
-  // API request logging — saniterad metadata, aldrig payload. Persisterar
-  // inte längre till databasen; loggning via Cloud Logging. Detaljer:
-  // lib/db/admin.ts.
+  // API request logging — sanerad metadata, aldrig payload. Skickas till
+  // Cloud Logging (persisteras inte). Detaljer: lib/db/admin.ts.
   logApiRequest: adminLogApiRequest,
-  getApiRequestLogs: adminGetApiRequestLogs,
 
   // Health check
   isConnected: async () => {

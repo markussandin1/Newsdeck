@@ -283,7 +283,6 @@ export function DashboardHeader({
     <>
       <GlobalHeader
         userName={userName}
-        dashboardId={dashboard.id}
         onLogout={handleLogout}
         onOpenNotificationSettings={onOpenNotificationSettings}
       >

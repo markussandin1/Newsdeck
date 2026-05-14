@@ -162,7 +162,6 @@ export default function DashboardsPage() {
         </Link>
         <UserMenu
           userName={userName || 'User'}
-          dashboardId=""
           onLogout={handleLogout}
         />
       </div>

@@ -10,12 +10,11 @@ import Link from 'next/link';
 interface UserMenuProps {
   userName: string;
   userEmail?: string;
-  dashboardId: string;
   onLogout?: () => void;
   onOpenNotificationSettings?: () => void;
 }
 
-export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNotificationSettings }: UserMenuProps) {
+export function UserMenu({ userName, userEmail, onLogout, onOpenNotificationSettings }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -151,16 +150,16 @@ export function UserMenu({ userName, userEmail, dashboardId, onLogout, onOpenNot
               {/* Profil-knappen togs bort (P2-14): den var en no-op.
                   Användarens namn + e-post visas redan i sektionen ovan. */}
 
-              {/* Dashboard Settings */}
+              {/* Dokumentation (ersätter tidigare Dashboard-inställningar som låg på /admin) */}
               <Link
                 ref={registerItem}
                 role="menuitem"
-                href={`/admin?dashboardId=${dashboardId}`}
+                href="/docs"
                 onClick={() => setIsOpen(false)}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted focus:bg-muted focus:outline-none transition-colors"
               >
                 <Settings className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-body text-foreground">Dashboard-inställningar</span>
+                <span className="text-sm font-body text-foreground">Dokumentation</span>
               </Link>
 
               {/* Notification Settings */}
