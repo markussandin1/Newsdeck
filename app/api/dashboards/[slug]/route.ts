@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { NewsItem } from '@/lib/types'
+import { auth } from '@/auth'
 
 export async function GET(
   request: NextRequest,
@@ -75,6 +76,13 @@ export async function PUT(
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
+    if (process.env.NODE_ENV !== 'development') {
+      const session = await auth()
+      if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
+
     const params = await context.params
     const slug = params.slug
     const body = await request.json()
@@ -122,6 +130,13 @@ export async function DELETE(
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
+    if (process.env.NODE_ENV !== 'development') {
+      const session = await auth()
+      if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
+
     const params = await context.params
     const slug = params.slug
 
