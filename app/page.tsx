@@ -63,7 +63,7 @@ export default function HomePage() {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
         <div className="w-16 h-16 mb-4 mx-auto">
           <Image
@@ -74,7 +74,7 @@ export default function HomePage() {
             className="w-full h-full object-contain animate-pulse"
           />
         </div>
-        <div className="text-slate-600">
+        <div className="text-muted-foreground">
           {checking ? 'Laddar Newsdeck...' : 'Redirectar...'}
         </div>
       </div>
