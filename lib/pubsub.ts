@@ -2,8 +2,17 @@ import { PubSub } from '@google-cloud/pubsub'
 import type { NewsItem } from './types'
 import { logger } from './logger'
 
+// P3-3: GCP_PROJECT_ID är obligatorisk i produktion. Tidigare hade vi
+// en hårdkodad fallback 'newsdeck-473620' vilket gjorde det enkelt att
+// glömma att sätta variabeln i en annan miljö (staging, lokal test, etc).
+const GCP_PROJECT_ID = process.env.GCP_PROJECT_ID
+if (!GCP_PROJECT_ID && process.env.NODE_ENV === 'production') {
+  // I prod kraschar vi tidigt så vi inte tyst pekar mot fel projekt.
+  throw new Error('GCP_PROJECT_ID environment variable must be set in production')
+}
+
 const pubsub = new PubSub({
-  projectId: process.env.GCP_PROJECT_ID || 'newsdeck-473620'
+  projectId: GCP_PROJECT_ID
 })
 
 const TOPIC_NAME = 'newsdeck-news-items'

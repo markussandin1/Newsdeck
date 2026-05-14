@@ -59,9 +59,31 @@ export function timeExact(iso: string): string {
 }
 
 export function timeBucket(iso: string): string {
-  const diff = (Date.now() - new Date(iso).getTime()) / 60000
-  if (diff < 15)  return 'Senaste 15 min'
-  if (diff < 60)  return 'Senaste timmen'
-  if (diff < 180) return 'Senaste 3 timmarna'
-  return 'Tidigare idag'
+  const then = new Date(iso)
+  const now = new Date()
+  const diffMin = (now.getTime() - then.getTime()) / 60000
+  if (diffMin < 15)  return 'Senaste 15 min'
+  if (diffMin < 60)  return 'Senaste timmen'
+  if (diffMin < 180) return 'Senaste 3 timmarna'
+
+  // P3-6: skilj på "idag" och "tidigare". Att en händelse från igår
+  // hamnade i samma "Tidigare idag"-bucket som något fyra timmar gammalt
+  // var vilseledande.
+  const sameDay =
+    then.getFullYear() === now.getFullYear() &&
+    then.getMonth() === now.getMonth() &&
+    then.getDate() === now.getDate()
+  if (sameDay) return 'Tidigare idag'
+
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  const isYesterday =
+    then.getFullYear() === yesterday.getFullYear() &&
+    then.getMonth() === yesterday.getMonth() &&
+    then.getDate() === yesterday.getDate()
+  if (isYesterday) return 'Igår'
+
+  const diffDays = Math.floor((now.getTime() - then.getTime()) / 86_400_000)
+  if (diffDays < 7) return `${diffDays} dagar sen`
+  return then.toLocaleDateString('sv-SE')
 }
