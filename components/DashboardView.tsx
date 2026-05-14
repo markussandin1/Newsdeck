@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
-import { ColumnData } from '@/lib/dashboard/types'
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardStream } from '@/lib/dashboard/hooks/useDashboardStream'
 import { usePendingImagePolling } from '@/lib/dashboard/hooks/usePendingImagePolling'
@@ -17,6 +16,7 @@ import { useClipboard } from '@/lib/dashboard/hooks/useClipboard'
 import { useColumnDragDrop } from '@/lib/dashboard/hooks/useColumnDragDrop'
 import { useViewMode } from '@/lib/dashboard/hooks/useViewMode'
 import { useCurrentUser } from '@/lib/dashboard/hooks/useCurrentUser'
+import { useColumnSearch } from '@/lib/dashboard/hooks/useColumnSearch'
 import { ThemeToggle } from './theme-toggle'
 import NewsItemModal from './NewsItemModal'
 import { Menu, MoreVertical, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react'
@@ -164,7 +164,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
   const [showCreateDashboardModal, setShowCreateDashboardModal] = useState(false)
   const [newDashboardName, setNewDashboardName] = useState('')
   const [newDashboardDescription, setNewDashboardDescription] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
+  // searchQuery + filtering extraherat till useColumnSearch (P1-3)
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false)
   const [showSearchInput, setShowSearchInput] = useState(false)
   // viewMode + localStorage + cross-tab-sync extraherat till useViewMode (P1-3 steg 3)
@@ -188,52 +188,13 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     return () => document.removeEventListener('click', handleClickOutside)
   }, [openColumnMenuId])
 
-  // Sorted and filtered column data
-  const memoizedColumnData = useMemo(() => {
-    const result: ColumnData = {}
-    Object.entries(columnData).forEach(([columnId, items]) => {
-      result[columnId] = [...items].sort((a, b) => {
-        const getEventTime = (item: NewsItemType) => {
-          if (item.createdInDb) return new Date(item.createdInDb).getTime()
-          return new Date(item.timestamp).getTime()
-        }
-        return getEventTime(b) - getEventTime(a)
-      })
-    })
-    return result
-  }, [columnData])
-
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
-
-  const filteredColumnData = useMemo(() => {
-    if (!normalizedSearchQuery) return memoizedColumnData
-
-    const matchesQuery = (item: NewsItemType) => {
-      const locationText = item.location
-        ? [
-            item.location.country,
-            item.location.county,
-            item.location.municipality,
-            item.location.area,
-            item.location.street,
-            item.location.name,
-          ].filter(Boolean).join(' ').toLowerCase()
-        : ''
-      const searchableText = [item.title, item.description, item.source, item.category, item.severity]
-        .filter(Boolean).join(' ').toLowerCase()
-      const combined = `${searchableText} ${locationText}`.trim()
-      return combined ? combined.includes(normalizedSearchQuery) : false
-    }
-
-    const filtered: ColumnData = {}
-    Object.entries(memoizedColumnData).forEach(([columnId, items]) => {
-      filtered[columnId] = items.filter(matchesQuery)
-    })
-    return filtered
-  }, [memoizedColumnData, normalizedSearchQuery])
-
-  const hasActiveSearch = normalizedSearchQuery.length > 0
-  const showSearchNoResults = hasActiveSearch && normalizedSearchQuery.length > 0 && Object.values(filteredColumnData).every(items => items.length === 0)
+  const {
+    searchQuery,
+    setSearchQuery,
+    filteredColumnData,
+    hasActiveSearch,
+    showSearchNoResults,
+  } = useColumnSearch({ columnData })
 
   const isColumnSoundMuted = useCallback((columnId: string): boolean => {
     return !getColumnSettings(columnId).soundEnabled
