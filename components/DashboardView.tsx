@@ -14,6 +14,7 @@ import { useDesktopNotifications } from '@/lib/dashboard/hooks/useDesktopNotific
 import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
 import { useColumnOperations } from '@/lib/dashboard/hooks/useColumnOperations'
 import { useClipboard } from '@/lib/dashboard/hooks/useClipboard'
+import { useColumnDragDrop } from '@/lib/dashboard/hooks/useColumnDragDrop'
 import { ThemeToggle } from './theme-toggle'
 import NewsItemModal from './NewsItemModal'
 import { Menu, MoreVertical, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react'
@@ -171,9 +172,6 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     return 'columns'
   })
   const [openColumnMenuId, setOpenColumnMenuId] = useState<string | null>(null)
-  const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
-  const [dragPreview, setDragPreview] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false })
   const [userName, setUserName] = useState<string | null>(null)
 
   // Initialize workflow input checkbox when modal opens
@@ -318,60 +316,17 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     router.push(`/dashboard/${slug}`)
   }, [router])
 
-  // Drag & drop handlers
-  const handleDragStart = (e: React.DragEvent, columnId: string) => {
-    setDraggedColumn(columnId)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', columnId)
-
-    const canvas = document.createElement('canvas')
-    canvas.width = 1
-    canvas.height = 1
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.globalAlpha = 0.01
-      ctx.fillStyle = 'black'
-      ctx.fillRect(0, 0, 1, 1)
-    }
-    e.dataTransfer.setDragImage(canvas, 0, 0)
-    setDragPreview({ x: e.clientX, y: e.clientY, visible: true })
-
-    const handleMouseMove = (event: MouseEvent) => {
-      setDragPreview({ x: event.clientX, y: event.clientY, visible: true })
-    }
-    document.addEventListener('dragover', handleMouseMove)
-    const cleanup = () => {
-      document.removeEventListener('dragover', handleMouseMove)
-      document.removeEventListener('dragend', cleanup)
-    }
-    document.addEventListener('dragend', cleanup)
-  }
-
-  const handleDragEnd = () => {
-    setDraggedColumn(null)
-    setDragOverColumn(null)
-    setDragPreview({ x: 0, y: 0, visible: false })
-  }
-
-  const handleDragOver = (e: React.DragEvent, columnId: string) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setDragOverColumn(columnId)
-  }
-
-  const handleDragLeave = () => {
-    setDragOverColumn(null)
-  }
-
-  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
-    e.preventDefault()
-    const draggedColumnId = e.dataTransfer.getData('text/plain')
-    if (draggedColumnId && draggedColumnId !== targetColumnId) {
-      reorderColumns(draggedColumnId, targetColumnId)
-    }
-    setDraggedColumn(null)
-    setDragOverColumn(null)
-  }
+  // Drag & drop — extraherat till useColumnDragDrop (P1-3 steg 2)
+  const {
+    draggedColumn,
+    dragOverColumn,
+    dragPreview,
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useColumnDragDrop({ reorderColumns })
 
   const activeColumnCount = activeColumns.length
 
