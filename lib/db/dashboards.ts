@@ -66,10 +66,21 @@ export async function getDashboards() {
   }
 }
 
-export async function getDashboard(id: string): Promise<Dashboard | null> {
-  const pool = getPool()
+/**
+ * Normalisera legacy-strängen 'main-dashboard' till UUID:n som radens id ar i db
+ * sedan migration 006. Routes pa /api/dashboards/main passar fortfarande denna
+ * straing — utan normalisering missar SELECT raden och fallback-grenen tror den
+ * ska skapa en ny (vilket ar no-op via ON CONFLICT DO NOTHING).
+ */
+function normalizeId(id: string): string {
+  return id === 'main-dashboard' ? MAIN_DASHBOARD_ID : id
+}
 
-  if (id === MAIN_DASHBOARD_ID || id === 'main-dashboard') {
+export async function getDashboard(rawId: string): Promise<Dashboard | null> {
+  const pool = getPool()
+  const id = normalizeId(rawId)
+
+  if (id === MAIN_DASHBOARD_ID) {
     try {
       const result = await pool.query(
         `SELECT
@@ -167,9 +178,10 @@ export async function createDashboard(
  * Lås raden för transaktionens längd. Två samtidiga updates (t.ex. dubbelklick
  * på spara) serialiseras så ingen läser stale data och skriver över den andra.
  */
-export async function updateDashboard(id: string, updates: Partial<Dashboard>) {
+export async function updateDashboard(rawId: string, updates: Partial<Dashboard>) {
   const pool = getPool()
   const client = await pool.connect()
+  const id = normalizeId(rawId)
 
   try {
     await client.query('BEGIN')
@@ -193,7 +205,7 @@ export async function updateDashboard(id: string, updates: Partial<Dashboard>) {
         }
       : null
 
-    if (!existing && (id === MAIN_DASHBOARD_ID || id === 'main-dashboard')) {
+    if (!existing && id === MAIN_DASHBOARD_ID) {
       await client.query('COMMIT')
       const newDashboard = { ...DEFAULT_DASHBOARD, ...updates }
       await addDashboard(newDashboard)
@@ -237,8 +249,9 @@ export async function updateDashboard(id: string, updates: Partial<Dashboard>) {
 }
 
 /** Atomic bump av view_count + last_viewed i en UPDATE. */
-export async function incrementDashboardView(id: string): Promise<void> {
+export async function incrementDashboardView(rawId: string): Promise<void> {
   const pool = getPool()
+  const id = normalizeId(rawId)
   try {
     await pool.query(
       `UPDATE dashboards
