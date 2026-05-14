@@ -15,6 +15,7 @@ import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
 import { useColumnOperations } from '@/lib/dashboard/hooks/useColumnOperations'
 import { useClipboard } from '@/lib/dashboard/hooks/useClipboard'
 import { useColumnDragDrop } from '@/lib/dashboard/hooks/useColumnDragDrop'
+import { useViewMode } from '@/lib/dashboard/hooks/useViewMode'
 import { ThemeToggle } from './theme-toggle'
 import NewsItemModal from './NewsItemModal'
 import { Menu, MoreVertical, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react'
@@ -165,12 +166,8 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
   const [searchQuery, setSearchQuery] = useState('')
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false)
   const [showSearchInput, setShowSearchInput] = useState(false)
-  const [viewMode, setViewMode] = useState<'columns' | 'pulse' | 'grid'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('nd.viewMode') as 'columns' | 'pulse' | 'grid') || 'columns'
-    }
-    return 'columns'
-  })
+  // viewMode + localStorage + cross-tab-sync extraherat till useViewMode (P1-3 steg 3)
+  const [viewMode, setViewMode] = useViewMode()
   const [openColumnMenuId, setOpenColumnMenuId] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
 
@@ -196,23 +193,6 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
       }
     }
     fetchSession()
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('nd.viewMode', viewMode)
-  }, [viewMode])
-
-  // P2-8: synka viewMode mellan flikar via storage-event.
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== 'nd.viewMode' || !event.newValue) return
-      const next = event.newValue
-      if (next === 'columns' || next === 'pulse' || next === 'grid') {
-        setViewMode(next)
-      }
-    }
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
   // Close column menu on click outside
