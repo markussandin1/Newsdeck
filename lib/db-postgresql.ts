@@ -1207,8 +1207,11 @@ export const persistentDb = {
 
   // Sync column data from general news storage
   syncColumnDataFromGeneral: async (columnId: string) => {
-    const allItems = await persistentDb.getNewsItems()
-    const columnItems = allItems.filter(item => item.workflowId === columnId)
+    // P2-15: anvand workflow-id-index istallet for full table scan
+    // pa news_items. getNewsItemsByWorkflow hittar exakt de items
+    // som matchar columnId (i workflow_id-faltet) utan att rakna
+    // resten.
+    const columnItems = await persistentDb.getNewsItemsByWorkflow(columnId)
 
     logger.debug('db.syncColumnData.start', { columnId, count: columnItems.length })
 
