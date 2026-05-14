@@ -866,7 +866,7 @@ html.light {
   font-size: 11px; font-family: var(--nd-font-mono);
   color: var(--nd-p4); letter-spacing: 0.02em;
 }
-.nd-col-crit.nd-has-p1 { color: var(--nd-p5); }
+.nd-col-crit.nd-has-critical { color: var(--nd-p5); }
 
 .nd-col-empty {
   padding: 40px 16px; text-align: center;

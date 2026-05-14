@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { DashboardColumn } from '@/lib/types'
-import { getPriority, getColumnColor, timeAgo } from '@/lib/design-system'
+import { getPriority, getColumnColor, timeAgo, PRIORITY_COLORS } from '@/lib/design-system'
 import { getCategory } from '@/lib/categories'
 import { MapPin } from 'lucide-react'
 
@@ -25,9 +25,9 @@ export function GridView({ columns, columnData, onSelectItem }: GridViewProps) {
     })
   }, [columnData])
 
-  const p1Count = allItems.filter(i => i.newsValue === 5).length
-  const p2Count = allItems.filter(i => i.newsValue === 4).length
-  const p3Count = allItems.filter(i => i.newsValue === 3).length
+  const criticalCount = allItems.filter(i => i.newsValue === 5).length
+  const highCount = allItems.filter(i => i.newsValue === 4).length
+  const mediumCount = allItems.filter(i => i.newsValue === 3).length
 
   return (
     <div className="nd-grid-wrap">
@@ -35,9 +35,9 @@ export function GridView({ columns, columnData, onSelectItem }: GridViewProps) {
         <span className="nd-gb-label">Översikt</span>
         <div className="nd-gb-stats">
           <GridStat label="Totalt" value={allItems.length} />
-          <GridStat label="P1" value={p1Count} dotColor="oklch(0.64 0.22 25)" />
-          <GridStat label="P2" value={p2Count} dotColor="oklch(0.75 0.17 65)" />
-          <GridStat label="P3" value={p3Count} dotColor="oklch(0.72 0.14 220)" />
+          <GridStat label={PRIORITY_COLORS[5].name} value={criticalCount} dotColor={PRIORITY_COLORS[5].color} />
+          <GridStat label={PRIORITY_COLORS[4].name} value={highCount} dotColor={PRIORITY_COLORS[4].color} />
+          <GridStat label={PRIORITY_COLORS[3].name} value={mediumCount} dotColor={PRIORITY_COLORS[3].color} />
           <GridStat label="Kolumner" value={columns.length} />
         </div>
       </div>

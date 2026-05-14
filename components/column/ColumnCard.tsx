@@ -85,18 +85,18 @@ export function ColumnCard({
     return () => clearInterval(t)
   }, [])
 
-  const { breakingCount, hasP1Recent } = useMemo(() => {
+  const { breakingCount, hasCriticalRecent } = useMemo(() => {
     const cutoff = now - ONE_HOUR_MS
     let count = 0
-    let p1 = false
+    let critical = false
     for (const item of items) {
       if (item.newsValue < 4) continue
       const ts = new Date(item.createdInDb || item.timestamp).getTime()
       if (Number.isNaN(ts) || ts < cutoff) continue
       count++
-      if (item.newsValue === 5) p1 = true
+      if (item.newsValue === 5) critical = true
     }
-    return { breakingCount: count, hasP1Recent: p1 }
+    return { breakingCount: count, hasCriticalRecent: critical }
   }, [items, now])
 
   return (
@@ -153,7 +153,7 @@ export function ColumnCard({
             isSoundMuted={isSoundMuted}
             copiedFeedId={copiedFeedId}
             criticalCount={breakingCount}
-            hasP1={hasP1Recent}
+            hasCritical={hasCriticalRecent}
             isLive={items.length > 0}
             onOpenMenu={onOpenMenu}
             onStartEditing={onStartEditing}

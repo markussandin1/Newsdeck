@@ -89,3 +89,4 @@ Screenshot*
 !public/icon-*.png
 
 .test-dist/
+.playwright-mcp/
