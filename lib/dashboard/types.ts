@@ -57,24 +57,6 @@ export interface DashboardDataState {
 }
 
 // ============================================================================
-// Hook Interfaces - useDashboardPolling
-// ============================================================================
-
-/**
- * State and actions for real-time polling
- * Extracted from: long-polling, connection status, event handling
- */
-export interface DashboardPollingState {
-  // State
-  connectionStatus: ConnectionStatus
-
-  // Actions
-  startPolling: (columnId: string) => void
-  stopPolling: (columnId: string) => void
-  stopAllPolling: () => void
-}
-
-// ============================================================================
 // Hook Interfaces - useColumnNotifications
 // ============================================================================
 

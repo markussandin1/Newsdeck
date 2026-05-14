@@ -66,8 +66,7 @@
     "tailwindcss": "^4.0.0",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.2",
-    "uuid": "^9.0.1",
-    "xlsx": "^0.18.5"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "tsconfig-paths": "^4.2.0"
