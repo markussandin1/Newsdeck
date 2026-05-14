@@ -403,19 +403,30 @@
 
 /* Light theme overrides — next-themes sets class="light" on <html> */
 html.light {
-  --nd-bg:        oklch(0.985 0.004 240);
-  --nd-bg-soft:   oklch(0.96 0.006 240);
+  /* P2-10: ökad kontrast. Tidigare låg --nd-bg (0.985) och --nd-surface (1.0)
+     så nära varandra att kort knappt syntes på sidbakgrunden, och borders
+     var nästan osynliga. Ny ramp ger tydligare separation mellan zoner
+     utan att tappa det luftiga intrycket. */
+  --nd-bg:        oklch(0.965 0.006 240);
+  --nd-bg-soft:   oklch(0.94 0.008 240);
   --nd-surface:   oklch(1 0 0);
-  --nd-surface-2: oklch(0.97 0.006 240);
-  --nd-line:      oklch(0.90 0.01 240);
-  --nd-line-soft: oklch(0.94 0.01 240 / 0.8);
-  --nd-ink:       oklch(0.22 0.03 250);
-  --nd-ink-dim:   oklch(0.45 0.02 250);
-  --nd-ink-mute:  oklch(0.60 0.015 250);
-  --nd-accent:    oklch(0.54 0.15 220);
-  --nd-accent-2:  oklch(0.48 0.17 220);
+  --nd-surface-2: oklch(0.955 0.008 240);
+  --nd-line:      oklch(0.84 0.012 240);
+  --nd-line-soft: oklch(0.90 0.01 240 / 0.8);
+  --nd-ink:       oklch(0.18 0.03 250);
+  --nd-ink-dim:   oklch(0.38 0.025 250);
+  --nd-ink-mute:  oklch(0.52 0.02 250);
+  --nd-accent:    oklch(0.52 0.16 220);
+  --nd-accent-2:  oklch(0.45 0.18 220);
   --nd-shadow:    0 6px 24px -10px oklch(0.2 0.02 245 / 0.18);
   --nd-shadow-lg: 0 18px 48px -18px oklch(0.2 0.02 245 / 0.22);
+
+  /* Ribbons (newsValue 1–5): mörka ner de svaga (cyan/grå) i ljust läge så
+     de syns mot vit bakgrund. Kritisk röd och hög amber är redan starka
+     nog och förändras inte. */
+  --nd-p3: oklch(0.58 0.16 220);  /* medium – mörkare cyan */
+  --nd-p2: oklch(0.50 0.03 250);  /* low – mörkare slate */
+  --nd-p1: oklch(0.45 0.02 250);  /* lägst – mörk slate */
 }
 
 /* ——— Newsdeck Card (v2) ——————————————————————————————————————————— */
