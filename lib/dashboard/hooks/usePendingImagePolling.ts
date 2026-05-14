@@ -44,8 +44,6 @@ export function usePendingImagePolling({
       return;
     }
 
-    console.log(`📸 Polling ${pendingItems.length} items with pending images`);
-
     // Poll each pending item
     pendingItems.forEach(({ columnId, item }) => {
       if (!item.dbId) return;
@@ -61,7 +59,6 @@ export function usePendingImagePolling({
 
       // Stop polling if item has been pending for too long (assume failed)
       if (age > MAX_POLL_DURATION) {
-        console.warn(`⏱️ Stopped polling ${item.dbId} (timeout after ${MAX_POLL_DURATION}ms)`);
         itemAgesRef.current.delete(itemKey);
         return;
       }
@@ -84,8 +81,6 @@ export function usePendingImagePolling({
           const updatedItem = data.items?.find((i: NewsItem) => i.dbId === item.dbId);
 
           if (updatedItem && updatedItem.trafficCamera?.status !== 'pending') {
-            console.log(`✅ Image ready for ${item.dbId}: ${updatedItem.trafficCamera?.status}`);
-
             // Update the item in columnData
             updateColumnData((prev) => ({
               ...prev,

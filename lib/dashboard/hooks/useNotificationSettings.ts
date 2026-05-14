@@ -58,7 +58,6 @@ function migrateFromLegacy(dashboardId: string): NotificationSettings | null {
           desktopEnabled: settings.global.defaultDesktopEnabled
         }
       })
-      console.log(`Migrated ${mutedIds.length} muted columns from legacy storage`)
     } catch (e) {
       console.error('Failed to migrate legacy muted columns:', e)
     }
@@ -67,7 +66,6 @@ function migrateFromLegacy(dashboardId: string): NotificationSettings | null {
   // Migrate global audio preference
   if (legacyAudio === 'false') {
     settings.global.defaultSoundEnabled = false
-    console.log('Migrated audio disabled preference from legacy storage')
   }
 
   return settings
@@ -99,7 +97,6 @@ export function useNotificationSettings({
           }
           setSettings(merged)
           setIsLoaded(true)
-          console.log('Loaded notification settings from localStorage')
           return
         } catch (e) {
           console.error('Failed to parse notification settings:', e)
@@ -115,7 +112,6 @@ export function useNotificationSettings({
         // Clean up legacy keys after successful migration
         localStorage.removeItem(`mutedColumns_${dashboardId}`)
         // Note: Keep 'audioEnabled' as it might be used by other dashboards
-        console.log('Migrated and saved notification settings')
       }
 
       setIsLoaded(true)

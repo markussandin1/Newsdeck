@@ -52,7 +52,6 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
         endpoint = '/api/dashboards/main-dashboard'
       }
 
-      console.log('📡 Fetching column data:', endpoint)
       const response = await fetch(endpoint)
       const data = await response.json() as {
         success: boolean
