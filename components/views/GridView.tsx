@@ -1,11 +1,13 @@
 'use client'
 
 import { useMemo } from 'react'
-import { NewsItem as NewsItemType } from '@/lib/types'
-import { DashboardColumn } from '@/lib/types'
+import dynamic from 'next/dynamic'
+import { NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
 import { getPriority, getColumnColor, timeAgo, PRIORITY_COLORS } from '@/lib/design-system'
-import { getCategory } from '@/lib/categories'
+import { groupItemsForGrid, type ItemWithColumn } from '@/lib/grid-score'
 import { MapPin } from 'lucide-react'
+
+const StaticMapThumb = dynamic(() => import('@/components/StaticMapThumb'), { ssr: false })
 
 interface GridViewProps {
   columns: DashboardColumn[]
@@ -13,108 +15,253 @@ interface GridViewProps {
   onSelectItem: (item: NewsItemType) => void
 }
 
-export function GridView({ columns, columnData, onSelectItem }: GridViewProps) {
-  const allItems = useMemo(() => {
-    const items: (NewsItemType & { columnId: string })[] = []
-    Object.entries(columnData).forEach(([columnId, colItems]) => {
-      colItems.forEach(item => items.push({ ...item, columnId }))
-    })
-    return items.sort((a, b) => {
-      if (b.newsValue !== a.newsValue) return b.newsValue - a.newsValue
-      return new Date(b.createdInDb || b.timestamp).getTime() - new Date(a.createdInDb || a.timestamp).getTime()
-    })
-  }, [columnData])
-
-  const criticalCount = allItems.filter(i => i.newsValue === 5).length
-  const highCount = allItems.filter(i => i.newsValue === 4).length
-  const mediumCount = allItems.filter(i => i.newsValue === 3).length
-
-  return (
-    <div className="nd-grid-wrap">
-      <div className="nd-grid-bar">
-        <span className="nd-gb-label">Översikt</span>
-        <div className="nd-gb-stats">
-          <GridStat label="Totalt" value={allItems.length} />
-          <GridStat label={PRIORITY_COLORS[5].name} value={criticalCount} dotColor={PRIORITY_COLORS[5].color} />
-          <GridStat label={PRIORITY_COLORS[4].name} value={highCount} dotColor={PRIORITY_COLORS[4].color} />
-          <GridStat label={PRIORITY_COLORS[3].name} value={mediumCount} dotColor={PRIORITY_COLORS[3].color} />
-          <GridStat label="Kolumner" value={columns.length} />
-        </div>
-      </div>
-      <div className="nd-tiles">
-        {allItems.map(item => {
-          const p = getPriority(item.newsValue)
-          const col = columns.find(c => c.id === item.columnId)
-          const colColor = getColumnColor(item.columnId)
-          const isBig = item.newsValue >= 5
-          const isMid = item.newsValue === 4
-          const tileClass = `nd-tile${isBig ? ' nd-tile-big' : isMid ? ' nd-tile-mid' : ''}`
-
-          return (
-            <article
-              key={item.dbId}
-              className={tileClass}
-              style={{ ['--nd-pc' as string]: p.color, ['--nd-col-color' as string]: colColor }}
-              onClick={() => onSelectItem(item)}
-            >
-              <div className="nd-tile-top">
-                <span className="nd-tile-col">
-                  <span className="nd-sw" />
-                  {col?.title || '—'}
-                </span>
-                <span className="nd-tile-prio" style={{ background: p.color }}>
-                  {item.newsValue}
-                </span>
-              </div>
-              <h3>{item.title}</h3>
-              {isBig && item.description && <p>{item.description}</p>}
-              <div className="nd-tile-foot">
-                <span className="nd-tile-src">{item.source}</span>
-                <span className="nd-sep">·</span>
-                <time>{timeAgo(item.createdInDb || item.timestamp)}</time>
-                {item.location && getLocationSummary(item) && (
-                  <>
-                    <span className="nd-sep">·</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                      <MapPin size={10} />
-                      {getLocationSummary(item)}
-                    </span>
-                  </>
-                )}
-                <span className="nd-grow" />
-                {item.category && (() => {
-                  const cat = getCategory(item.category)
-                  return cat ? (
-                    <span className="nd-cat">
-                      <span className="nd-cat-ico" aria-hidden>{cat.icon}</span>
-                      <span>{cat.label}</span>
-                    </span>
-                  ) : null
-                })()}
-              </div>
-            </article>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function GridStat({ label, value, dotColor }: { label: string; value: number; dotColor?: string }) {
-  return (
-    <span className="nd-stat">
-      {dotColor && <span className="nd-stat-dot" style={{ background: dotColor }} />}
-      <span className="nd-stat-l">{label}</span>
-      <span className="nd-stat-v">{value}</span>
-    </span>
-  )
+function getCoordinates(item: NewsItemType): { lat: number; lng: number } | null {
+  const c = item.location?.coordinates
+  if (!c || c.length < 2) return null
+  const [lat, lng] = c
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null
+  return { lat, lng }
 }
 
 function getLocationSummary(item: NewsItemType): string | null {
   if (!item.location) return null
   const parts = [
     item.location.area || item.location.street || item.location.name,
-    item.location.municipality
+    item.location.municipality,
   ].filter(Boolean)
   return parts.length ? parts.join(' · ') : null
+}
+
+function ageLabel(item: NewsItemType): string {
+  return timeAgo(item.createdInDb || item.timestamp)
+}
+
+function isFresh(item: NewsItemType): boolean {
+  const ts = item.createdInDb || item.timestamp
+  if (!ts) return false
+  return (Date.now() - new Date(ts).getTime()) / 60_000 < 30
+}
+
+export function GridView({ columns, columnData, onSelectItem }: GridViewProps) {
+  const allItems = useMemo<ItemWithColumn[]>(() => {
+    const items: ItemWithColumn[] = []
+    Object.entries(columnData).forEach(([columnId, colItems]) => {
+      colItems.forEach(item => items.push({ ...item, columnId }))
+    })
+    return items
+  }, [columnData])
+
+  const grouping = useMemo(() => groupItemsForGrid(allItems), [allItems])
+
+  const criticalCount = allItems.filter(i => i.newsValue === 5).length
+  const highCount = allItems.filter(i => i.newsValue === 4).length
+  const mediumCount = allItems.filter(i => i.newsValue === 3).length
+
+  if (!grouping.hero) {
+    return (
+      <div className="nd-gv-wrap">
+        <div className="nd-gv-empty">Inga händelser senaste 24 timmarna.</div>
+      </div>
+    )
+  }
+
+  const heroRowClass =
+    grouping.secondary.length >= 2 ? '' :
+    grouping.secondary.length === 1 ? 'cols-2' :
+    'cols-1'
+
+  return (
+    <div className="nd-gv-wrap">
+      <div className="nd-gv-bar">
+        <span className="nd-gv-bar-label">Översikt · Sverige senaste timmen</span>
+        <div className="nd-gv-stats">
+          <Stat label="Totalt" value={allItems.length} />
+          <Stat label={PRIORITY_COLORS[5].name} value={criticalCount} dotColor={PRIORITY_COLORS[5].color} />
+          <Stat label={PRIORITY_COLORS[4].name} value={highCount} dotColor={PRIORITY_COLORS[4].color} />
+          <Stat label={PRIORITY_COLORS[3].name} value={mediumCount} dotColor={PRIORITY_COLORS[3].color} />
+          <Stat label="Kolumner" value={columns.length} />
+        </div>
+      </div>
+
+      <div className={`nd-gv-hero-row ${heroRowClass}`}>
+        <HeroCard item={grouping.hero} columns={columns} onSelect={onSelectItem} />
+        {grouping.secondary.map(item => (
+          <SecondaryCard key={item.dbId} item={item} columns={columns} onSelect={onSelectItem} />
+        ))}
+      </div>
+
+      <Band title="Senaste 15 minuter" items={grouping.bands.last15} columns={columns} onSelect={onSelectItem} />
+      <Band title="Senaste timmen" items={grouping.bands.lastHour} columns={columns} onSelect={onSelectItem} />
+      <Band title="Tidigare idag" items={grouping.bands.earlierToday} columns={columns} onSelect={onSelectItem} older />
+    </div>
+  )
+}
+
+function Stat({ label, value, dotColor }: { label: string; value: number; dotColor?: string }) {
+  return (
+    <span className="nd-gv-stat">
+      {dotColor && <span className="nd-gv-stat-dot" style={{ background: dotColor }} />}
+      <span>{label}</span>
+      <span style={{ fontWeight: 700 }}>{value}</span>
+    </span>
+  )
+}
+
+function HeroCard({
+  item,
+  columns,
+  onSelect,
+}: {
+  item: ItemWithColumn
+  columns: DashboardColumn[]
+  onSelect: (i: NewsItemType) => void
+}) {
+  const p = getPriority(item.newsValue)
+  const coords = getCoordinates(item)
+  const place = getLocationSummary(item)
+  const col = columns.find(c => c.id === item.columnId)
+  const fresh = isFresh(item)
+
+  return (
+    <article
+      className={`nd-gv-hero ${coords ? 'has-map' : ''}`}
+      style={{ ['--nd-pc' as string]: p.color }}
+      onClick={() => onSelect(item)}
+    >
+      <div className="nd-gv-hero-body">
+        <span className="nd-gv-hero-label">
+          {fresh && <span className="nd-gv-hero-pulse" aria-hidden />}
+          Topphändelse · {p.name}
+        </span>
+        <h2>{item.title}</h2>
+        {item.description && <p>{item.description}</p>}
+        <div className="nd-gv-hero-meta">
+          <span>{item.source.toUpperCase()}</span>
+          {place && <><span>·</span><span>{place.toUpperCase()}</span></>}
+          {col && <><span>·</span><span>{col.title.toUpperCase()}</span></>}
+          <span>·</span>
+          <span>{ageLabel(item).toUpperCase()}</span>
+          <span>·</span>
+          <span className="accent">NEWSVALUE {item.newsValue}</span>
+        </div>
+      </div>
+      {coords && (
+        <StaticMapThumb
+          lat={coords.lat}
+          lng={coords.lng}
+          markerColor={p.color}
+          placeLabel={place || `${coords.lat.toFixed(4)}° N, ${coords.lng.toFixed(4)}° E`}
+        />
+      )}
+    </article>
+  )
+}
+
+function SecondaryCard({
+  item,
+  columns,
+  onSelect,
+}: {
+  item: ItemWithColumn
+  columns: DashboardColumn[]
+  onSelect: (i: NewsItemType) => void
+}) {
+  const p = getPriority(item.newsValue)
+  const col = columns.find(c => c.id === item.columnId)
+  const place = getLocationSummary(item)
+  const critical = item.newsValue === 5
+
+  return (
+    <article
+      className={`nd-gv-sec ${critical ? 'is-critical' : ''}`}
+      style={{ ['--nd-pc' as string]: p.color }}
+      onClick={() => onSelect(item)}
+    >
+      <span className={`nd-gv-sec-label ${critical ? 'is-critical' : ''}`}>
+        {p.name} · {ageLabel(item)}
+      </span>
+      <h3>{item.title}</h3>
+      {item.description && <p>{item.description}</p>}
+      <div className="nd-gv-sec-meta">
+        {item.source.toUpperCase()}
+        {place && <> · {place.toUpperCase()}</>}
+        {col && <> · {col.title.toUpperCase()}</>}
+        {' · '}NEWSVALUE {item.newsValue}
+      </div>
+    </article>
+  )
+}
+
+function Band({
+  title,
+  items,
+  columns,
+  onSelect,
+  older = false,
+}: {
+  title: string
+  items: ItemWithColumn[]
+  columns: DashboardColumn[]
+  onSelect: (i: NewsItemType) => void
+  older?: boolean
+}) {
+  if (items.length === 0) return null
+  return (
+    <div className={`nd-gv-band ${older ? 'is-older' : ''}`}>
+      <div className="nd-gv-band-head">
+        <span>{title}</span>
+        <span className="count">{items.length} händelser</span>
+      </div>
+      <div className="nd-gv-tiles">
+        {items.map(item => (
+          <Tile key={item.dbId} item={item} columns={columns} onSelect={onSelect} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Tile({
+  item,
+  columns,
+  onSelect,
+}: {
+  item: ItemWithColumn
+  columns: DashboardColumn[]
+  onSelect: (i: NewsItemType) => void
+}) {
+  const p = getPriority(item.newsValue)
+  const col = columns.find(c => c.id === item.columnId)
+  const place = getLocationSummary(item)
+
+  return (
+    <article
+      className="nd-gv-tile"
+      style={{ ['--nd-pc' as string]: item.newsValue >= 3 ? p.color : 'var(--nd-line)' }}
+      onClick={() => onSelect(item)}
+    >
+      <h4>{item.title}</h4>
+      <div className="nd-gv-tile-meta">
+        <span className="nd-gv-prio">{item.newsValue}</span>
+        <span>{ageLabel(item).toUpperCase()}</span>
+        <span>·</span>
+        <span>{item.source.toUpperCase()}</span>
+        {place && (
+          <>
+            <span>·</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              <MapPin size={10} />
+              {place}
+            </span>
+          </>
+        )}
+        {col && (
+          <>
+            <span>·</span>
+            <span style={{ color: getColumnColor(item.columnId) }}>{col.title.toUpperCase()}</span>
+          </>
+        )}
+      </div>
+    </article>
+  )
 }
