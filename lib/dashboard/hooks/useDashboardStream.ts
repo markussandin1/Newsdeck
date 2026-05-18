@@ -15,6 +15,9 @@ interface UseDashboardStreamProps {
 // puls innan vi tvingar reconnect.
 const STALE_CONNECTION_MS = 60_000
 const WATCHDOG_INTERVAL_MS = 15_000
+// Tröskel för "OS:et sov" — om en watchdog-tick försenas mer än så här
+// antar vi att laptopen varit i sleep eller liknande och tvingar reconnect.
+const WAKE_SKEW_MS = 5_000
 
 interface UseDashboardStreamReturn {
   connectionStatus: ConnectionStatus
@@ -53,9 +56,9 @@ export function useDashboardStream({
   // events kommer fram (laptop sleep, NAT-timeout, mobilnätbyte).
   const lastMessageAtRef = useRef<number>(Date.now())
   const watchdogTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  // Track when each column was last seen so we can detect truly new items
-  const lastSeenTimestampsRef = useRef<Map<string, number>>(new Map())
+  // Föregående watchdog-tick — om elapsed >> interval har OS sannolikt sovit
+  // och vi bör tvinga reconnect direkt utan att vänta in stale-tröskeln.
+  const lastWatchdogTickRef = useRef<number>(Date.now())
 
   // EventSource + cleanup refs
   const eventSourceRef = useRef<EventSource | null>(null)
@@ -80,8 +83,6 @@ export function useDashboardStream({
   // Process incoming items from SSE
   // -------------------------------------------------------------------------
   const handleItems = useCallback((columnId: string, items: NewsItem[]) => {
-    const lastSeen = lastSeenTimestampsRef.current.get(columnId)
-
     updateColumnDataRef.current((prev: ColumnData) => {
       const existingItems = prev[columnId] || []
 
@@ -109,9 +110,14 @@ export function useDashboardStream({
 
       if (brandNewItems.length === 0) return prev
 
-      const recentItems = brandNewItems.filter(item => item.isNew)
-      if (onNewItemsRef.current && lastSeen && recentItems.length > 0) {
-        onNewItemsRef.current(columnId, recentItems)
+      // Allt som kommer via SSE är per definition nytt for klienten — SSE
+      // skickar bara events publicerade efter att vi prenumererat, och dbId-
+      // dedupen ovan filtrerar bort eventuella dubbletter mot existing state.
+      // Vi notifierar utan lastSeen-/isNew-gates eftersom de gjorde att
+      // första eventet i en kolumn alltid missade ljud, och att events fördröjda
+      // av reconnect-/pubsub-glitch slogs som "för gamla".
+      if (onNewItemsRef.current) {
+        onNewItemsRef.current(columnId, brandNewItems)
       }
 
       const filteredExisting = updatedSourceIds.size > 0
@@ -123,9 +129,6 @@ export function useDashboardStream({
         [columnId]: [...brandNewItems, ...filteredExisting],
       }
     })
-
-    // Update last-seen timestamp
-    lastSeenTimestampsRef.current.set(columnId, Date.now())
   }, [])
 
   // -------------------------------------------------------------------------
@@ -243,7 +246,6 @@ export function useDashboardStream({
       eventSourceRef.current = null
     }
 
-    lastSeenTimestampsRef.current.clear()
     setConnectionStatus('disconnected')
   }, [])
 
@@ -286,11 +288,26 @@ export function useDashboardStream({
   // och tvingar reconnect.
   // -------------------------------------------------------------------------
   useEffect(() => {
+    lastWatchdogTickRef.current = Date.now()
+
     watchdogTimerRef.current = setInterval(() => {
+      const now = Date.now()
+      const sinceLastTick = now - lastWatchdogTickRef.current
+      lastWatchdogTickRef.current = now
+
       if (isStoppedRef.current) return
       if (!eventSourceRef.current) return
 
-      const silentFor = Date.now() - lastMessageAtRef.current
+      // Wall-clock-skip: om vi förväntade oss en tick var WATCHDOG_INTERVAL_MS
+      // men det har gått mycket längre har OS:et sannolikt sovit (laptop lock).
+      // Tvinga reconnect direkt + hämta missade items, vänta inte in stale-fönstret.
+      if (sinceLastTick > WATCHDOG_INTERVAL_MS + WAKE_SKEW_MS) {
+        onReconnectRef.current?.()
+        forceReconnect()
+        return
+      }
+
+      const silentFor = now - lastMessageAtRef.current
       if (silentFor > STALE_CONNECTION_MS) {
         forceReconnect()
       }
@@ -325,6 +342,28 @@ export function useDashboardStream({
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [forceReconnect])
+
+  // -------------------------------------------------------------------------
+  // Wake-/återkomst-signaler som visibilitychange missar:
+  // - focus: triggar när användaren klickar på fönstret efter Mac-sleep
+  //   (tabben var visible före och efter, så visibilitychange tiger).
+  // - online: triggar när nätverket kommer tillbaka efter glitch/nätbyte.
+  // Båda gör samma sak: refetcha färsk data och tvinga reconnect om tyst.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const handleResume = () => {
+      if (isStoppedRef.current) return
+      onReconnectRef.current?.()
+      forceReconnect()
+    }
+
+    window.addEventListener('focus', handleResume)
+    window.addEventListener('online', handleResume)
+    return () => {
+      window.removeEventListener('focus', handleResume)
+      window.removeEventListener('online', handleResume)
     }
   }, [forceReconnect])
 
