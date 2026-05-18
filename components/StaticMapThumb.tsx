@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useTheme } from 'next-themes'
 import type { Map as LeafletMapInstance, Marker as LeafletMarker } from 'leaflet'
 
 interface StaticMapThumbProps {
@@ -18,6 +19,13 @@ export default function StaticMapThumb({
   markerColor = '#dc2626',
   placeLabel,
 }: StaticMapThumbProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme !== 'light'
+  const tileUrl = isDark
+    ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+  const markerBorder = isDark ? '#0b0d10' : '#ffffff'
+
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<LeafletMapInstance | null>(null)
   const markerRef = useRef<LeafletMarker | null>(null)
@@ -54,7 +62,7 @@ export default function StaticMapThumb({
         keyboard: false,
       })
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      L.tileLayer(tileUrl, {
         maxZoom: 19,
       }).addTo(map)
 
@@ -62,7 +70,7 @@ export default function StaticMapThumb({
         className: 'static-map-marker',
         html: `<span style="
           display:block;width:22px;height:22px;border-radius:50%;
-          background:${markerColor};border:3px solid #0b0d10;
+          background:${markerColor};border:3px solid ${markerBorder};
           box-shadow:0 0 0 0 ${markerColor}99;
           animation:nd-marker-pulse 2s infinite;
         "></span>`,
@@ -82,7 +90,7 @@ export default function StaticMapThumb({
       markerRef.current = null
       initRef.current = false
     }
-  }, [lat, lng, zoom, markerColor])
+  }, [lat, lng, zoom, markerColor, tileUrl, markerBorder])
 
   return (
     <div className="nd-gv-hero-map">
