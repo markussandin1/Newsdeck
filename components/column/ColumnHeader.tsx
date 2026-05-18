@@ -14,8 +14,6 @@ interface ColumnHeaderProps {
   criticalCount?: number
   /** True if any of the items in the 1h window has newsValue === 5 — switches the row colour to red */
   hasCritical?: boolean
-  /** When true, the live-indicator chip pulses green; otherwise muted */
-  isLive?: boolean
   onOpenMenu: (columnId: string) => void
   onStartEditing: (column: DashboardColumn) => void
   onToggleSound: (columnId: string) => void
@@ -30,7 +28,6 @@ export function ColumnHeader({
   copiedFeedId,
   criticalCount = 0,
   hasCritical = false,
-  isLive = false,
   onOpenMenu,
   onStartEditing,
   onToggleSound,
@@ -56,15 +53,6 @@ export function ColumnHeader({
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
-          <span
-            className={`nd-col-live ${isLive ? 'nd-on' : ''}`}
-            title={isLive
-              ? 'Live — kolumnen har händelser och tar emot uppdateringar i realtid'
-              : 'Vilande — väntar på första händelsen'}
-          >
-            <span className="nd-col-live-dot" />
-            {isLive ? 'Live' : 'Vilande'}
-          </span>
           <div className="relative">
             <Button
               variant="ghost"

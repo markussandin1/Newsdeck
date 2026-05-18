@@ -854,29 +854,7 @@ html.light {
   height: 100%; min-width: max-content;
 }
 
-/* ——— Column header — live indicator + critical count ——————————————— */
-.nd-col-live {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-family: var(--nd-font-mono);
-  font-size: 10px; color: var(--nd-ink-mute);
-  text-transform: uppercase; letter-spacing: 0.06em;
-  padding: 3px 8px;
-  border: 1px solid var(--nd-line); border-radius: 99px;
-  background: none;
-}
-.nd-col-live .nd-col-live-dot {
-  width: 6px; height: 6px; border-radius: 99px;
-  background: var(--nd-ink-mute);
-}
-.nd-col-live.nd-on {
-  color: var(--nd-live);
-  border-color: color-mix(in oklch, var(--nd-live) 30%, var(--nd-line));
-}
-.nd-col-live.nd-on .nd-col-live-dot {
-  background: var(--nd-live);
-  box-shadow: 0 0 0 0 var(--nd-live);
-  animation: nd-pulse 2s ease-in-out infinite;
-}
+/* ——— Column header — critical count ——————————————— */
 @keyframes nd-pulse {
   0%, 100% { box-shadow: 0 0 0 0 oklch(from var(--nd-live) l c h / 0.5); }
   50%      { box-shadow: 0 0 0 6px oklch(from var(--nd-live) l c h / 0); }

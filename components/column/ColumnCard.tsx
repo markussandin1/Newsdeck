@@ -142,7 +142,6 @@ export function ColumnCard({
             copiedFeedId={copiedFeedId}
             criticalCount={breakingCount}
             hasCritical={hasCriticalRecent}
-            isLive={items.length > 0}
             onOpenMenu={onOpenMenu}
             onStartEditing={onStartEditing}
             onToggleSound={onToggleSound}
