@@ -184,7 +184,7 @@ UI:t refererar aldrig till P1–P5 — bara `newsValue` (siffra) och namnen ovan
 **Dashboard Views** (desktop):
 - Kolumner (default): befintlig kolumnlayout med uppdaterade kort
 - Pulse (`components/views/PulseView.tsx`): kronologisk flödesvy med filtersidebar
-- Grid (`components/views/GridView.tsx`): tät bricköversikt, items med högt newsValue (4–5) får stora brickor
+- Grid (`components/views/GridView.tsx`): redaktörsöversikt med Hero (score-baserad, `score = newsValue × exp(-ageMinutes/60)`), 2 secondary heroes och tidsband (Senaste 15 min / Senaste timmen / Tidigare idag, 24h cutoff). Gruppering i `lib/grid-score.ts` (pure, enhetstestad). Hero får statisk karta via `components/StaticMapThumb.tsx` (Leaflet med interaktioner avstängda, CartoDB Voyager-tiles som växlar mellan light/dark theme)
 - Vy-switcher i header, sparas i localStorage (`nd.viewMode`)
 
 ## Storage & Deployment
