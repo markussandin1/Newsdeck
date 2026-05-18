@@ -26,20 +26,23 @@ export interface GridGrouping {
 
 export function groupItemsForGrid(items: ItemWithColumn[]): GridGrouping {
   const withScore = items
-    .filter(i => ageMinutes(i) < 24 * 60)
-    .map(i => ({ item: i, score: scoreItem(i), age: ageMinutes(i) }))
+    .map(item => {
+      const age = ageMinutes(item)
+      return { item, age, score: item.newsValue * Math.exp(-age / 60) }
+    })
+    .filter(x => x.age < 24 * 60)
     .sort((a, b) => b.score - a.score)
 
   const hero = withScore[0]?.item ?? null
   const secondary = withScore.slice(1, 3).map(x => x.item)
-  const restIds = new Set(withScore.slice(0, 3).map(x => x.item.dbId))
+  const topIds = new Set(withScore.slice(0, 3).map(x => x.item.dbId))
 
-  const rest = withScore.filter(x => !restIds.has(x.item.dbId))
   const last15: ItemWithColumn[] = []
   const lastHour: ItemWithColumn[] = []
   const earlierToday: ItemWithColumn[] = []
 
-  for (const { item, age } of rest) {
+  for (const { item, age } of withScore) {
+    if (topIds.has(item.dbId)) continue
     if (age < 15) last15.push(item)
     else if (age < 60) lastHour.push(item)
     else earlierToday.push(item)
