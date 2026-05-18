@@ -332,7 +332,7 @@
 
 /* Prevent pull-to-refresh overscroll bounce on mobile */
 @media (max-width: 768px) {
-  body {
+  html, body {
     overscroll-behavior-y: contain;
   }
 

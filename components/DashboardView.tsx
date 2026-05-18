@@ -22,18 +22,17 @@ import { useColumnEditing } from '@/lib/dashboard/hooks/useColumnEditing'
 import { useAddColumnModal } from '@/lib/dashboard/hooks/useAddColumnModal'
 import { ThemeToggle } from './theme-toggle'
 import NewsItemModal from './NewsItemModal'
-import { Menu, MoreVertical, ChevronLeft, ChevronRight, Volume2, X } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Menu, MoreVertical, Volume2, X } from 'lucide-react'
 import { DashboardHeader } from './DashboardHeader'
 import { NotificationSettingsModal } from './NotificationSettingsModal'
 import { ColumnCard } from './column/ColumnCard'
-import { ColumnContent } from './column/ColumnContent'
 import { AddColumnModal } from './dashboard/AddColumnModal'
 import { CreateDashboardModal } from './dashboard/CreateDashboardModal'
 import { DashboardFilterBar } from './dashboard/DashboardFilterBar'
 import { MobileMenu } from './dashboard/MobileMenu'
 import { MobileColumnActions } from './dashboard/MobileColumnActions'
 import { MobileDragPreview } from './dashboard/MobileDragPreview'
+import { MobileColumnCarousel } from './dashboard/MobileColumnCarousel'
 import { PulseView } from './views/PulseView'
 import { GridView } from './views/GridView'
 
@@ -109,21 +108,12 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     activeColumnIndex,
     showMobileMenu,
     showDashboardDropdown,
-    pullDistance,
-    isRefreshing,
-    scrollContainerRef,
     activeColumns,
     setShowMobileMenu,
     setShowDashboardDropdown,
-    nextColumn,
-    prevColumn,
     goToColumn,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
   } = useDashboardLayout({
     columns: dashboard?.columns || [],
-    onRefresh: fetchColumnData,
   })
 
   // Column operations hook
@@ -339,109 +329,18 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
           />
         </div>
       )}
-      <div className={`${(!isMobile && viewMode !== 'columns') ? 'hidden' : ''} ${isMobile ? "h-[calc(100vh-80px)] overflow-hidden" : "nd-cols-scroller h-[calc(100vh-56px)]"}`}>
+      <div className={`${(!isMobile && viewMode !== 'columns') ? 'hidden' : ''} ${isMobile ? "h-[calc(100dvh-80px)] overflow-hidden" : "nd-cols-scroller h-[calc(100vh-56px)]"}`}>
         {isMobile ? (
           activeColumns.length > 0 && activeColumns[activeColumnIndex] ? (
-            <div className="relative h-full">
-              {activeColumns.length > 1 && (
-                <>
-                  {activeColumnIndex > 0 && (
-                    <button
-                      onClick={prevColumn}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-card/90 hover:bg-card active:bg-muted border border-border shadow-lg rounded-full p-3 transition-all"
-                      aria-label="Föregående kolumn"
-                    >
-                      <ChevronLeft className="h-6 w-6 text-foreground" />
-                    </button>
-                  )}
-                  {activeColumnIndex < activeColumns.length - 1 && (
-                    <button
-                      onClick={nextColumn}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white active:bg-slate-100 shadow-lg rounded-full p-3 transition-all"
-                      aria-label="Nästa kolumn"
-                    >
-                      <ChevronRight className="h-6 w-6 text-slate-700" />
-                    </button>
-                  )}
-                </>
-              )}
-
-              <motion.div
-                key={activeColumns[activeColumnIndex].id}
-                className="h-full bg-background flex flex-col"
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(_e, info) => {
-                  const threshold = 50
-                  const velocity = info.velocity.x
-                  if (info.offset.x > threshold || velocity > 500) prevColumn()
-                  else if (info.offset.x < -threshold || velocity < -500) nextColumn()
-                }}
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.2 }}
-              >
-                {/* Pull-to-refresh indicator */}
-                <div
-                  className="flex items-center justify-center transition-all duration-200 bg-blue-50"
-                  style={{ height: pullDistance, opacity: Math.min(pullDistance / 60, 1) }}
-                >
-                  {isRefreshing ? (
-                    <div className="flex items-center gap-2 text-blue-600 text-sm">
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span>Uppdaterar...</span>
-                    </div>
-                  ) : pullDistance > 0 ? (
-                    <div className="text-blue-600 text-sm flex items-center gap-2">
-                      <motion.div animate={{ rotate: pullDistance > 60 ? 180 : 0 }} transition={{ duration: 0.2 }}>↓</motion.div>
-                      <span>{pullDistance > 60 ? 'Släpp för att uppdatera' : 'Dra för att uppdatera'}</span>
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Mobile column content */}
-                <div
-                  ref={scrollContainerRef}
-                  className="flex-1 overflow-y-auto p-3"
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  style={{
-                    transform: `translateY(${pullDistance}px)`,
-                    transition: isRefreshing || pullDistance === 0 ? 'transform 0.2s ease-out' : 'none'
-                  }}
-                >
-                  <ColumnContent
-                    columnId={activeColumns[activeColumnIndex].id}
-                    items={filteredColumnData[activeColumns[activeColumnIndex].id] || []}
-                    onSelectNewsItem={setSelectedNewsItem}
-                    hasFilterActive={hasActiveSearch}
-                  />
-                </div>
-
-                {activeColumns.length > 1 && (
-                  <div className="safe-area-bottom pb-4 pt-2 bg-background border-t border-border">
-                    <div className="flex items-center justify-center gap-2">
-                      {activeColumns.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => goToColumn(index)}
-                          className="p-2"
-                          aria-label={`Gå till kolumn ${index + 1}`}
-                        >
-                          <motion.div
-                            className={`rounded-full transition-all ${index === activeColumnIndex ? 'bg-blue-500 w-8 h-2' : 'bg-gray-300 w-2 h-2'}`}
-                            layout
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            </div>
+            <MobileColumnCarousel
+              columns={activeColumns}
+              columnData={filteredColumnData}
+              activeIndex={activeColumnIndex}
+              onIndexChange={goToColumn}
+              onSelectNewsItem={setSelectedNewsItem}
+              hasFilterActive={hasActiveSearch}
+              onRefresh={fetchColumnData}
+            />
           ) : (
             <div className="flex items-center justify-center h-full p-8 text-center">
               <div>
