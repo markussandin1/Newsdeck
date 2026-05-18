@@ -7,7 +7,14 @@ interface UseDashboardStreamProps {
   columns: DashboardColumn[]
   updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void
   onNewItems?: (columnId: string, items: NewsItem[]) => void
+  onReconnect?: () => void
 }
+
+// Hur länge vi accepterar tystnad innan vi anser anslutningen död.
+// Servern skickar heartbeat var 30:e sekund, så 60s ger en hel missad
+// puls innan vi tvingar reconnect.
+const STALE_CONNECTION_MS = 60_000
+const WATCHDOG_INTERVAL_MS = 15_000
 
 interface UseDashboardStreamReturn {
   connectionStatus: ConnectionStatus
@@ -25,6 +32,7 @@ export function useDashboardStream({
   columns,
   updateColumnData,
   onNewItems,
+  onReconnect,
 }: UseDashboardStreamProps): UseDashboardStreamReturn {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
 
@@ -32,11 +40,19 @@ export function useDashboardStream({
   const columnsRef = useRef(columns)
   const updateColumnDataRef = useRef(updateColumnData)
   const onNewItemsRef = useRef(onNewItems)
+  const onReconnectRef = useRef(onReconnect)
   const isInitialConnectionRef = useRef(true)
 
   columnsRef.current = columns
   updateColumnDataRef.current = updateColumnData
   onNewItemsRef.current = onNewItems
+  onReconnectRef.current = onReconnect
+
+  // Senaste mottagna meddelandet (items eller heartbeat). Används av watchdog
+  // för att upptäcka "zombie"-anslutningar där TCP ser öppen ut men inga
+  // events kommer fram (laptop sleep, NAT-timeout, mobilnätbyte).
+  const lastMessageAtRef = useRef<number>(Date.now())
+  const watchdogTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Track when each column was last seen so we can detect truly new items
   const lastSeenTimestampsRef = useRef<Map<string, number>>(new Map())
@@ -137,10 +153,19 @@ export function useDashboardStream({
     source.onopen = () => {
       setConnectionStatus('connected')
       backoffRef.current = 1000 // reset back-off on successful connection
+      lastMessageAtRef.current = Date.now()
+
+      // Vid återanslutning (inte första gången): hämta in allt vi missade
+      // under tiden anslutningen var nere. eventQueue rensar dessutom items
+      // äldre än 5 min server-side, så utan refetch är nattens events borta.
+      if (!isInitialConnectionRef.current) {
+        onReconnectRef.current?.()
+      }
       isInitialConnectionRef.current = false
     }
 
     source.onmessage = (event) => {
+      lastMessageAtRef.current = Date.now()
       try {
         const data = JSON.parse(event.data) as {
           type: string
@@ -179,6 +204,25 @@ export function useDashboardStream({
   }, [buildUrl, handleItems])
 
   // -------------------------------------------------------------------------
+  // Tvinga reconnect direkt (utan backoff). Används av watchdog och
+  // visibilitychange när vi misstänker att anslutningen är zombie.
+  // -------------------------------------------------------------------------
+  const forceReconnect = useCallback(() => {
+    if (isStoppedRef.current) return
+
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
+    }
+    backoffRef.current = 1000
+    connect()
+  }, [connect])
+
+  // -------------------------------------------------------------------------
   // Stop the SSE connection entirely
   // -------------------------------------------------------------------------
   const stopAllPolling = useCallback(() => {
@@ -187,6 +231,11 @@ export function useDashboardStream({
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current)
       reconnectTimerRef.current = null
+    }
+
+    if (watchdogTimerRef.current) {
+      clearInterval(watchdogTimerRef.current)
+      watchdogTimerRef.current = null
     }
 
     if (eventSourceRef.current) {
@@ -229,6 +278,55 @@ export function useDashboardStream({
   // ligger i en bakgrundsflik. Anslutningen återansluter automatiskt via
   // backoff-logiken i onerror om Cloud Run stänger den vid request-timeout.
   // -------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------
+  // Watchdog: EventSource.onerror triggar inte alltid när TCP är "zombie"
+  // (laptop sleep, NAT-timeout, nätbyte). Heartbeaten kommer var 30:e sekund;
+  // om vi inte sett ett meddelande på 60s antar vi att anslutningen är död
+  // och tvingar reconnect.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    watchdogTimerRef.current = setInterval(() => {
+      if (isStoppedRef.current) return
+      if (!eventSourceRef.current) return
+
+      const silentFor = Date.now() - lastMessageAtRef.current
+      if (silentFor > STALE_CONNECTION_MS) {
+        forceReconnect()
+      }
+    }, WATCHDOG_INTERVAL_MS)
+
+    return () => {
+      if (watchdogTimerRef.current) {
+        clearInterval(watchdogTimerRef.current)
+        watchdogTimerRef.current = null
+      }
+    }
+  }, [forceReconnect])
+
+  // -------------------------------------------------------------------------
+  // Visibility-handler: när användaren kommer tillbaka till fliken efter
+  // att laptopen varit i sleep eller fliken legat i bakgrund länge så
+  // hämtar vi färsk data och, om anslutningen ser tyst ut, tvingar reconnect.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return
+      if (isStoppedRef.current) return
+
+      onReconnectRef.current?.()
+
+      const silentFor = Date.now() - lastMessageAtRef.current
+      if (silentFor > STALE_CONNECTION_MS) {
+        forceReconnect()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [forceReconnect])
 
   // -------------------------------------------------------------------------
   // Hard-stop on page unload

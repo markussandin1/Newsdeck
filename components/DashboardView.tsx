@@ -89,6 +89,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     columns: dashboard?.columns || [],
     updateColumnData,
     onNewItems: handleNewItems,
+    onReconnect: fetchColumnData,
   })
 
   usePendingImagePolling({
