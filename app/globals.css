@@ -1391,4 +1391,3 @@ html.light {
   .nd-gv-hero-map { min-height: 180px; border-left: none; border-top: 1px solid var(--nd-line); }
   .nd-gv-tiles { grid-template-columns: repeat(2, 1fr); }
 }
-}
