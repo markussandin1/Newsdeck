@@ -187,6 +187,8 @@ UI:t refererar aldrig till P1–P5 — bara `newsValue` (siffra) och namnen ovan
 - Grid (`components/views/GridView.tsx`): redaktörsöversikt med Hero (score-baserad, `score = newsValue × exp(-ageMinutes/60)`), 2 secondary heroes och tidsband (Senaste 15 min / Senaste timmen / Tidigare idag, 24h cutoff). Gruppering i `lib/grid-score.ts` (pure, enhetstestad). Hero får statisk karta via `components/StaticMapThumb.tsx` (Leaflet med interaktioner avstängda, CartoDB Voyager-tiles som växlar mellan light/dark theme)
 - Vy-switcher i header, sparas i localStorage (`nd.viewMode`)
 
+**Mobil kolumn-navigation**: CSS `scroll-snap` (inte Framer Motion). Alla aktiva kolumner renderas i en horisontell scroll-container (`.nd-mobile-columns` / `.nd-mobile-col-page` i `globals.css`). `useDashboardLayout` exponerar `mobileScrollRef` och `onMobileScroll` som beräknar `activeColumnIndex` från `scrollLeft`. Pull-to-refresh finns kvar per kolumn-page med theme-tokens (`bg-muted`, `text-primary`).
+
 ## Storage & Deployment
 
 **Local Development**: Uses in-memory storage when DATABASE_URL not set

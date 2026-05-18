@@ -1391,3 +1391,19 @@ html.light {
   .nd-gv-hero-map { min-height: 180px; border-left: none; border-top: 1px solid var(--nd-line); }
   .nd-gv-tiles { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ——— Mobile scroll-snap carousel ————————————————————————————————— */
+.nd-mobile-columns {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.nd-mobile-columns::-webkit-scrollbar { display: none; }
+.nd-mobile-col-page {
+  flex: 0 0 100%;
+  width: 100%;
+  scroll-snap-align: start;
+  overflow-y: auto;
+}
