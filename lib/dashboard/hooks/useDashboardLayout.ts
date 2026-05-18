@@ -18,6 +18,10 @@ interface UseDashboardLayoutReturn {
   isRefreshing: boolean
   scrollContainerRef: React.RefObject<HTMLDivElement>
 
+  // Mobile scroll-snap ref
+  mobileScrollRef: React.RefObject<HTMLDivElement>
+  onMobileScroll: () => void
+
   // Dropdown ref
   dropdownRef: React.RefObject<HTMLDivElement>
 
@@ -54,6 +58,9 @@ export function useDashboardLayout({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const touchStartY = useRef(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Mobile scroll-snap container ref
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
 
   // Dropdown ref for click-outside handling
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -93,22 +100,34 @@ export function useDashboardLayout({
     [columns]
   )
 
-  // Mobile column navigation
+  // Scroll-snap: calculate active column from scroll position
+  const onMobileScroll = useCallback(() => {
+    const el = mobileScrollRef.current
+    if (!el || el.clientWidth === 0) return
+    const index = Math.round(el.scrollLeft / el.clientWidth)
+    setActiveColumnIndex(Math.max(0, Math.min(index, activeColumns.length - 1)))
+  }, [activeColumns.length])
+
+  // Mobile column navigation via scrollTo
+  const goToColumn = useCallback((index: number) => {
+    const el = mobileScrollRef.current
+    if (el) {
+      el.scrollTo({ left: index * el.clientWidth, behavior: 'smooth' })
+    }
+    setActiveColumnIndex(index)
+  }, [])
+
   const nextColumn = useCallback(() => {
     if (activeColumnIndex < activeColumns.length - 1) {
-      setActiveColumnIndex(prev => prev + 1)
+      goToColumn(activeColumnIndex + 1)
     }
-  }, [activeColumnIndex, activeColumns.length])
+  }, [activeColumnIndex, activeColumns.length, goToColumn])
 
   const prevColumn = useCallback(() => {
     if (activeColumnIndex > 0) {
-      setActiveColumnIndex(prev => prev - 1)
+      goToColumn(activeColumnIndex - 1)
     }
-  }, [activeColumnIndex])
-
-  const goToColumn = useCallback((index: number) => {
-    setActiveColumnIndex(index)
-  }, [])
+  }, [activeColumnIndex, goToColumn])
 
   // Pull-to-refresh handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -162,6 +181,8 @@ export function useDashboardLayout({
     pullDistance,
     isRefreshing,
     scrollContainerRef,
+    mobileScrollRef,
+    onMobileScroll,
     dropdownRef,
     activeColumns,
     setShowMobileMenu,
