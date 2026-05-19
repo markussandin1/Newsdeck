@@ -1298,6 +1298,7 @@ html.light {
 
 .nd-gv-hero {
   position: relative;
+  isolation: isolate;
   background: linear-gradient(180deg, color-mix(in oklch, var(--nd-pc) 18%, transparent), color-mix(in oklch, var(--nd-pc) 4%, transparent) 70%, transparent);
   border: 1px solid color-mix(in oklch, var(--nd-pc) 50%, var(--nd-line));
   border-radius: 12px;
