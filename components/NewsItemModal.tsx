@@ -126,15 +126,20 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
     : ''
 
   const coordinates = (() => {
-    const c = item.location?.coordinates as unknown
-    if (Array.isArray(c) && c.length >= 2 && typeof c[0] === 'number') return [c[0], c[1]] as [number, number]
-    if (c && typeof c === 'object' && !Array.isArray(c)) {
-      const obj = c as Record<string, unknown>
-      const lat = typeof obj.latitude === 'number' ? obj.latitude : typeof obj.lat === 'number' ? obj.lat : undefined
-      const lng = typeof obj.longitude === 'number' ? obj.longitude : typeof obj.lng === 'number' ? obj.lng : undefined
-      if (lat !== undefined && lng !== undefined) return [lat, lng] as [number, number]
+    const parse = (c: unknown): [number, number] | null => {
+      if (Array.isArray(c) && c.length >= 2 && typeof c[0] === 'number') return [c[0], c[1]]
+      if (c && typeof c === 'object' && !Array.isArray(c)) {
+        const obj = c as Record<string, unknown>
+        const lat = typeof obj.latitude === 'number' ? obj.latitude : typeof obj.lat === 'number' ? obj.lat : undefined
+        const lng = typeof obj.longitude === 'number' ? obj.longitude : typeof obj.lng === 'number' ? obj.lng : undefined
+        if (lat !== undefined && lng !== undefined) return [lat, lng]
+      }
+      return null
     }
-    return null
+    // Try location.coordinates first, fall back to raw.location.coordinates
+    // (old ingestion dropped object-format coordinates during JSON serialization)
+    const raw = item.raw as Record<string, unknown> | undefined
+    return parse(item.location?.coordinates) ?? parse((raw?.location as Record<string, unknown>)?.coordinates)
   })()
 
   const getGoogleMapsUrl = (lat: number, lng: number) =>

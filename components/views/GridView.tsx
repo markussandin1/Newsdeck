@@ -15,8 +15,7 @@ interface GridViewProps {
   onSelectItem: (item: NewsItemType) => void
 }
 
-function getCoordinates(item: NewsItemType): { lat: number; lng: number } | null {
-  const c = item.location?.coordinates as unknown
+function parseCoords(c: unknown): { lat: number; lng: number } | null {
   if (Array.isArray(c) && c.length >= 2 && typeof c[0] === 'number' && typeof c[1] === 'number') {
     return { lat: c[0], lng: c[1] }
   }
@@ -27,6 +26,12 @@ function getCoordinates(item: NewsItemType): { lat: number; lng: number } | null
     if (lat !== undefined && lng !== undefined) return { lat, lng }
   }
   return null
+}
+
+function getCoordinates(item: NewsItemType): { lat: number; lng: number } | null {
+  // Fall back to raw.location.coordinates for items where old ingestion dropped object-format coords
+  const raw = item.raw as Record<string, unknown> | undefined
+  return parseCoords(item.location?.coordinates) ?? parseCoords((raw?.location as Record<string, unknown>)?.coordinates) ?? null
 }
 
 function getLocationSummary(item: NewsItemType): string | null {
