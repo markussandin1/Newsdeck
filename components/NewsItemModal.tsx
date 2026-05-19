@@ -37,10 +37,8 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
   const dragY = useMotionValue(0)
   const backdropOpacity = useTransform(dragY, [0, 300], [1, 0.2])
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    const el = modalRef.current
-    // Only start drag if scrolled to top and on mobile
-    if (el && el.scrollTop <= 0 && window.innerWidth <= 900) {
+  const handleDragZonePointerDown = useCallback((e: React.PointerEvent) => {
+    if (window.innerWidth <= 900) {
       dragControls.start(e)
     }
   }, [dragControls])
@@ -214,15 +212,17 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
           dragConstraints={{ top: 0, bottom: 0 }}
           dragElastic={{ top: 0, bottom: 0.4 }}
           dragSnapToOrigin
-          onPointerDown={handlePointerDown}
           onDragEnd={(_: unknown, info: { offset: { y: number }; velocity: { y: number } }) => {
             if (info.offset.y > 100 || info.velocity.y > 500) {
               onClose()
             }
           }}
         >
-          <div className="nd-modal-handle" aria-hidden="true" />
-          <header>
+          {/* Drag zone: handle + header. Only this area starts swipe-to-dismiss. */}
+          <div className="nd-modal-drag-zone" onPointerDown={handleDragZonePointerDown}>
+            <div className="nd-modal-handle" aria-hidden="true" />
+          </div>
+          <header onPointerDown={handleDragZonePointerDown}>
             <div className="nd-mh-l">
               {column?.title && <span className="nd-mh-col">{column.title}</span>}
               {column?.title && <span className="nd-mh-sep">·</span>}
