@@ -15,17 +15,15 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<LeafletMapInstance | null>(null)
   const markerRef = useRef<LeafletMarker | null>(null)
-  const isInitializedRef = useRef(false)
 
-  // Initialize map only once
+  // Initialize map only once (strict-mode safe)
   useEffect(() => {
     const container = mapRef.current
-    if (!container || isInitializedRef.current) return
+    if (!container) return
+
+    let cancelled = false
 
     const initMap = async () => {
-      // Mark as initializing immediately to prevent double initialization
-      isInitializedRef.current = true
-
       // Load Leaflet CSS
       if (!document.querySelector('link[href*="leaflet.css"]')) {
         const link = document.createElement('link')
@@ -39,6 +37,9 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
       // Dynamically import Leaflet to avoid SSR issues
       const { default: L } = await import('leaflet')
 
+      // Abort if cleanup ran while we were loading
+      if (cancelled) return
+
       // Fix for missing marker icons in webpack/Next.js
       const defaultIconPrototype = L.Icon.Default.prototype as unknown as { _getIconUrl?: () => string }
       delete defaultIconPrototype._getIconUrl
@@ -47,9 +48,6 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
         iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
       })
-
-      // Check again before initializing (in case cleanup ran)
-      if (!container || mapInstanceRef.current) return
 
       // Initialize map
       const map = L.map(container).setView([lat, lng], zoom)
@@ -83,6 +81,7 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
     initMap()
 
     return () => {
+      cancelled = true
       if (onClick && container) {
         container.removeEventListener('click', onClick)
       }
@@ -90,7 +89,6 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
         markerRef.current = null
-        isInitializedRef.current = false
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,7 +96,7 @@ export default function LeafletMap({ lat, lng, height = 80, zoom = 15, onClick }
 
   // Update map view and marker when coordinates change (without re-initializing)
   useEffect(() => {
-    if (mapInstanceRef.current && markerRef.current && isInitializedRef.current) {
+    if (mapInstanceRef.current && markerRef.current) {
       // Update map view
       mapInstanceRef.current.setView([lat, lng], zoom)
 
