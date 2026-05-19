@@ -152,7 +152,7 @@ interface NewsItem {
 
 **Ingestion Pipeline** (`lib/services/ingestion.ts`):
 - Tar emot `columnId` direkt. Det är ENDA routing-mekanismen — workflowId-routing-vägen (flowId-lookup via dashboard-listan) är borttagen (P1-5). Workflows-noden måste skicka `columnId`.
-- Sparar `location`-objektet rakt av till JSONB. Ingen validering eller mappning av geo-koder sker i Newsdeck — eventuell geo-berikning ska ske i Workflows innan posten skickas hit.
+- Sparar `location`-objektet till JSONB. `normalizeCoordinates()` normaliserar `coordinates` till `[lat, lng]`-array oavsett inkommande format (array, sträng, `{ latitude, longitude }` eller `{ lat, lng }`). Frontend-komponenterna hanterar även icke-normaliserade objekt-format för bakåtkompatibilitet med befintlig data.
 - Reservtabellerna `countries`, `regions`, `municipalities` finns kvar i databasen men används inte längre av koden.
 
 **Performance Limits**:

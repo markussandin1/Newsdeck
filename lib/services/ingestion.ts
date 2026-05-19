@@ -102,6 +102,20 @@ const normalizeCoordinates = (coords: unknown): number[] | undefined => {
     }
   }
 
+  // Handle { latitude, longitude } or { lat, lng } objects
+  if (typeof coords === 'object' && coords !== null) {
+    const obj = coords as Record<string, unknown>
+    const lat = typeof obj.latitude === 'number' ? obj.latitude
+              : typeof obj.lat === 'number' ? obj.lat
+              : undefined
+    const lng = typeof obj.longitude === 'number' ? obj.longitude
+              : typeof obj.lng === 'number' ? obj.lng
+              : undefined
+    if (lat !== undefined && lng !== undefined) {
+      return [lat, lng]
+    }
+  }
+
   return undefined
 }
 

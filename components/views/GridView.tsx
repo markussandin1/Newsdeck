@@ -16,11 +16,17 @@ interface GridViewProps {
 }
 
 function getCoordinates(item: NewsItemType): { lat: number; lng: number } | null {
-  const c = item.location?.coordinates
-  if (!c || c.length < 2) return null
-  const [lat, lng] = c
-  if (typeof lat !== 'number' || typeof lng !== 'number') return null
-  return { lat, lng }
+  const c = item.location?.coordinates as unknown
+  if (Array.isArray(c) && c.length >= 2 && typeof c[0] === 'number' && typeof c[1] === 'number') {
+    return { lat: c[0], lng: c[1] }
+  }
+  if (c && typeof c === 'object' && !Array.isArray(c)) {
+    const obj = c as Record<string, unknown>
+    const lat = typeof obj.latitude === 'number' ? obj.latitude : typeof obj.lat === 'number' ? obj.lat : undefined
+    const lng = typeof obj.longitude === 'number' ? obj.longitude : typeof obj.lng === 'number' ? obj.lng : undefined
+    if (lat !== undefined && lng !== undefined) return { lat, lng }
+  }
+  return null
 }
 
 function getLocationSummary(item: NewsItemType): string | null {
