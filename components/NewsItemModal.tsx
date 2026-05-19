@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
-import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion'
+import { AnimatePresence, motion, useMotionValue, useTransform, useDragControls } from 'framer-motion'
 import { ExternalLink, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
 
 import { NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
@@ -33,33 +33,17 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
 
   // Swipe-to-dismiss (mobile only)
   const modalRef = useRef<HTMLDivElement>(null)
-  const [canDrag, setCanDrag] = useState(true)
-  const [isMobile, setIsMobile] = useState(false)
+  const dragControls = useDragControls()
   const dragY = useMotionValue(0)
   const backdropOpacity = useTransform(dragY, [0, 300], [1, 0.2])
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 900)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  const handleTouchStart = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const el = modalRef.current
-    if (el && el.scrollTop > 0) {
-      setCanDrag(false)
-    } else {
-      setCanDrag(true)
+    // Only start drag if scrolled to top and on mobile
+    if (el && el.scrollTop <= 0 && window.innerWidth <= 900) {
+      dragControls.start(e)
     }
-  }, [])
-
-  const handleTouchMove = useCallback(() => {
-    const el = modalRef.current
-    if (el && el.scrollTop > 0) {
-      setCanDrag(false)
-    }
-  }, [])
+  }, [dragControls])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -213,31 +197,29 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
-        style={isMobile ? { opacity: backdropOpacity } : undefined}
+        style={{ opacity: backdropOpacity }}
       >
         <motion.div
           ref={modalRef}
           className="nd-modal"
-          style={{ ['--nd-pc' as string]: priority.color }}
+          style={{ ['--nd-pc' as string]: priority.color, y: dragY }}
           onClick={(e) => e.stopPropagation()}
-          initial={{ y: 16, opacity: 0, scale: 0.97 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 8, opacity: 0, scale: 0.97 }}
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.97 }}
           transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-          {...(isMobile ? {
-            drag: 'y' as const,
-            dragConstraints: { top: 0, bottom: 0 },
-            dragElastic: { top: 0, bottom: 0.4 },
-            dragListener: canDrag,
-            style: { ['--nd-pc' as string]: priority.color, y: dragY },
-            onDragEnd: (_: unknown, info: { offset: { y: number }; velocity: { y: number } }) => {
-              if (info.offset.y > 100 || info.velocity.y > 500) {
-                onClose()
-              }
-            },
-            onTouchStart: handleTouchStart,
-            onTouchMove: handleTouchMove,
-          } : {})}
+          drag="y"
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.4 }}
+          dragSnapToOrigin
+          onPointerDown={handlePointerDown}
+          onDragEnd={(_: unknown, info: { offset: { y: number }; velocity: { y: number } }) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose()
+            }
+          }}
         >
           <div className="nd-modal-handle" aria-hidden="true" />
           <header>
