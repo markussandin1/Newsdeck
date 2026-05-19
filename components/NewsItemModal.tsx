@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion'
 import { ExternalLink, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
 
 import { NewsItem as NewsItemType, DashboardColumn } from '@/lib/types'
@@ -30,6 +30,36 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
   const [cameraStatus, setCameraStatus] = useState<'pending' | 'ready' | 'failed'>('ready')
   const [refreshCooldown, setRefreshCooldown] = useState(0)
   const [showTech, setShowTech] = useState(false)
+
+  // Swipe-to-dismiss (mobile only)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const [canDrag, setCanDrag] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
+  const dragY = useMotionValue(0)
+  const backdropOpacity = useTransform(dragY, [0, 300], [1, 0.2])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 900)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const handleTouchStart = useCallback(() => {
+    const el = modalRef.current
+    if (el && el.scrollTop > 0) {
+      setCanDrag(false)
+    } else {
+      setCanDrag(true)
+    }
+  }, [])
+
+  const handleTouchMove = useCallback(() => {
+    const el = modalRef.current
+    if (el && el.scrollTop > 0) {
+      setCanDrag(false)
+    }
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -170,8 +200,10 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
+        style={isMobile ? { opacity: backdropOpacity } : undefined}
       >
         <motion.div
+          ref={modalRef}
           className="nd-modal"
           style={{ ['--nd-pc' as string]: priority.color }}
           onClick={(e) => e.stopPropagation()}
@@ -179,7 +211,22 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 8, opacity: 0, scale: 0.97 }}
           transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+          {...(isMobile ? {
+            drag: 'y' as const,
+            dragConstraints: { top: 0, bottom: 0 },
+            dragElastic: { top: 0, bottom: 0.4 },
+            dragListener: canDrag,
+            style: { ['--nd-pc' as string]: priority.color, y: dragY },
+            onDragEnd: (_: unknown, info: { offset: { y: number }; velocity: { y: number } }) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                onClose()
+              }
+            },
+            onTouchStart: handleTouchStart,
+            onTouchMove: handleTouchMove,
+          } : {})}
         >
+          <div className="nd-modal-handle" aria-hidden="true" />
           <header>
             <div className="nd-mh-l">
               {column?.title && <span className="nd-mh-col">{column.title}</span>}
