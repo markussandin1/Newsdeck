@@ -1229,6 +1229,8 @@ html.light {
   white-space: pre-wrap; word-break: break-word;
 }
 
+.nd-modal-handle { display: none; }
+
 /* Responsive */
 @media (max-width: 900px) {
   .nd-pulse-rail { display: none; }
@@ -1238,7 +1240,15 @@ html.light {
   .nd-pmeta::after { display: none; }
 
   .nd-modal-wrap { padding: 0; align-items: flex-end; }
-  .nd-modal { max-height: 96vh; border-radius: var(--nd-r-lg) var(--nd-r-lg) 0 0; width: 100%; }
+  .nd-modal { max-height: 96vh; border-radius: var(--nd-r-lg) var(--nd-r-lg) 0 0; width: 100%; touch-action: pan-x; }
+  .nd-modal-handle {
+    display: block;
+    width: 32px; height: 4px;
+    margin: 8px auto 0;
+    border-radius: 2px;
+    background: var(--nd-line);
+    flex-shrink: 0;
+  }
   .nd-modal .nd-mgrid { grid-template-columns: 1fr; }
   .nd-modal .nd-mbody { padding: 16px 18px 10px; }
   .nd-modal > header { padding: 10px 14px; }

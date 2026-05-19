@@ -189,6 +189,8 @@ UI:t refererar aldrig till P1–P5 — bara `newsValue` (siffra) och namnen ovan
 
 **Mobil kolumn-navigation**: CSS `scroll-snap` (inte Framer Motion). Alla aktiva kolumner renderas i en horisontell scroll-container (`.nd-mobile-columns` / `.nd-mobile-col-page` i `globals.css`). `useDashboardLayout` exponerar `mobileScrollRef` och `onMobileScroll` som beräknar `activeColumnIndex` från `scrollLeft`. Pull-to-refresh finns kvar per kolumn-page med theme-tokens (`bg-muted`, `text-primary`).
 
+**NewsItemModal swipe-to-dismiss** (mobil): På skärmar ≤900px kan modalen svajpas nedåt för att stängas via Framer Motion `drag="y"`. Scroll-guard förhindrar drag när innehållet är scrollat. Visuell drag-handle (`.nd-modal-handle`) visas ovanför headern. Backdrop tonas ut under drag via `useMotionValue`/`useTransform`.
+
 ## Storage & Deployment
 
 **Local Development**: Uses in-memory storage when DATABASE_URL not set
