@@ -1240,11 +1240,20 @@ html.light {
   .nd-pmeta::after { display: none; }
 
   .nd-modal-wrap { padding: 0; align-items: flex-end; }
-  .nd-modal { max-height: 96vh; border-radius: var(--nd-r-lg) var(--nd-r-lg) 0 0; width: 100%; touch-action: pan-x; }
+  .nd-modal { max-height: 96vh; border-radius: var(--nd-r-lg) var(--nd-r-lg) 0 0; width: 100%; }
+  .nd-modal-drag-zone {
+    touch-action: none;
+    cursor: grab;
+    display: flex;
+    justify-content: center;
+    padding: 6px 0 0;
+  }
+  .nd-modal-drag-zone:active { cursor: grabbing; }
+  .nd-modal > header { touch-action: none; cursor: grab; }
+  .nd-modal > header:active { cursor: grabbing; }
   .nd-modal-handle {
     display: block;
     width: 32px; height: 4px;
-    margin: 8px auto 0;
     border-radius: 2px;
     background: var(--nd-line);
     flex-shrink: 0;
