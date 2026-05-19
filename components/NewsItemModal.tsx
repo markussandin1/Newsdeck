@@ -125,9 +125,17 @@ export default function NewsItemModal({ item, columns, onClose }: NewsItemModalP
       ].filter(Boolean).join(', ')
     : ''
 
-  const coordinates = Array.isArray(item.location?.coordinates) && item.location?.coordinates.length >= 2
-    ? [item.location.coordinates[0], item.location.coordinates[1]]
-    : null
+  const coordinates = (() => {
+    const c = item.location?.coordinates as unknown
+    if (Array.isArray(c) && c.length >= 2 && typeof c[0] === 'number') return [c[0], c[1]] as [number, number]
+    if (c && typeof c === 'object' && !Array.isArray(c)) {
+      const obj = c as Record<string, unknown>
+      const lat = typeof obj.latitude === 'number' ? obj.latitude : typeof obj.lat === 'number' ? obj.lat : undefined
+      const lng = typeof obj.longitude === 'number' ? obj.longitude : typeof obj.lng === 'number' ? obj.lng : undefined
+      if (lat !== undefined && lng !== undefined) return [lat, lng] as [number, number]
+    }
+    return null
+  })()
 
   const getGoogleMapsUrl = (lat: number, lng: number) =>
     `https://www.google.com/maps/place/${lat},${lng}/@${lat},${lng},16z`
