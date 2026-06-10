@@ -6,6 +6,11 @@ import {
   logApiRequest as adminLogApiRequest,
 } from './db/admin'
 import {
+  upsertPushSubscription as pushSubsUpsert,
+  deletePushSubscription as pushSubsDelete,
+  getPushSubscriptionsForColumns as pushSubsForColumns,
+} from './db/push-subscriptions'
+import {
   getUserPreferences as userGetPrefs,
   setUserPreferences as userSetPrefs,
   getUserDashboardFollows as userGetFollows,
@@ -153,6 +158,11 @@ export const persistentDb = {
   getDashboardFollowers: userGetFollowers,
   followDashboard: userFollow,
   unfollowDashboard: userUnfollow,
+
+  // Web Push-prenumerationer (Fas 4c i realtime-v2-planen)
+  upsertPushSubscription: pushSubsUpsert,
+  deletePushSubscription: pushSubsDelete,
+  getPushSubscriptionsForColumns: pushSubsForColumns,
 
   // API request logging — sanerad metadata, aldrig payload. Skickas till
   // Cloud Logging (persisteras inte). Detaljer: lib/db/admin.ts.
