@@ -2,6 +2,9 @@ import { strict as assert } from 'node:assert'
 import { test, describe } from 'node:test'
 import { ingestNewsItems, IngestionError, type IngestionDb } from '../lib/services/ingestion'
 
+// Giltigt UUID — ingestion kräver numera UUID-format på columnId
+const COLUMN_ID = '1a5465c1-1fa8-4bc0-9fb2-dfb396a64d5a'
+
 const createMockDb = (): {
   db: IngestionDb
   setColumnDataCalls: Array<{ columnId: string; items: any[] }>
@@ -70,14 +73,14 @@ describe('NewsItem Validation', () => {
 
     const result = await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test News' }]
       },
       db
     )
 
     assert.equal(result.itemsAdded, 1)
-    assert.equal(result.columnId, 'col-123')
+    assert.equal(result.columnId, COLUMN_ID)
   })
 
   test('rejects workflowId-only payload (legacy routing borttagen)', async () => {
@@ -104,7 +107,7 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test' }]
       },
       db
@@ -112,7 +115,7 @@ describe('NewsItem Validation', () => {
 
     const batchData = appendColumnDataBatchCalls[0]
     assert.ok(batchData)
-    const storedItem = batchData['col-123']?.[0]
+    const storedItem = batchData[COLUMN_ID]?.[0]
     assert.ok(storedItem)
     assert.ok(storedItem.dbId)
     assert.match(storedItem.dbId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) // UUID v4 pattern
@@ -124,14 +127,14 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test' }]
       },
       db,
       { now }
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.equal(storedItem.createdInDb, now.toISOString())
   })
@@ -141,13 +144,13 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test' }]
       },
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.equal(storedItem.newsValue, 3) // Default is 3, not 1
   })
@@ -157,7 +160,7 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [
           { title: 'Test 1', newsValue: 1 },
           { title: 'Test 2', newsValue: 2 },
@@ -171,7 +174,7 @@ describe('NewsItem Validation', () => {
 
     const batchData = appendColumnDataBatchCalls[0]
     assert.ok(batchData)
-    const items = batchData['col-123']
+    const items = batchData[COLUMN_ID]
     assert.ok(items)
     assert.equal(items.length, 5)
     items.forEach((item, index) => {
@@ -184,13 +187,13 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test', newsValue: 10 }]
       },
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.equal(storedItem.newsValue, 5) // Clamped to maximum value
   })
@@ -200,13 +203,13 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test', newsValue: 0 }]
       },
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.equal(storedItem.newsValue, 0) // 0 is valid, no clamping needed
   })
@@ -216,13 +219,13 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test', newsValue: -5 }]
       },
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.equal(storedItem.newsValue, 0) // Clamped to minimum value
   })
@@ -232,13 +235,13 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test' }]
       },
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.ok(storedItem.timestamp) // Timestamp should be generated
     assert.ok(typeof storedItem.timestamp === 'string')
@@ -251,13 +254,13 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [{ title: 'Test', timestamp: customTimestamp }]
       },
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.equal(storedItem.timestamp, customTimestamp)
   })
@@ -267,7 +270,7 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [
           { title: 'Test 1', URL: 'https://example.com/1' },
           { title: 'Test 2', url: 'https://example.com/2' }
@@ -278,7 +281,7 @@ describe('NewsItem Validation', () => {
 
     const batchData = appendColumnDataBatchCalls[0]
     assert.ok(batchData)
-    const items = batchData['col-123']
+    const items = batchData[COLUMN_ID]
     assert.ok(items)
     assert.equal(items[0]?.url, 'https://example.com/1')
     assert.equal(items[1]?.url, 'https://example.com/2')
@@ -289,7 +292,7 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [
           {
             title: '  Test Title  ',
@@ -301,7 +304,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     // Whitespace is currently NOT trimmed automatically
     assert.equal(storedItem.title, '  Test Title  ')
@@ -314,7 +317,7 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [
           {
             title: 'Test',
@@ -329,7 +332,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.ok(storedItem.location)
     assert.equal(storedItem.location.municipality, 'Stockholm')
@@ -342,7 +345,7 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [
           {
             title: 'Test',
@@ -356,7 +359,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.ok(storedItem.extra)
     assert.equal(storedItem.extra.customField1, 'value1')
@@ -368,7 +371,7 @@ describe('NewsItem Validation', () => {
 
     await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: [
           {
             title: 'Test',
@@ -380,7 +383,7 @@ describe('NewsItem Validation', () => {
       db
     )
 
-    const storedItem = getStoredItem(appendColumnDataBatchCalls, 'col-123')
+    const storedItem = getStoredItem(appendColumnDataBatchCalls, COLUMN_ID)
     assert.ok(storedItem)
     assert.ok(storedItem.raw)
     assert.equal(storedItem.raw.customField1, 'value1')
@@ -392,7 +395,7 @@ describe('NewsItem Validation', () => {
 
     const result = await ingestNewsItems(
       {
-        columnId: 'col-123',
+        columnId: COLUMN_ID,
         items: []
       },
       db
@@ -402,6 +405,6 @@ describe('NewsItem Validation', () => {
     // Column is still "updated" even with 0 items (setColumnData is called)
     assert.equal(result.columnsUpdated, 1)
     assert.equal(result.matchingColumns.length, 1)
-    assert.equal(result.matchingColumns[0], 'col-123')
+    assert.equal(result.matchingColumns[0], COLUMN_ID)
   })
 })

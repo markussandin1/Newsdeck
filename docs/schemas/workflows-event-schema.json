@@ -1,174 +1,145 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Newsdeck Workflows Event",
-  "description": "Schema för POST /api/workflows. Antingen columnId eller workflowId krävs. Antingen item eller items krävs.",
+  "description": "Schema for POST /api/workflows. Requires columnId and either item or items.",
   "type": "object",
+  "required": ["columnId"],
+  "oneOf": [
+    { "required": ["item"] },
+    { "required": ["items"] }
+  ],
   "properties": {
     "columnId": {
       "type": "string",
-      "description": "UUID för målkolumnen (rekommenderat). Hittas i kolumnens inställningar i UI:t."
-    },
-    "workflowId": {
-      "type": "string",
-      "description": "Äldre identifierare (fasas ut). Matchas mot kolumners flowId-fält."
+      "format": "uuid",
+      "description": "UUID for the target column. Found in the column settings in the UI."
     },
     "item": {
+      "$ref": "#/$defs/newsItem",
+      "description": "Single news item (recommended format)."
+    },
+    "items": {
+      "type": "array",
+      "description": "Array of news items (batch format). Same structure as item.",
+      "items": { "$ref": "#/$defs/newsItem" },
+      "minItems": 1
+    },
+    "extra": {
       "type": "object",
-      "description": "Enskilt nyhetsobjekt (rekommenderat format).",
+      "description": "Extra fields applied to all items in the request. Merged into each item's extra object.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "newsItem": {
+      "type": "object",
       "required": ["title"],
       "properties": {
         "title": {
           "type": "string",
-          "description": "Rubrik. Enda obligatoriska fältet."
+          "description": "Headline. The only required field."
         },
         "id": {
           "type": "string",
-          "description": "Källans eget ID (valfritt, ej unikt – används för deduplicering inom kolumn)."
+          "description": "Source's own ID (optional, not unique). Used for deduplication within a column."
         },
         "source": {
           "type": "string",
-          "description": "Källnamn, t.ex. Trafikverket, Polisen, SOS Alarm. Default: workflows."
+          "description": "Source name, e.g. Trafikverket, Polisen, SOS Alarm. Default: workflows."
         },
         "url": {
           "type": "string",
-          "description": "Länk till källa eller artikel."
+          "format": "uri",
+          "description": "Link to source or article. Also accepted as uppercase URL."
         },
         "timestamp": {
           "type": "string",
-          "description": "ISO 8601-tidsstämpel, t.ex. 2026-03-23T10:30:00Z. Default: serverns tid."
+          "format": "date-time",
+          "description": "ISO 8601 timestamp, e.g. 2026-03-23T10:30:00Z. Default: server time."
         },
         "description": {
           "type": "string",
-          "description": "Fritext beskrivning av händelsen."
+          "description": "Free-text description of the event."
         },
         "newsValue": {
           "type": "number",
-          "description": "Nyhetsvärde 1–5. 5 = högst prioritet (röd pulsande ram). Default: 3.",
+          "description": "News value 1-5. 5 = highest priority (red pulsating frame). Default: 3.",
           "minimum": 1,
           "maximum": 5
         },
         "category": {
           "type": "string",
-          "description": "Händelsekategori, t.ex. trafikolycka, brand, vägarbete."
+          "description": "Event category, e.g. trafikolycka, brand, vagarbete."
         },
         "severity": {
-          "type": "string",
-          "description": "Allvarlighetsgrad – fri textsträng, t.ex. Allvarlig. Kan vara null.",
-          "nullable": true
+          "type": ["string", "null"],
+          "description": "Severity level - free text string, e.g. Allvarlig. Can be null."
         },
         "location": {
           "type": "object",
-          "description": "Geografisk information.",
+          "description": "Geographic information. Stored as-is in JSONB.",
           "properties": {
             "name": {
               "type": "string",
-              "description": "Fritext platsnamn, t.ex. E4 vid Rotebro."
+              "description": "Free-text place name, e.g. E4 vid Rotebro."
             },
             "county": {
               "type": "string",
-              "description": "Länsnamn i fritext, t.ex. Stockholms län."
+              "description": "County name in free text, e.g. Stockholms lan."
             },
             "municipality": {
               "type": "string",
-              "description": "Kommunnamn i fritext, t.ex. Stockholm."
+              "description": "Municipality name in free text, e.g. Stockholm."
             },
             "countryCode": {
               "type": "string",
-              "description": "ISO 3166-1 alpha-2 landskod, exakt 2 versaler, t.ex. SE. Krävs för geo-filtrering."
+              "pattern": "^[A-Z]{2}$",
+              "description": "ISO 3166-1 alpha-2 country code, exactly 2 uppercase letters, e.g. SE."
             },
             "regionCode": {
               "type": "string",
-              "description": "SCB länskod, exakt 2 siffror, t.ex. 01 för Stockholm, 24 för Västerbotten."
+              "pattern": "^[0-9]{2}$",
+              "description": "SCB county code, exactly 2 digits, e.g. 01 for Stockholm, 24 for Vasterbotten."
             },
             "municipalityCode": {
               "type": "string",
-              "description": "SCB kommunkod, exakt 4 siffror, t.ex. 0180 för Stockholm."
+              "pattern": "^[0-9]{4}$",
+              "description": "SCB municipality code, exactly 4 digits, e.g. 0180 for Stockholm."
             },
             "coordinates": {
-              "type": "array",
-              "description": "Koordinater [lat, lon] som tal, t.ex. [59.5, 17.9].",
-              "items": {
-                "type": "number"
-              },
-              "minItems": 2,
-              "maxItems": 2
-            },
-            "regionGeoId": {
-              "type": "string",
-              "description": "UUID från Bonniers geo-service för regionen."
-            },
-            "regionName": {
-              "type": "string",
-              "description": "Regionnamn från geo-service."
-            },
-            "municipalityGeoId": {
-              "type": "string",
-              "description": "UUID från Bonniers geo-service för kommunen."
-            },
-            "municipalityName": {
-              "type": "string",
-              "description": "Kommunnamn från geo-service."
+              "description": "Coordinates as [lat, lon] array, comma-separated string, or {latitude, longitude}/{lat, lng} object. Normalized to [lat, lon] array on ingestion.",
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": { "type": "number" },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "latitude": { "type": "number" },
+                    "longitude": { "type": "number" },
+                    "lat": { "type": "number" },
+                    "lng": { "type": "number" }
+                  }
+                }
+              ]
             }
           },
           "additionalProperties": true
         },
         "extra": {
           "type": "object",
-          "description": "Valfria extra-fält för detta item.",
+          "description": "Optional extra fields for this item.",
           "additionalProperties": true
         }
       },
       "additionalProperties": true
-    },
-    "items": {
-      "type": "array",
-      "description": "Array av nyhetsobjekt (äldre format). Samma struktur som item.",
-      "items": {
-        "type": "object",
-        "required": ["title"],
-        "properties": {
-          "title": { "type": "string" },
-          "id": { "type": "string" },
-          "source": { "type": "string" },
-          "url": { "type": "string" },
-          "timestamp": { "type": "string" },
-          "description": { "type": "string" },
-          "newsValue": { "type": "number", "minimum": 1, "maximum": 5 },
-          "category": { "type": "string" },
-          "severity": { "type": "string", "nullable": true },
-          "location": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string" },
-              "county": { "type": "string" },
-              "municipality": { "type": "string" },
-              "countryCode": { "type": "string" },
-              "regionCode": { "type": "string" },
-              "municipalityCode": { "type": "string" },
-              "coordinates": {
-                "type": "array",
-                "items": { "type": "number" },
-                "minItems": 2,
-                "maxItems": 2
-              },
-              "regionGeoId": { "type": "string" },
-              "regionName": { "type": "string" },
-              "municipalityGeoId": { "type": "string" },
-              "municipalityName": { "type": "string" }
-            },
-            "additionalProperties": true
-          },
-          "extra": { "type": "object", "additionalProperties": true }
-        },
-        "additionalProperties": true
-      },
-      "minItems": 1
-    },
-    "extra": {
-      "type": "object",
-      "description": "Extra-fält som appliceras på alla items i requesten.",
-      "additionalProperties": true
     }
-  },
-  "additionalProperties": false
+  }
 }

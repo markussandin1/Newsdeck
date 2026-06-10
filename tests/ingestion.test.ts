@@ -62,14 +62,31 @@ test('rejects payload without columnId', async () => {
   )
 })
 
+test('rejects payload with invalid columnId', async () => {
+  const { db } = createMockDb()
+
+  await assert.rejects(
+    () => ingestNewsItems({ columnId: 'not-a-uuid', items: [{ title: 'Test' }] }, db),
+    (error: unknown) => {
+      assert.ok(error instanceof IngestionError)
+      assert.match(
+        (error as IngestionError).message,
+        /columnId must be a valid UUID/
+      )
+      return true
+    }
+  )
+})
+
 test('ingests items directly into specified column', async () => {
   const { db, appendColumnDataBatchCalls, addNewsItemsCalls } = createMockDb()
 
+  const columnId = '1a5465c1-1fa8-4bc0-9fb2-dfb396a64d5a'
   const now = new Date('2024-01-01T00:00:00.000Z')
 
   const result = await ingestNewsItems(
     {
-      columnId: 'column-123',
+      columnId,
       items: [
         {
           id: 'item-1',
@@ -82,7 +99,7 @@ test('ingests items directly into specified column', async () => {
   )
 
   assert.equal(result.itemsAdded, 1)
-  assert.deepEqual(result.matchingColumns, ['column-123'])
+  assert.deepEqual(result.matchingColumns, [columnId])
   assert.equal(result.columnsUpdated, 1)
 
   // Verify batch append operations are used (optimization)
@@ -92,7 +109,7 @@ test('ingests items directly into specified column', async () => {
 
   const batchData = appendColumnDataBatchCalls[0]
   assert.ok(batchData)
-  const storedItems = batchData['column-123']
+  const storedItems = batchData[columnId]
   assert.ok(storedItems)
   assert.equal(storedItems.length, 1)
 

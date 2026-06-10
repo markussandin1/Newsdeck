@@ -60,6 +60,8 @@ interface IngestionOptions {
   now?: Date
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
@@ -78,6 +80,12 @@ const clampNewsValue = (value: number): number => {
   if (value < 0) return 0
   if (value > 5) return 5
   return value
+}
+
+const isValidTimestamp = (value: unknown): value is string => {
+  if (typeof value !== 'string') return false
+  const d = new Date(value)
+  return !isNaN(d.getTime()) && !value.includes(',')
 }
 
 const normalizeCoordinates = (coords: unknown): number[] | undefined => {
@@ -177,6 +185,10 @@ const normalisePayload = (body: unknown): NormalisedPayload => {
     throw new IngestionError('columnId is required in request body')
   }
 
+  if (!UUID_REGEX.test(columnId)) {
+    throw new IngestionError(`columnId must be a valid UUID, got: "${columnId}"`)
+  }
+
   return {
     columnId,
     items: rawItems,
@@ -203,7 +215,7 @@ export const ingestNewsItems = async (
       throw new IngestionError('Each item must have a title')
     }
 
-    const timestamp = typeof item.timestamp === 'string' && item.timestamp
+    const timestamp = isValidTimestamp(item.timestamp)
       ? item.timestamp
       : new Date().toISOString()
 
