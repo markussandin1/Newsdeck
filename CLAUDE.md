@@ -151,9 +151,27 @@ interface NewsItem {
 - Feed-ikoner (Rss) i kolumn-header och dashboard-header kopierar URL till clipboard
 
 **Ingestion Pipeline** (`lib/services/ingestion.ts`):
-- Tar emot `columnId` direkt. Det är ENDA routing-mekanismen — workflowId-routing-vägen (flowId-lookup via dashboard-listan) är borttagen (P1-5). Workflows-noden måste skicka `columnId`.
+- Tar emot `columnId` direkt. Det är ENDA routing-mekanismen — workflowId-routing-vägen (flowId-lookup via dashboard-listan) är borttagen. Workflows-noden måste skicka `columnId`.
 - Sparar `location`-objektet till JSONB. `normalizeCoordinates()` normaliserar `coordinates` till `[lat, lng]`-array oavsett inkommande format (array, sträng, `{ latitude, longitude }` eller `{ lat, lng }`). Frontend-komponenterna hanterar även icke-normaliserade objekt-format för bakåtkompatibilitet med befintlig data.
 - Reservtabellerna `countries`, `regions`, `municipalities` finns kvar i databasen men används inte längre av koden.
+- `deleteReplacedSourceItems` raderar föregångare i `column_data` om samma `source_id` + `column_id` redan finns (news_items behåller historiken).
+- `broadcastNewsItems` (lib/realtime/broadcast.ts) anropas efter lyckad insert: skickar `pg_notify('newsdeck_news_items', {columnIds, dbIds})`.
+
+## Realtime Architecture
+
+Event-flöde (en leveransväg, instans-oberoende):
+
+1. POST /api/workflows → `ingestNewsItems` skriver till `news_items` + `column_data`
+2. `broadcastNewsItems` (lib/realtime/broadcast.ts) → `pg_notify('newsdeck_news_items', {columnIds, dbIds})` — bara ID:n, chunkat under NOTIFY:s 8000-bytesgräns
+3. Varje Cloud Run-instans kör en pg-listener (lib/realtime/pg-listener.ts, startas lazy av /api/stream) som hämtar items via `getNewsItemsByDbIds` och matar instansens `eventQueue`
+4. `eventQueue` (lib/event-queue.ts) är ren in-memory pub/sub → SSE-subscribers via /api/stream
+5. Klienten: `useDashboardStream` dispatchar till `column-store` (lib/dashboard/column-store.ts) — ENDA stället med dedup-/merge-logik (dbId = identitet). Notiser triggas av `useNewItemNotifier` som diffar sedda dbId:n (aldrig i setState-updaters).
+
+Utan DATABASE_URL (in-memory-dev) går broadcast direkt till processens eventQueue.
+
+Source-dedup: ompostade events (samma source_id i samma kolumn) raderar föregångarens column_data-rad (`deleteReplacedSourceItems`); news_items behåller historiken. Klientens `applyLive` i column-store speglar regeln live.
+
+Google Cloud Pub/Sub och long-polling är borttagna (2026-06).
 
 **Performance Limits**:
 - **Column Item Limit**: 500 most recent items per column (defined in dashboard API routes)
@@ -277,9 +295,9 @@ The `source_id` field comes from external sources and is NOT guaranteed to be un
 **Do NOT add a unique constraint on `source_id`!**
 
 The application handles deduplication at the application level:
-- See `lib/services/ingestion.ts:284-290` for deduplication logic
-- When new items arrive with existing `source_id`, old items are removed from `column_data`
+- `deleteReplacedSourceItems` in `lib/services/ingestion.ts` removes old `column_data` rows when a new item with the same `source_id` + `column_id` arrives
 - This prevents the same event from appearing multiple times in the UI
+- `news_items` retains full history; only `column_data` (the display cache) is pruned
 
 **Unique identifiers**:
 - `db_id` (UUID) - Guaranteed unique for each news item in database
@@ -468,7 +486,7 @@ interface NotificationSettings {
 
 The application is a **production-ready system** with:
 - ✅ Full dashboard and column management
-- ✅ Real-time updates (long-polling)
+- ✅ Real-time updates (SSE + pg LISTEN/NOTIFY)
 - ✅ Visual priority system
 - ✅ PostgreSQL persistence with optimized batch queries
 - ✅ Admin interface for data input
