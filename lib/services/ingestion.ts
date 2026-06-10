@@ -1,8 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 
 import type { NewsItem } from '@/lib/types'
-import { newsdeckPubSub } from '@/lib/pubsub'
-import { eventQueue } from '@/lib/event-queue'
+import { broadcastNewsItems } from '@/lib/realtime/broadcast'
 import { trafficCameraService } from './traffic-camera-service'
 import { queueImageUpload } from './image-queue-service'
 
@@ -311,9 +310,7 @@ export const ingestNewsItems = async (
   await db.appendColumnDataBatch(updatedColumnData)
 
   const columnIdsArray = Array.from(matchingColumns)
-  newsdeckPubSub.publishNewsUpdate(columnIdsArray, insertedItems).catch(() => {})
-
-  eventQueue.addItems(columnIdsArray, insertedItems)
+  await broadcastNewsItems(columnIdsArray, insertedItems)
 
   return {
     columnId,

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { eventQueue } from '@/lib/event-queue'
 import { logger } from '@/lib/logger'
+import { ensureRealtimeListener } from '@/lib/realtime/pg-listener'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,8 @@ const HEARTBEAT_INTERVAL_MS = 30_000
  * Keeps a single persistent HTTP connection instead of one per column.
  */
 export async function GET(request: NextRequest) {
+  ensureRealtimeListener()
+
   const { searchParams } = new URL(request.url)
 
   // Parse column IDs
