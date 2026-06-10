@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import type { NewsItem } from '@/lib/types'
 import { broadcastNewsItems } from '@/lib/realtime/broadcast'
+import { dispatchPushForItems } from './push-dispatch'
 import { trafficCameraService } from './traffic-camera-service'
 import { queueImageUpload } from './image-queue-service'
 
@@ -322,6 +323,8 @@ export const ingestNewsItems = async (
 
   const columnIdsArray = Array.from(matchingColumns)
   await broadcastNewsItems(columnIdsArray, insertedItems)
+  // Web Push körs asynkront — får aldrig fördröja API-svaret till Workflows.
+  void dispatchPushForItems(columnIdsArray, insertedItems)
 
   return {
     columnId,

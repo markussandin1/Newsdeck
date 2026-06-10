@@ -431,35 +431,35 @@ POST /api/workflows
 
 ## Notification System
 
-**Desktop & Audio Notifications** (added 2025-12-07, updated 2025-12-08):
-- `lib/dashboard/hooks/useNotificationSettings.ts` - Manages notification settings (global + per-column)
-- `lib/dashboard/hooks/useDesktopNotifications.ts` - Web Notifications API wrapper (Chrome desktop only)
-- `lib/dashboard/hooks/useColumnNotifications.ts` - Coordinates audio and desktop notifications
-- `components/NotificationSettingsModal.tsx` - Global settings modal (master toggle, defaults, threshold)
+### In-app Audio & Desktop Notifications
+- `lib/dashboard/hooks/useNotificationSettings.ts` - Hanterar notis-inställningar (globalt + per kolumn)
+- `lib/dashboard/hooks/useDesktopNotifications.ts` - Web Notifications API-wrapper med feature-detection (faller tillbaka tyst på plattformar som saknar stöd)
+- `lib/dashboard/hooks/useColumnNotifications.ts` - Koordinerar ljud och desktop-notiser
+- `components/NotificationSettingsModal.tsx` - Modal för globala inställningar (master-toggle, standardvärden, tröskel)
 
-**Browser Support**:
-- Desktop notifications: Chrome on desktop only (not mobile)
-- Detects browser and device type, falls back gracefully for unsupported platforms
-- Audio notifications: All browsers with Web Audio API support
+**Browser-stöd**:
+- Desktop-notiser: Kräver Notification API-stöd (feature-detekteras, inte hårdkodat per webbläsare)
+- Ljudnotiser: Alla webbläsare med Web Audio API
+- Faller tillbaka tyst om plattformen saknar stöd
 
-**System Requirements for Desktop Notifications (Mac)**:
-- Mac users must enable notifications in System Settings → Notifications → Chrome
-- Notification style must be set to "Banners" or "Alerts" (not "None")
-- Chrome site permissions must allow notifications (chrome://settings/content/notifications)
+**System Requirements för desktop-notiser (Mac)**:
+- Aktivera i Systeminställningar → Notiser → Chrome/Firefox
+- Notis-stil måste vara "Banners" eller "Alerts" (inte "None")
+- Webbläsarens sajt-behörigheter måste tillåta notiser
 
-**Settings Storage**:
-- Stored in localStorage per dashboard (`notificationSettings_${dashboardId}`)
-- Migrates automatically from old `mutedColumns_${dashboardId}` format
-- Per-column settings inherit from global defaults if not set
+**Inställningslagring**:
+- Lagras i localStorage per dashboard (`notificationSettings_${dashboardId}`)
+- Migrerar automatiskt från gammalt `mutedColumns_${dashboardId}`-format
+- Per-kolumn-inställningar ärver globala standardvärden om de inte är satta
 
 **Notification Settings Structure**:
 ```typescript
 interface NotificationSettings {
   global: {
-    masterEnabled: boolean           // Master toggle for all notifications
-    defaultSoundEnabled: boolean     // Default for new columns
-    defaultDesktopEnabled: boolean   // Default for new columns
-    newsValueThreshold: 1-5          // Only notify for items >= this value
+    masterEnabled: boolean           // Master-toggle för alla notiser
+    defaultSoundEnabled: boolean     // Standard för nya kolumner
+    defaultDesktopEnabled: boolean   // Standard för nya kolumner
+    newsValueThreshold: 1-5          // Notifiera bara för items >= detta värde
   }
   columns: Record<string, {
     soundEnabled: boolean
@@ -468,9 +468,28 @@ interface NotificationSettings {
 }
 ```
 
-**Access Points**:
-- UserMenu dropdown -> "Notiser" button
-- Opens NotificationSettingsModal with toggles and test button
+**Åtkomstpunkter**:
+- UserMenu-dropdown → "Notiser"-knappen
+- Öppnar NotificationSettingsModal med toggle och test-knapp
+
+### Web Push-notiser (server-side dispatch)
+
+Web Push levererar OS-notiser även när fliken är stängd, via Service Worker.
+
+**Kedja**:
+1. Klienten: `usePushSubscription` (lib/dashboard/hooks/usePushSubscription.ts) prenumererar via Web Push API och sparar via `POST /api/push/subscribe`
+2. Servern: `/api/push/subscribe` (route) skriver till `push_subscriptions`-tabellen via `upsertPushSubscription` (lib/db/push-subscriptions.ts)
+3. Ingestion: `ingestNewsItems` anropar `void dispatchPushForItems(columnIds, items)` direkt efter `broadcastNewsItems` — fire-and-forget, fördröjer aldrig API-svaret
+4. `dispatchPushForItems` (lib/services/push-dispatch.ts) hämtar prenumeranter för påverkade kolumner, väljer item med högst newsValue, skickar via `web-push`-paketet
+5. Döda prenumerationer (HTTP 404/410 från push-tjänsten) städas automatiskt bort via `deletePushSubscriptionByEndpoint`
+6. Service Worker (`public/sw.js`) tar emot push-event och visar OS-notis
+
+**VAPID-miljövariabler** (krävs i produktion):
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — publik nyckel (exponeras till klienten)
+- `VAPID_PRIVATE_KEY` — privat nyckel (bara server)
+- `VAPID_SUBJECT` — kontakt-URI, t.ex. `mailto:newsdeck@bonniernews.se`
+
+**Ren urvalslogik** (`selectPushTargets` i push-dispatch.ts) är enhetstestad i `tests/push-dispatch.test.ts` — testar kolumn-överlapp, nyhetsvärdeströskel och val av högsta-prioritets-item.
 
 ## PWA Configuration
 
@@ -491,7 +510,8 @@ The application is a **production-ready system** with:
 - ✅ PostgreSQL persistence with optimized batch queries
 - ✅ Admin interface for data input
 - ✅ Responsive design for mobile/desktop/TV
-- ✅ Desktop browser notifications (Web Notifications API, Chrome desktop only)
+- ✅ Desktop browser notifications (Web Notifications API, feature-detekteras)
 - ✅ Configurable audio/desktop notifications per column and globally
+- ✅ Web Push-notiser (server-side dispatch via web-push + VAPID, fungerar även när fliken är stängd)
 - ✅ PWA support for better notification UX
 
