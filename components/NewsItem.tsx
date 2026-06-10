@@ -1,9 +1,9 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
-import { useState, useEffect, memo } from 'react'
+import { memo } from 'react'
 import { MapPin } from 'lucide-react'
 import { getPriority, timeAgo } from '@/lib/design-system'
 import { getCategory } from '@/lib/categories'
-import { isUrl, getHostname } from '@/lib/time-utils'
+import { isUrl, getHostname, isNewsItemNew } from '@/lib/time-utils'
 
 interface NewsItemProps {
   item: NewsItemType
@@ -20,14 +20,8 @@ interface NewsItemProps {
 
 function NewsItem({ item, onSelect }: NewsItemProps) {
   const onClick = onSelect ? () => onSelect(item) : undefined
-  const [isNew, setIsNew] = useState(item.isNew || false)
-
-  useEffect(() => {
-    if (item.isNew) {
-      const timer = setTimeout(() => setIsNew(false), 60_000)
-      return () => clearTimeout(timer)
-    }
-  }, [item.dbId, item.isNew])
+  // isNew beräknas vid render baserat på createdInDb-tidsstämpeln
+  const isNew = isNewsItemNew(item.createdInDb)
 
   const priority = getPriority(item.newsValue)
   const isEmph = item.newsValue >= 4

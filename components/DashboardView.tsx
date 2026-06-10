@@ -7,6 +7,7 @@ import { Dashboard as DashboardType, NewsItem as NewsItemType } from '@/lib/type
 import { useDashboardData } from '@/lib/dashboard/hooks/useDashboardData'
 import { useDashboardStream } from '@/lib/dashboard/hooks/useDashboardStream'
 import { usePendingImagePolling } from '@/lib/dashboard/hooks/usePendingImagePolling'
+import { useNewItemNotifier } from '@/lib/dashboard/hooks/useNewItemNotifier'
 import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
 import { useNotificationSettings } from '@/lib/dashboard/hooks/useNotificationSettings'
 import { useDesktopNotifications } from '@/lib/dashboard/hooks/useDesktopNotifications'
@@ -53,6 +54,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     fetchColumnData,
     loadArchivedColumns,
     updateColumnData,
+    patchItem,
   } = useDashboardData({
     dashboard,
   })
@@ -87,13 +89,15 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
   const { connectionStatus, stopAllPolling } = useDashboardStream({
     columns: dashboard?.columns || [],
     updateColumnData,
-    onNewItems: handleNewItems,
     onReconnect: fetchColumnData,
   })
 
+  // Diffar columnData och triggar ljud-/desktopnotiser för nya items
+  useNewItemNotifier({ columnData, onNewItems: handleNewItems })
+
   usePendingImagePolling({
     columnData,
-    updateColumnData,
+    patchItem,
   })
 
   useEffect(() => {
