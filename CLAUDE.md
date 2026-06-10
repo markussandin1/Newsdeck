@@ -99,6 +99,7 @@ interface NewsItem {
   dbId: string;          // UUID, unikt i databasen
   workflowId: string;    // columnId eller workflowId (internt fält)
   source: string;
+  url?: string;          // Länk till källa/artikel (egen kolumn i news_items sedan migration 015)
   timestamp: string;     // ISO 8601
   title: string;
   description?: string;
@@ -154,6 +155,7 @@ interface NewsItem {
 - Tar emot `columnId` direkt. Det är ENDA routing-mekanismen — workflowId-routing-vägen (flowId-lookup via dashboard-listan) är borttagen. Workflows-noden måste skicka `columnId`.
 - Sparar `location`-objektet till JSONB. `normalizeCoordinates()` normaliserar `coordinates` till `[lat, lng]`-array oavsett inkommande format (array, sträng, `{ latitude, longitude }` eller `{ lat, lng }`). Frontend-komponenterna hanterar även icke-normaliserade objekt-format för bakåtkompatibilitet med befintlig data.
 - Reservtabellerna `countries`, `regions`, `municipalities` finns kvar i databasen men används inte längre av koden.
+- `resolveUrl` normaliserar `URL`/`url` (versaler vinner) och faller tillbaka på `source` om den är en http-länk. `url` sparas både som egen kolumn i `news_items` (migration 015) och i `column_data`-JSONB — innan migrationen tappade live-vägen (SSE) url:en eftersom `news_items` saknade kolumnen.
 - `deleteReplacedSourceItems` raderar föregångare i `column_data` om samma `source_id` + `column_id` redan finns (news_items behåller historiken).
 - `broadcastNewsItems` (lib/realtime/broadcast.ts) anropas efter lyckad insert: skickar `pg_notify('newsdeck_news_items', {columnIds, dbIds})`.
 
@@ -194,6 +196,8 @@ NewsValue determines visual styling via the design system v2 (`lib/design-system
 
 UI:t refererar aldrig till P1–P5 — bara `newsValue` (siffra) och namnen ovan.
 
+**Källänk på kortet**: när ett item har `url` är källnamnet i kolumnkortets header en klickbar länk (ny flik, extern-länk-ikon, `stopPropagation` så modalen inte öppnas). Modalen visar samma länk på källnamnet + "Öppna källa"-knapp. Pulse/Grid visar källan som ren text — länken nås via modalen.
+
 **Design System v2** (`lib/design-system.ts` + `app/globals.css` CSS-token-block `--nd-*`):
 - Fonts: Inter Tight (UI), JetBrains Mono (metadata)
 - Dark theme default, light theme via `html.light`
@@ -233,7 +237,7 @@ npm run db:migrate          # applicera alla pending migrations
 
 Lägg nya migrations i `db/migrations/NNN_namn.sql` med numerisk prefix. Runnern kör dem i bokstavsordning, en transaktion per fil (undantag: `CREATE INDEX CONCURRENTLY` körs utan transaktion).
 
-Befintliga migrations 001–012 markerades som applicerade på prod när runnern infördes — så `db:migrate` är en no-op tills nästa migration läggs till.
+Befintliga migrations 001–012 markerades som applicerade på prod när runnern infördes.
 
 ### Accessing Production Database
 

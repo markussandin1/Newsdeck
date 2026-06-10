@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Newsdeck Publisher Node Input",
+  "description": "Input to the Newsdeck Publisher node in Workflows. The node sets columnId itself and reads fields from item.* (e.g. item.title, item.description) when its own fields are left empty. This is the workflows-event-schema without columnId.",
+  "type": "object",
+  "required": ["item"],
+  "properties": {
+    "item": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Headline. The only required field. Must be non-empty."
+        },
+        "id": {
+          "type": "string",
+          "description": "Source's own ID (optional, not unique). Used for deduplication within a column: a new item with the same id replaces the previous one in the column view."
+        },
+        "source": {
+          "type": "string",
+          "description": "Source name, e.g. Sponichi, Trafikverket, Polisen. Use a readable name, not a URL - put the link in url instead. Default: workflows."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to source or article."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp, e.g. 2026-06-11T05:00:00Z. Invalid or missing values fall back to server time."
+        },
+        "description": {
+          "type": "string",
+          "description": "Free-text description of the event."
+        },
+        "newsValue": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "News value 1-5. 5 = highest priority. Default: 3."
+        },
+        "category": {
+          "type": "string",
+          "description": "Event category, e.g. sport, trafikolycka, brand."
+        },
+        "severity": {
+          "type": ["string", "null"],
+          "description": "Severity level - free text string. Can be null."
+        },
+        "location": {
+          "type": "object",
+          "description": "Geographic information. Stored as-is in JSONB (coordinates are normalized).",
+          "properties": {
+            "name": { "type": "string", "description": "Free-text place name, e.g. E4 vid Rotebro." },
+            "county": { "type": "string", "description": "County name in free text, e.g. Stockholms lan." },
+            "municipality": { "type": "string", "description": "Municipality name in free text, e.g. Stockholm." },
+            "countryCode": { "type": "string", "pattern": "^[A-Z]{2}$", "description": "ISO 3166-1 alpha-2, e.g. SE." },
+            "regionCode": { "type": "string", "pattern": "^[0-9]{2}$", "description": "SCB county code, e.g. 01." },
+            "municipalityCode": { "type": "string", "pattern": "^[0-9]{4}$", "description": "SCB municipality code, e.g. 0180." },
+            "coordinates": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 2,
+              "maxItems": 2,
+              "description": "Coordinates as [lat, lon] number array."
+            }
+          },
+          "additionalProperties": true
+        },
+        "extra": {
+          "type": "object",
+          "description": "Optional extra fields for this item, e.g. language, translated.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

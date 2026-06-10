@@ -463,6 +463,12 @@ html.light {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   min-width: 0; max-width: 55%;
 }
+.nd-card header.nd-meta .nd-src-link {
+  display: inline-flex; align-items: center; gap: 3px;
+  color: var(--nd-ink-dim); text-decoration: none;
+}
+.nd-card header.nd-meta .nd-src-link svg { flex-shrink: 0; opacity: 0.6; }
+.nd-card header.nd-meta .nd-src-link:hover { color: var(--nd-accent); text-decoration: underline; }
 .nd-card header.nd-meta .nd-dot { color: var(--nd-line); flex-shrink: 0; }
 .nd-card header.nd-meta .nd-tm  { color: var(--nd-ink-mute); flex-shrink: 0; }
 .nd-card header.nd-meta .nd-new { color: var(--nd-accent); font-weight: 700; letter-spacing: 0.08em; flex-shrink: 0; }

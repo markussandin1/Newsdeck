@@ -1,10 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Newsdeck Workflows Event",
-  "description": "Schema for POST /api/workflows. Requires columnId and either item or items.",
+  "description": "Schema for POST /api/workflows. Requires columnId and item and/or items. If both item and items are present, items takes precedence. Unknown top-level fields are ignored by the server.",
   "type": "object",
   "required": ["columnId"],
-  "oneOf": [
+  "anyOf": [
     { "required": ["item"] },
     { "required": ["items"] }
   ],
@@ -16,21 +16,21 @@
     },
     "item": {
       "$ref": "#/$defs/newsItem",
-      "description": "Single news item (recommended format)."
+      "description": "Single news item (recommended format). Ignored if items is also present."
     },
     "items": {
       "type": "array",
-      "description": "Array of news items (batch format). Same structure as item.",
+      "description": "Array of news items (batch format). Same structure as item. Takes precedence over item if both are present.",
       "items": { "$ref": "#/$defs/newsItem" },
       "minItems": 1
     },
     "extra": {
       "type": "object",
-      "description": "Extra fields applied to all items in the request. Merged into each item's extra object.",
+      "description": "Extra fields applied to all items in the request. Merged into each item's extra object; on key collision the request-level value wins.",
       "additionalProperties": true
     }
   },
-  "additionalProperties": false,
+  "additionalProperties": true,
   "$defs": {
     "newsItem": {
       "type": "object",
@@ -38,25 +38,30 @@
       "properties": {
         "title": {
           "type": "string",
-          "description": "Headline. The only required field."
+          "minLength": 1,
+          "description": "Headline. The only required field. Must be non-empty."
         },
         "id": {
           "type": "string",
-          "description": "Source's own ID (optional, not unique). Used for deduplication within a column."
+          "description": "Source's own ID (optional, not unique). Used for deduplication within a column: a new item with the same id replaces the previous one in the column view."
+        },
+        "flowId": {
+          "type": "string",
+          "description": "Optional workflow/flow identifier from the sending system. Stored on the item, not used for routing."
         },
         "source": {
           "type": "string",
-          "description": "Source name, e.g. Trafikverket, Polisen, SOS Alarm. Default: workflows."
+          "description": "Source name, e.g. Trafikverket, Polisen, SOS Alarm. Default: workflows. If it starts with http and no url is given, it is also used as the item URL."
         },
         "url": {
           "type": "string",
           "format": "uri",
-          "description": "Link to source or article. Also accepted as uppercase URL."
+          "description": "Link to source or article. Also accepted as uppercase URL (URL takes precedence if both are present)."
         },
         "timestamp": {
           "type": "string",
           "format": "date-time",
-          "description": "ISO 8601 timestamp, e.g. 2026-03-23T10:30:00Z. Default: server time."
+          "description": "ISO 8601 timestamp, e.g. 2026-03-23T10:30:00Z. Invalid or missing values fall back to server time."
         },
         "description": {
           "type": "string",
@@ -64,7 +69,7 @@
         },
         "newsValue": {
           "type": "number",
-          "description": "News value 1-5. 5 = highest priority (red pulsating frame). Default: 3.",
+          "description": "News value 1-5. 5 = highest priority (red ribbon). Default: 3. Out-of-range values are not rejected; the server clamps to 0-5.",
           "minimum": 1,
           "maximum": 5
         },
@@ -78,7 +83,7 @@
         },
         "location": {
           "type": "object",
-          "description": "Geographic information. Stored as-is in JSONB.",
+          "description": "Geographic information. Stored as-is in JSONB (coordinates are normalized).",
           "properties": {
             "name": {
               "type": "string",
@@ -108,13 +113,19 @@
               "description": "SCB municipality code, exactly 4 digits, e.g. 0180 for Stockholm."
             },
             "coordinates": {
-              "description": "Coordinates as [lat, lon] array, comma-separated string, or {latitude, longitude}/{lat, lng} object. Normalized to [lat, lon] array on ingestion.",
+              "description": "Coordinates as [lat, lon] number array, a comma-separated string ('64.3, 21.1'), a single-element array with such a string, or a {latitude, longitude}/{lat, lng} object. Normalized to a [lat, lon] array on ingestion; unparseable values are dropped.",
               "oneOf": [
                 {
                   "type": "array",
                   "items": { "type": "number" },
                   "minItems": 2,
                   "maxItems": 2
+                },
+                {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "minItems": 1,
+                  "maxItems": 1
                 },
                 {
                   "type": "string"
@@ -135,7 +146,7 @@
         },
         "extra": {
           "type": "object",
-          "description": "Optional extra fields for this item.",
+          "description": "Optional extra fields for this item. Request-level extra is merged on top of this object.",
           "additionalProperties": true
         }
       },

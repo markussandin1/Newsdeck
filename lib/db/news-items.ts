@@ -16,7 +16,7 @@ const SELECT_COLUMNS = `
   db_id as "dbId",
   source_id as "id",
   workflow_id as "workflowId",
-  source, timestamp, title, description,
+  source, url, timestamp, title, description,
   news_value as "newsValue",
   category, severity, location, extra, raw,
   created_in_db as "createdInDb"
@@ -27,6 +27,7 @@ type NewsItemRow = {
   id: string | null
   workflowId: string
   source: string
+  url: string | null
   timestamp: string
   title: string
   description: string | null
@@ -61,14 +62,15 @@ export async function addNewsItem(item: NewsItem) {
   try {
     const result = await pool.query(
       `INSERT INTO news_items (
-        source_id, workflow_id, source, timestamp, title, description,
+        source_id, workflow_id, source, url, timestamp, title, description,
         news_value, category, severity, location, extra, raw, created_in_db
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING db_id`,
       [
         item.id || null,
         item.workflowId,
         item.source,
+        item.url || null,
         item.timestamp,
         item.title,
         item.description || null,
@@ -108,6 +110,7 @@ export async function addNewsItems(items: NewsItem[]) {
       item.id || null,
       item.workflowId,
       item.source,
+      item.url || null,
       item.timestamp,
       item.title,
       item.description || null,
@@ -127,7 +130,7 @@ export async function addNewsItems(items: NewsItem[]) {
     for (const chunk of chunks) {
       const result = await client.query(
         `INSERT INTO news_items (
-          source_id, workflow_id, source, timestamp, title, description,
+          source_id, workflow_id, source, url, timestamp, title, description,
           news_value, category, severity, location, extra, raw, created_in_db
         ) VALUES ${chunk.text}
         RETURNING db_id`,
