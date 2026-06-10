@@ -151,9 +151,27 @@ interface NewsItem {
 - Feed-ikoner (Rss) i kolumn-header och dashboard-header kopierar URL till clipboard
 
 **Ingestion Pipeline** (`lib/services/ingestion.ts`):
-- Tar emot `columnId` direkt. Det är ENDA routing-mekanismen — workflowId-routing-vägen (flowId-lookup via dashboard-listan) är borttagen (P1-5). Workflows-noden måste skicka `columnId`.
+- Tar emot `columnId` direkt. Det är ENDA routing-mekanismen — workflowId-routing-vägen (flowId-lookup via dashboard-listan) är borttagen. Workflows-noden måste skicka `columnId`.
 - Sparar `location`-objektet till JSONB. `normalizeCoordinates()` normaliserar `coordinates` till `[lat, lng]`-array oavsett inkommande format (array, sträng, `{ latitude, longitude }` eller `{ lat, lng }`). Frontend-komponenterna hanterar även icke-normaliserade objekt-format för bakåtkompatibilitet med befintlig data.
 - Reservtabellerna `countries`, `regions`, `municipalities` finns kvar i databasen men används inte längre av koden.
+- `deleteReplacedSourceItems` raderar föregångare i `column_data` om samma `source_id` + `column_id` redan finns (news_items behåller historiken).
+- `broadcastNewsItems` (lib/realtime/broadcast.ts) anropas efter lyckad insert: skickar `pg_notify('newsdeck_news_items', {columnIds, dbIds})`.
+
+## Realtime Architecture
+
+Event-flöde (en leveransväg, instans-oberoende):
+
+1. POST /api/workflows → `ingestNewsItems` skriver till `news_items` + `column_data`
+2. `broadcastNewsItems` (lib/realtime/broadcast.ts) → `pg_notify('newsdeck_news_items', {columnIds, dbIds})` — bara ID:n, chunkat under NOTIFY:s 8000-bytesgräns
+3. Varje Cloud Run-instans kör en pg-listener (lib/realtime/pg-listener.ts, startas lazy av /api/stream) som hämtar items via `getNewsItemsByDbIds` och matar instansens `eventQueue`
+4. `eventQueue` (lib/event-queue.ts) är ren in-memory pub/sub → SSE-subscribers via /api/stream
+5. Klienten: `useDashboardStream` dispatchar till `column-store` (lib/dashboard/column-store.ts) — ENDA stället med dedup-/merge-logik (dbId = identitet). Notiser triggas av `useNewItemNotifier` som diffar sedda dbId:n (aldrig i setState-updaters).
+
+Utan DATABASE_URL (in-memory-dev) går broadcast direkt till processens eventQueue.
+
+Source-dedup: ompostade events (samma source_id i samma kolumn) raderar föregångarens column_data-rad (`deleteReplacedSourceItems`); news_items behåller historiken. Klientens `applyLive` i column-store speglar regeln live.
+
+Google Cloud Pub/Sub och long-polling är borttagna (2026-06).
 
 **Performance Limits**:
 - **Column Item Limit**: 500 most recent items per column (defined in dashboard API routes)
@@ -277,9 +295,9 @@ The `source_id` field comes from external sources and is NOT guaranteed to be un
 **Do NOT add a unique constraint on `source_id`!**
 
 The application handles deduplication at the application level:
-- See `lib/services/ingestion.ts:284-290` for deduplication logic
-- When new items arrive with existing `source_id`, old items are removed from `column_data`
+- `deleteReplacedSourceItems` in `lib/services/ingestion.ts` removes old `column_data` rows when a new item with the same `source_id` + `column_id` arrives
 - This prevents the same event from appearing multiple times in the UI
+- `news_items` retains full history; only `column_data` (the display cache) is pruned
 
 **Unique identifiers**:
 - `db_id` (UUID) - Guaranteed unique for each news item in database
@@ -413,35 +431,35 @@ POST /api/workflows
 
 ## Notification System
 
-**Desktop & Audio Notifications** (added 2025-12-07, updated 2025-12-08):
-- `lib/dashboard/hooks/useNotificationSettings.ts` - Manages notification settings (global + per-column)
-- `lib/dashboard/hooks/useDesktopNotifications.ts` - Web Notifications API wrapper (Chrome desktop only)
-- `lib/dashboard/hooks/useColumnNotifications.ts` - Coordinates audio and desktop notifications
-- `components/NotificationSettingsModal.tsx` - Global settings modal (master toggle, defaults, threshold)
+### In-app Audio & Desktop Notifications
+- `lib/dashboard/hooks/useNotificationSettings.ts` - Hanterar notis-inställningar (globalt + per kolumn)
+- `lib/dashboard/hooks/useDesktopNotifications.ts` - Web Notifications API-wrapper med feature-detection (faller tillbaka tyst på plattformar som saknar stöd)
+- `lib/dashboard/hooks/useColumnNotifications.ts` - Koordinerar ljud och desktop-notiser
+- `components/NotificationSettingsModal.tsx` - Modal för globala inställningar (master-toggle, standardvärden, tröskel)
 
-**Browser Support**:
-- Desktop notifications: Chrome on desktop only (not mobile)
-- Detects browser and device type, falls back gracefully for unsupported platforms
-- Audio notifications: All browsers with Web Audio API support
+**Browser-stöd**:
+- Desktop-notiser: Kräver Notification API-stöd (feature-detekteras, inte hårdkodat per webbläsare)
+- Ljudnotiser: Alla webbläsare med Web Audio API
+- Faller tillbaka tyst om plattformen saknar stöd
 
-**System Requirements for Desktop Notifications (Mac)**:
-- Mac users must enable notifications in System Settings → Notifications → Chrome
-- Notification style must be set to "Banners" or "Alerts" (not "None")
-- Chrome site permissions must allow notifications (chrome://settings/content/notifications)
+**System Requirements för desktop-notiser (Mac)**:
+- Aktivera i Systeminställningar → Notiser → Chrome/Firefox
+- Notis-stil måste vara "Banners" eller "Alerts" (inte "None")
+- Webbläsarens sajt-behörigheter måste tillåta notiser
 
-**Settings Storage**:
-- Stored in localStorage per dashboard (`notificationSettings_${dashboardId}`)
-- Migrates automatically from old `mutedColumns_${dashboardId}` format
-- Per-column settings inherit from global defaults if not set
+**Inställningslagring**:
+- Lagras i localStorage per dashboard (`notificationSettings_${dashboardId}`)
+- Migrerar automatiskt från gammalt `mutedColumns_${dashboardId}`-format
+- Per-kolumn-inställningar ärver globala standardvärden om de inte är satta
 
 **Notification Settings Structure**:
 ```typescript
 interface NotificationSettings {
   global: {
-    masterEnabled: boolean           // Master toggle for all notifications
-    defaultSoundEnabled: boolean     // Default for new columns
-    defaultDesktopEnabled: boolean   // Default for new columns
-    newsValueThreshold: 1-5          // Only notify for items >= this value
+    masterEnabled: boolean           // Master-toggle för alla notiser
+    defaultSoundEnabled: boolean     // Standard för nya kolumner
+    defaultDesktopEnabled: boolean   // Standard för nya kolumner
+    newsValueThreshold: 1-5          // Notifiera bara för items >= detta värde
   }
   columns: Record<string, {
     soundEnabled: boolean
@@ -450,9 +468,28 @@ interface NotificationSettings {
 }
 ```
 
-**Access Points**:
-- UserMenu dropdown -> "Notiser" button
-- Opens NotificationSettingsModal with toggles and test button
+**Åtkomstpunkter**:
+- UserMenu-dropdown → "Notiser"-knappen
+- Öppnar NotificationSettingsModal med toggle och test-knapp
+
+### Web Push-notiser (server-side dispatch)
+
+Web Push levererar OS-notiser även när fliken är stängd, via Service Worker.
+
+**Kedja**:
+1. Klienten: `usePushSubscription` (lib/dashboard/hooks/usePushSubscription.ts) prenumererar via Web Push API och sparar via `POST /api/push/subscribe`
+2. Servern: `/api/push/subscribe` (route) skriver till `push_subscriptions`-tabellen via `upsertPushSubscription` (lib/db/push-subscriptions.ts)
+3. Ingestion: `ingestNewsItems` anropar `void dispatchPushForItems(columnIds, items)` direkt efter `broadcastNewsItems` — fire-and-forget, fördröjer aldrig API-svaret
+4. `dispatchPushForItems` (lib/services/push-dispatch.ts) hämtar prenumeranter för påverkade kolumner, väljer item med högst newsValue, skickar via `web-push`-paketet
+5. Döda prenumerationer (HTTP 404/410 från push-tjänsten) städas automatiskt bort via `deletePushSubscriptionByEndpoint`
+6. Service Worker (`public/sw.js`) tar emot push-event och visar OS-notis
+
+**VAPID-miljövariabler** (krävs i produktion):
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — publik nyckel (exponeras till klienten)
+- `VAPID_PRIVATE_KEY` — privat nyckel (bara server)
+- `VAPID_SUBJECT` — kontakt-URI, t.ex. `mailto:newsdeck@bonniernews.se`
+
+**Ren urvalslogik** (`selectPushTargets` i push-dispatch.ts) är enhetstestad i `tests/push-dispatch.test.ts` — testar kolumn-överlapp, nyhetsvärdeströskel och val av högsta-prioritets-item.
 
 ## PWA Configuration
 
@@ -468,12 +505,13 @@ interface NotificationSettings {
 
 The application is a **production-ready system** with:
 - ✅ Full dashboard and column management
-- ✅ Real-time updates (long-polling)
+- ✅ Real-time updates (SSE + pg LISTEN/NOTIFY)
 - ✅ Visual priority system
 - ✅ PostgreSQL persistence with optimized batch queries
 - ✅ Admin interface for data input
 - ✅ Responsive design for mobile/desktop/TV
-- ✅ Desktop browser notifications (Web Notifications API, Chrome desktop only)
+- ✅ Desktop browser notifications (Web Notifications API, feature-detekteras)
 - ✅ Configurable audio/desktop notifications per column and globally
+- ✅ Web Push-notiser (server-side dispatch via web-push + VAPID, fungerar även när fliken är stängd)
 - ✅ PWA support for better notification UX
 

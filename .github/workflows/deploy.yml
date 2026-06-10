@@ -57,14 +57,25 @@ jobs:
             ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:latest
           cache-from: type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:latest
           cache-to: type=inline
+          # NEXT_PUBLIC_* inlines vid build-tid och måste skickas som build-arg.
+          # Skapa hemligheten VAPID_PUBLIC_KEY i GitHub → repo Settings → Secrets and variables → Actions.
+          build-args: |
+            NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
 
       - name: Deploy to Cloud Run
         run: |
+          # --timeout=3600: ger SSE-anslutningar max livslängd innan Cloud Run klipper dem
+          #   (klienten återansluter + refetchar via befintlig backoff/watchdog).
+          # --min-instances=1: eliminerar cold-start för första SSE-anslutningen.
+          # --max-instances=4: nu säkert eftersom LISTEN/NOTIFY når alla instanser.
           gcloud run deploy ${{ env.SERVICE }} \
             --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.event.workflow_run.head_sha }} \
             --region=${{ env.REGION }} \
             --platform=managed \
             --allow-unauthenticated \
+            --timeout=3600 \
+            --min-instances=1 \
+            --max-instances=4 \
             --quiet
 
       - name: Show service URL

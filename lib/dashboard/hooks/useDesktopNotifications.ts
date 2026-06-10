@@ -18,37 +18,33 @@ interface UseDesktopNotificationsReturn {
 }
 
 /**
- * Hook for managing desktop browser notifications using the Web Notifications API.
- * Currently optimized for Chrome on desktop.
+ * Hook för desktop-notiser via Web Notifications API.
+ * Stöder Chrome, Firefox, Safari och Edge på desktop via feature detection.
  */
 export function useDesktopNotifications(): UseDesktopNotificationsReturn {
   const [permission, setPermission] = useState<DesktopNotificationPermission>('default')
   const [isSupported, setIsSupported] = useState(false)
 
-  // Check for API support and initial permission on mount
+  // Kontrollera API-stöd och initialt tillstånd vid mount
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
       setIsSupported(false)
       setPermission('unsupported')
       return
     }
 
-    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor)
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-    if (!isChrome || isMobile) {
+    // Notification API utan Service Worker fungerar inte på mobil
+    // (Android Chrome kräver SW, iOS kräver installerad PWA) — desktop
+    // Chrome/Firefox/Safari/Edge stöds alla via feature detection.
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (isMobile) {
       setIsSupported(false)
       setPermission('unsupported')
       return
     }
 
-    if ('Notification' in window) {
-      setIsSupported(true)
-      setPermission(Notification.permission)
-    } else {
-      setIsSupported(false)
-      setPermission('unsupported')
-    }
+    setIsSupported(true)
+    setPermission(Notification.permission)
   }, [])
 
   const requestPermission = useCallback(async (): Promise<NotificationPermission> => {
@@ -67,25 +63,35 @@ export function useDesktopNotifications(): UseDesktopNotificationsReturn {
   const showNotification = useCallback((content: NotificationContent): Notification | null => {
     if (!isSupported || permission !== 'granted') return null
 
-    try {
-      const notification = new Notification(content.title, {
-        body: content.body,
-        icon: content.icon || '/newsdeck-icon.svg',
-        badge: '/newsdeck-icon.svg',
-        tag: content.tag || 'newsdeck-notification',
-        requireInteraction: false,
-        silent: false,
-        data: content.data,
-      })
+    const options: NotificationOptions = {
+      body: content.body,
+      icon: content.icon || '/newsdeck-icon.svg',
+      badge: '/newsdeck-icon.svg',
+      tag: content.tag || 'newsdeck-notification',
+      requireInteraction: false,
+      silent: false,
+      data: content.data,
+    }
 
+    // Via SW-registreringen om möjligt — överlever flikens throttling och
+    // ger klick-hantering i sw.js. Fallback till sid-kontextens Notification.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready
+        .then(reg => reg.showNotification(content.title, options))
+        .catch(error => {
+          clientLogger.error('desktopNotifications.swShow.failed', { error: String(error) })
+        })
+      return null
+    }
+
+    try {
+      const notification = new Notification(content.title, options)
       notification.onclick = () => {
         window.focus()
         notification.close()
       }
-
       return notification
     } catch (error) {
-      // Failure is usually system-level (Mac: System Settings → Notifications → Chrome)
       clientLogger.error('desktopNotifications.showNotification.failed', { error: String(error) })
       return null
     }

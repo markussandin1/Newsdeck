@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid'
 
 import type { NewsItem } from '@/lib/types'
-import { newsdeckPubSub } from '@/lib/pubsub'
-import { eventQueue } from '@/lib/event-queue'
+import { broadcastNewsItems } from '@/lib/realtime/broadcast'
+import { dispatchPushForItems } from './push-dispatch'
 import { trafficCameraService } from './traffic-camera-service'
 import { queueImageUpload } from './image-queue-service'
 
@@ -23,6 +23,8 @@ export interface IngestionDb {
   getColumnDataBatch: (columnIds: string[]) => Promise<Record<string, NewsItem[]>>
   setColumnDataBatch: (columnData: Record<string, NewsItem[]>) => Promise<void>
   appendColumnDataBatch: (columnData: Record<string, NewsItem[]>) => Promise<void>
+  // Source-dedup: rensar föregångare till ompostade events ur column_data
+  deleteReplacedSourceItems: (columnId: string, items: NewsItem[]) => Promise<void>
 }
 
 interface NormalisedPayload {
@@ -60,6 +62,8 @@ interface IngestionOptions {
   now?: Date
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
@@ -78,6 +82,12 @@ const clampNewsValue = (value: number): number => {
   if (value < 0) return 0
   if (value > 5) return 5
   return value
+}
+
+const isValidTimestamp = (value: unknown): value is string => {
+  if (typeof value !== 'string') return false
+  const d = new Date(value)
+  return !isNaN(d.getTime()) && !value.includes(',')
 }
 
 const normalizeCoordinates = (coords: unknown): number[] | undefined => {
@@ -177,6 +187,10 @@ const normalisePayload = (body: unknown): NormalisedPayload => {
     throw new IngestionError('columnId is required in request body')
   }
 
+  if (!UUID_REGEX.test(columnId)) {
+    throw new IngestionError(`columnId must be a valid UUID, got: "${columnId}"`)
+  }
+
   return {
     columnId,
     items: rawItems,
@@ -203,7 +217,7 @@ export const ingestNewsItems = async (
       throw new IngestionError('Each item must have a title')
     }
 
-    const timestamp = typeof item.timestamp === 'string' && item.timestamp
+    const timestamp = isValidTimestamp(item.timestamp)
       ? item.timestamp
       : new Date().toISOString()
 
@@ -298,10 +312,19 @@ export const ingestNewsItems = async (
 
   await db.appendColumnDataBatch(updatedColumnData)
 
-  const columnIdsArray = Array.from(matchingColumns)
-  newsdeckPubSub.publishNewsUpdate(columnIdsArray, insertedItems).catch(() => {})
+  // Source-dedup: ompostade events (samma source-id i samma kolumn) ska bara
+  // synas en gång — radera föregångarnas column_data-rader. news_items rörs
+  // inte (source of truth/historik). Klientens applyLive gör samma ersättning
+  // live; detta håller reload-vyn konsistent.
+  const dedupable = insertedItems.filter(item => item.id)
+  if (dedupable.length > 0) {
+    await db.deleteReplacedSourceItems(columnId, dedupable)
+  }
 
-  eventQueue.addItems(columnIdsArray, insertedItems)
+  const columnIdsArray = Array.from(matchingColumns)
+  await broadcastNewsItems(columnIdsArray, insertedItems)
+  // Web Push körs asynkront — får aldrig fördröja API-svaret till Workflows.
+  void dispatchPushForItems(columnIdsArray, insertedItems)
 
   return {
     columnId,

@@ -6,6 +6,12 @@ import {
   logApiRequest as adminLogApiRequest,
 } from './db/admin'
 import {
+  upsertPushSubscription as pushSubsUpsert,
+  deletePushSubscription as pushSubsDelete,
+  deletePushSubscriptionByEndpoint as pushSubsDeleteByEndpoint,
+  getPushSubscriptionsForColumns as pushSubsForColumns,
+} from './db/push-subscriptions'
+import {
   getUserPreferences as userGetPrefs,
   setUserPreferences as userSetPrefs,
   getUserDashboardFollows as userGetFollows,
@@ -35,6 +41,7 @@ import {
   setColumnDataBatch as columnDataSetBatch,
   appendColumnDataBatch as columnDataAppendBatch,
   syncColumnDataFromGeneral as columnDataSyncFromGeneral,
+  deleteReplacedSourceItems as columnDataDeleteReplacedSourceItems,
 } from './db/column-data'
 import {
   addNewsItem as newsItemsAdd,
@@ -45,6 +52,7 @@ import {
   getNewsItemsPaginated as newsItemsGetPaginated,
   getNewsItemsByWorkflow as newsItemsByWorkflow,
   getNewsItemsByWorkflows as newsItemsByWorkflows,
+  getNewsItemsByDbIds as newsItemsByDbIds,
   getUniqueWorkflowIds as newsItemsUniqueWorkflowIds,
   getUniqueSources as newsItemsUniqueSources,
   getUniqueMunicipalities as newsItemsUniqueMunicipalities,
@@ -64,6 +72,7 @@ export const persistentDb = {
   deleteNewsItem: newsItemsDelete,
   getNewsItemsByWorkflow: newsItemsByWorkflow,
   getNewsItemsByWorkflows: newsItemsByWorkflows,
+  getNewsItemsByDbIds: newsItemsByDbIds,
   getNewsItemsPaginated: newsItemsGetPaginated,
 
   // Dashboards (P2-1 steg 6 — implementation i lib/db/dashboards.ts)
@@ -87,6 +96,7 @@ export const persistentDb = {
   getColumnDataBatch: columnDataGetBatch,
   setColumnDataBatch: columnDataSetBatch,
   appendColumnDataBatch: columnDataAppendBatch,
+  deleteReplacedSourceItems: columnDataDeleteReplacedSourceItems,
 
   // Admin distincts (P2-1 steg 4)
   getUniqueWorkflowIds: newsItemsUniqueWorkflowIds,
@@ -149,6 +159,12 @@ export const persistentDb = {
   getDashboardFollowers: userGetFollowers,
   followDashboard: userFollow,
   unfollowDashboard: userUnfollow,
+
+  // Web Push-prenumerationer (Fas 4c i realtime-v2-planen)
+  upsertPushSubscription: pushSubsUpsert,
+  deletePushSubscription: pushSubsDelete,
+  deletePushSubscriptionByEndpoint: pushSubsDeleteByEndpoint,
+  getPushSubscriptionsForColumns: pushSubsForColumns,
 
   // API request logging — sanerad metadata, aldrig payload. Skickas till
   // Cloud Logging (persisteras inte). Detaljer: lib/db/admin.ts.

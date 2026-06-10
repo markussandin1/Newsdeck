@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, BellOff, Volume2, VolumeX, Monitor, X, Check, AlertTriangle } from 'lucide-react';
+import { Bell, BellOff, BellRing, Volume2, VolumeX, Monitor, X, Check, AlertTriangle } from 'lucide-react';
 import type { NotificationSettings, DesktopNotificationPermission } from '@/lib/dashboard/types';
+import type { DashboardColumn } from '@/lib/types';
 
 interface NotificationSettingsModalProps {
   settings: NotificationSettings;
   desktopPermission: DesktopNotificationPermission;
+  activeColumns: DashboardColumn[];
+  // Push-state hoistats till DashboardView så att re-sync sker kontinuerligt.
+  isPushSupported: boolean;
+  isPushSubscribed: boolean;
+  isPushBusy: boolean;
+  onSubscribePush: () => void;
+  onUnsubscribePush: () => void;
   onClose: () => void;
   onUpdateGlobal: (updates: Partial<NotificationSettings['global']>) => void;
   onRequestDesktopPermission: () => Promise<NotificationPermission>;
@@ -25,6 +33,12 @@ const NEWS_VALUE_LABELS: Record<number, string> = {
 export function NotificationSettingsModal({
   settings,
   desktopPermission,
+  activeColumns,
+  isPushSupported,
+  isPushSubscribed,
+  isPushBusy,
+  onSubscribePush,
+  onUnsubscribePush,
   onClose,
   onUpdateGlobal,
   onRequestDesktopPermission,
@@ -32,6 +46,10 @@ export function NotificationSettingsModal({
 }: NotificationSettingsModalProps) {
   const [mounted, setMounted] = useState(false);
   const [requestingPermission, setRequestingPermission] = useState(false);
+
+  // activeColumns används inte direkt i renderingen men är kvar i props
+  // för framtida per-kolumn-inställningar (linter-silence).
+  void activeColumns;
 
   useEffect(() => {
     setMounted(true);
@@ -248,6 +266,39 @@ export function NotificationSettingsModal({
                 </option>
               ))}
             </select>
+          </div>
+          {/* Divider */}
+          <hr className="border-border/50" />
+
+          {/* Push-notiser när Newsdeck är stängt */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BellRing className={`h-5 w-5 ${
+                isPushSubscribed ? 'text-purple-500' : 'text-muted-foreground'
+              }`} />
+              <div>
+                <div className="font-medium">Pushnotiser när Newsdeck är stängt</div>
+                <div className="text-sm text-muted-foreground">
+                  Skickas till den här enheten även när fliken inte är öppen.
+                  Gäller events med nyhetsvärde ≥ tröskeln ovan.
+                </div>
+                {!isPushSupported && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Kräver en webbläsare med stöd för Web Push och en giltig VAPID-nyckel.
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={isPushSubscribed ? onUnsubscribePush : onSubscribePush}
+              disabled={isPushBusy || !isPushSupported}
+              className={`nd-toggle ${isPushSubscribed ? 'nd-on' : ''}`}
+              role="switch"
+              aria-checked={isPushSubscribed}
+              style={(!isPushSupported) ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+            >
+              <span className="nd-toggle-knob" />
+            </button>
           </div>
         </div>
 

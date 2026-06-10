@@ -267,6 +267,26 @@ export async function getNewsItemsByWorkflows(workflowIds: string[]) {
   }
 }
 
+// Hämtar nyhetsartiklar baserat på en lista av db_id:n — används av realtime-listenern
+// för att slå upp fullständiga objekt efter ett NOTIFY-meddelande.
+export async function getNewsItemsByDbIds(dbIds: string[]) {
+  if (dbIds.length === 0) return []
+  const pool = getPool()
+  try {
+    const result = await pool.query(
+      `SELECT ${SELECT_COLUMNS}
+      FROM news_items
+      WHERE db_id = ANY($1)
+      ORDER BY created_in_db DESC, timestamp DESC`,
+      [dbIds],
+    )
+    return result.rows.map(mapRow)
+  } catch (error) {
+    logger.error('db.getNewsItemsByDbIds.error', { error, count: dbIds.length })
+    throw error
+  }
+}
+
 export async function getUniqueWorkflowIds() {
   const pool = getPool()
   try {

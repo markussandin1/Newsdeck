@@ -4,7 +4,7 @@ import type { ColumnData } from '@/lib/dashboard/types';
 
 interface UsePendingImagePollingProps {
   columnData: ColumnData;
-  updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void;
+  patchItem: (columnId: string, dbId: string, item: NewsItem) => void;
 }
 
 const POLL_INTERVAL = 5000; // Poll every 5 seconds
@@ -19,7 +19,7 @@ const MAX_POLL_DURATION = 60000; // Stop polling after 60 seconds (assume failed
  */
 export function usePendingImagePolling({
   columnData,
-  updateColumnData,
+  patchItem,
 }: UsePendingImagePollingProps) {
   const pollTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const itemAgesRef = useRef<Map<string, number>>(new Map());
@@ -81,13 +81,8 @@ export function usePendingImagePolling({
           const updatedItem = data.items?.find((i: NewsItem) => i.dbId === item.dbId);
 
           if (updatedItem && updatedItem.trafficCamera?.status !== 'pending') {
-            // Update the item in columnData
-            updateColumnData((prev) => ({
-              ...prev,
-              [columnId]: prev[columnId]?.map((i) =>
-                i.dbId === item.dbId ? updatedItem : i
-              ) || [],
-            }));
+            // Punktuppdatera enbart det berörda itemet via patchItem
+            patchItem(columnId, item.dbId, updatedItem);
 
             // Stop polling this item
             itemAgesRef.current.delete(itemKey);
@@ -113,5 +108,5 @@ export function usePendingImagePolling({
       timeouts.forEach((timeout) => clearTimeout(timeout));
       timeouts.clear();
     };
-  }, [columnData, updateColumnData]);
+  }, [columnData, patchItem]);
 }

@@ -37,8 +37,8 @@ export interface DragPreview {
 // ============================================================================
 
 /**
- * State and actions for dashboard data management
- * Extracted from: column data, archived columns, dashboard list, loading state
+ * State and actions for dashboard data management.
+ * Speglar vad useDashboardData faktiskt returnerar.
  */
 export interface DashboardDataState {
   // Data state
@@ -49,11 +49,12 @@ export interface DashboardDataState {
   isLoading: boolean
 
   // Actions
-  fetchColumnData: (columnId: string) => Promise<void>
-  loadArchivedColumns: (dashboardId: string) => Promise<void>
+  fetchColumnData: () => Promise<void>
+  loadArchivedColumns: () => Promise<void>
   loadAllDashboards: () => Promise<void>
   refreshAllColumns: () => Promise<void>
-  clearColumnData: (columnId: string) => Promise<void>
+  updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void
+  patchItem: (columnId: string, dbId: string, item: NewsItem) => void
 }
 
 // ============================================================================

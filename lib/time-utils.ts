@@ -80,6 +80,13 @@ export function getHostname(value: string): string {
 }
 
 /**
+ * Tidsfönster i millisekunder för "NY"-badgen.
+ * Exporteras separat så att NewsItem.tsx kan sätta en timer som löper ut
+ * exakt när fönstret stängs — utan att duplicera konstanten.
+ */
+export const NEW_WINDOW_MS = 60_000 // 1 minut
+
+/**
  * Check if a news item should be marked as "new" based on its creation time.
  * An item is considered "new" if it was created in the database less than 1 minute ago.
  *
@@ -94,7 +101,6 @@ export function isNewsItemNew(createdInDb?: string): boolean {
   const now = new Date()
   const created = new Date(createdInDb)
   const ageInMilliseconds = now.getTime() - created.getTime()
-  const ageInMinutes = ageInMilliseconds / (1000 * 60)
 
-  return ageInMinutes < 1
+  return ageInMilliseconds < NEW_WINDOW_MS
 }

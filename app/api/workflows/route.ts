@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
       columnTotals: result.columnTotals
     })
 
-    // Real-time updates now handled via Pub/Sub + event queue in ingestion service
+    // Realtidsuppdateringar sker via pg LISTEN/NOTIFY-broadcast (lib/realtime/broadcast.ts)
+    // som triggas av ingestion-servicen direkt efter INSERT.
 
     const response = {
       success: true,

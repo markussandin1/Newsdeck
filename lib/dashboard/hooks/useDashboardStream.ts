@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { DashboardColumn, NewsItem } from '@/lib/types'
 import type { ColumnData, ConnectionStatus } from '@/lib/dashboard/types'
-import { isNewsItemNew } from '@/lib/time-utils'
+import { applyLive } from '@/lib/dashboard/column-store'
 
 interface UseDashboardStreamProps {
   columns: DashboardColumn[]
   updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void
-  onNewItems?: (columnId: string, items: NewsItem[]) => void
   onReconnect?: () => void
 }
 
@@ -34,7 +33,6 @@ interface UseDashboardStreamReturn {
 export function useDashboardStream({
   columns,
   updateColumnData,
-  onNewItems,
   onReconnect,
 }: UseDashboardStreamProps): UseDashboardStreamReturn {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
@@ -42,13 +40,11 @@ export function useDashboardStream({
   // Refs to avoid stale closures
   const columnsRef = useRef(columns)
   const updateColumnDataRef = useRef(updateColumnData)
-  const onNewItemsRef = useRef(onNewItems)
   const onReconnectRef = useRef(onReconnect)
   const isInitialConnectionRef = useRef(true)
 
   columnsRef.current = columns
   updateColumnDataRef.current = updateColumnData
-  onNewItemsRef.current = onNewItems
   onReconnectRef.current = onReconnect
 
   // Senaste mottagna meddelandet (items eller heartbeat). Används av watchdog
@@ -83,52 +79,9 @@ export function useDashboardStream({
   // Process incoming items from SSE
   // -------------------------------------------------------------------------
   const handleItems = useCallback((columnId: string, items: NewsItem[]) => {
-    updateColumnDataRef.current((prev: ColumnData) => {
-      const existingItems = prev[columnId] || []
-
-      const incomingItems: NewsItem[] = items.map((item: NewsItem) => ({
-        ...item,
-        isNew: isNewsItemNew(item.createdInDb),
-      }))
-
-      const brandNewItems: NewsItem[] = []
-      const updatedSourceIds = new Set<string>()
-
-      for (const incomingItem of incomingItems) {
-        const isDuplicateDbId = existingItems.some(e => e.dbId === incomingItem.dbId)
-        if (isDuplicateDbId) continue
-
-        const existingWithSameSource = incomingItem.id
-          ? existingItems.find(e => e.id && e.id === incomingItem.id)
-          : null
-
-        if (existingWithSameSource) {
-          updatedSourceIds.add(incomingItem.id!)
-        }
-        brandNewItems.push(incomingItem)
-      }
-
-      if (brandNewItems.length === 0) return prev
-
-      // Allt som kommer via SSE är per definition nytt for klienten — SSE
-      // skickar bara events publicerade efter att vi prenumererat, och dbId-
-      // dedupen ovan filtrerar bort eventuella dubbletter mot existing state.
-      // Vi notifierar utan lastSeen-/isNew-gates eftersom de gjorde att
-      // första eventet i en kolumn alltid missade ljud, och att events fördröjda
-      // av reconnect-/pubsub-glitch slogs som "för gamla".
-      if (onNewItemsRef.current) {
-        onNewItemsRef.current(columnId, brandNewItems)
-      }
-
-      const filteredExisting = updatedSourceIds.size > 0
-        ? existingItems.filter(e => !e.id || !updatedSourceIds.has(e.id))
-        : existingItems
-
-      return {
-        ...prev,
-        [columnId]: [...brandNewItems, ...filteredExisting],
-      }
-    })
+    // Ren dispatch — all dedup/ersättningslogik ligger i column-store,
+    // och notiser triggas av useNewItemNotifier som diffar state.
+    updateColumnDataRef.current((prev: ColumnData) => applyLive(prev, columnId, items))
   }, [])
 
   // -------------------------------------------------------------------------
@@ -159,8 +112,8 @@ export function useDashboardStream({
       lastMessageAtRef.current = Date.now()
 
       // Vid återanslutning (inte första gången): hämta in allt vi missade
-      // under tiden anslutningen var nere. eventQueue rensar dessutom items
-      // äldre än 5 min server-side, så utan refetch är nattens events borta.
+      // under tiden anslutningen var nere. SSE har ingen replay-buffer —
+      // refetch via onReconnect är det enda sättet att täcka missade events.
       if (!isInitialConnectionRef.current) {
         onReconnectRef.current?.()
       }
@@ -355,8 +308,14 @@ export function useDashboardStream({
   useEffect(() => {
     const handleResume = () => {
       if (isStoppedRef.current) return
+      // Refetcha alltid (billigt nog, täcker missade events), men riv bara
+      // anslutningen om den faktiskt ser död ut — annars straffas varje alt-tab
+      // med en onödig reconnect.
       onReconnectRef.current?.()
-      forceReconnect()
+      const silentFor = Date.now() - lastMessageAtRef.current
+      if (silentFor > STALE_CONNECTION_MS) {
+        forceReconnect()
+      }
     }
 
     window.addEventListener('focus', handleResume)

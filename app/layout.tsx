@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { JetBrains_Mono, Inter_Tight } from 'next/font/google'
 
 // Konsoliderat typografisystem (P1-8): Inter Tight för all UI/text,
@@ -75,6 +76,7 @@ export default function RootLayout({
         >
           {children}
         </ThemeProvider>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   )
