@@ -1,25 +1,27 @@
 /**
  * useDashboardData Hook
  *
- * Manages dashboard data fetching and state management:
- * - Column data loading and updates
- * - Archived columns management
- * - Dashboard list loading
- * - Deep equality checking to prevent unnecessary re-renders
+ * Hanterar datafetchning och state-hantering för dashboarden:
+ * - Kolumndata via column-store (applySnapshot/applyPatch)
+ * - Hantering av arkiverade kolumner
+ * - Laddning av dashboardlista
+ *
+ * Ingen columnDataRef, ingen deepEqual, inga setState-anrop inne i updaters.
+ * fetchColumnData dispatchar applySnapshot funktionellt med requesttid tagen
+ * före fetch()-anropet för att skydda mot out-of-order-svar.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Dashboard, NewsItem, DashboardColumn } from '@/lib/types'
 import { ColumnData } from '@/lib/dashboard/types'
-import { deepEqual } from '@/lib/dashboard/utils'
-import { isNewsItemNew } from '@/lib/time-utils'
+import { applySnapshot, applyPatch, type ColumnStoreState } from '@/lib/dashboard/column-store'
 
 interface UseDashboardDataProps {
   dashboard: Dashboard
 }
 
 interface UseDashboardDataReturn {
-  columnData: ColumnData
+  columnData: ColumnStoreState
   archivedColumns: DashboardColumn[]
   allDashboards: Array<Dashboard & { columnCount?: number }>
   lastUpdate: Date
@@ -29,28 +31,31 @@ interface UseDashboardDataReturn {
   loadArchivedColumns: () => Promise<void>
   loadAllDashboards: () => Promise<void>
   refreshAllColumns: () => Promise<void>
-  updateColumnData: (updater: React.SetStateAction<ColumnData>) => void
+  updateColumnData: (updater: (prev: ColumnData) => ColumnData) => void
+  patchItem: (columnId: string, dbId: string, item: NewsItem) => void
 }
 
 export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashboardDataReturn {
-  const [columnData, setColumnData] = useState<ColumnData>({})
-  const columnDataRef = useRef<ColumnData>({})
+  const [columnData, setColumnData] = useState<ColumnStoreState>({})
   const [lastUpdate, setLastUpdate] = useState(new Date())
   const [isLoading, setIsLoading] = useState(false)
   const [archivedColumns, setArchivedColumns] = useState<DashboardColumn[]>([])
   const [allDashboards, setAllDashboards] = useState<Array<Dashboard & { columnCount?: number }>>([])
+  // Skydd mot att ett långsamt svar skriver över ett nyare (out-of-order responses)
+  const latestRequestRef = useRef(0)
 
   const fetchColumnData = useCallback(async () => {
-    if (!dashboard?.id) {
-      return
-    }
+    if (!dashboard?.id) return
+
+    // Tid tas FÖRE fetch så applySnapshot kan filtrera SSE-race-fönstret korrekt
+    const requestedAt = Date.now()
+    latestRequestRef.current = requestedAt
 
     try {
       setIsLoading(true)
-      let endpoint = `/api/dashboards/${dashboard.slug}`
-      if (dashboard.id === 'main-dashboard') {
-        endpoint = '/api/dashboards/main-dashboard'
-      }
+      const endpoint = dashboard.id === 'main-dashboard'
+        ? '/api/dashboards/main-dashboard'
+        : `/api/dashboards/${dashboard.slug}`
 
       const response = await fetch(endpoint)
       const data = await response.json() as {
@@ -58,41 +63,11 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
         columnData?: Record<string, NewsItem[]>
       }
 
-      if (data.success) {
-        const incomingData: ColumnData = data.columnData ? { ...data.columnData } : {}
-
-        const mergedData: ColumnData = {}
-
-        Object.entries(incomingData).forEach(([columnId, newItems]) => {
-          const existingItems = columnDataRef.current[columnId] || []
-          const existingByDbId = new Map(existingItems.map(item => [item.dbId, item]))
-
-          const incomingDbIds = new Set(newItems.map(i => i.dbId).filter(Boolean))
-          const pollingOnlyItems = existingItems.filter(
-            item => item.dbId && !incomingDbIds.has(item.dbId)
-          )
-
-          const pollingOnlySourceIds = new Set(
-            pollingOnlyItems.map(i => i.id).filter(Boolean)
-          )
-
-          const merged = newItems
-            .filter(item => !item.id || !pollingOnlySourceIds.has(item.id))
-            .map(item => {
-              const existing = item.dbId ? existingByDbId.get(item.dbId) : undefined
-              return existing ?? { ...item, isNew: isNewsItemNew(item.createdInDb) }
-            })
-
-          mergedData[columnId] = [...pollingOnlyItems, ...merged]
-        })
-
-        const rawDataChanged = !deepEqual(columnDataRef.current, mergedData)
-        if (!rawDataChanged) {
-          return
-        }
-
-        setColumnData(mergedData)
-        columnDataRef.current = mergedData
+      if (data.success && data.columnData) {
+        // Kontrollera att inget nyare request har påbörjats under väntetiden
+        if (latestRequestRef.current !== requestedAt) return
+        const snapshot = data.columnData
+        setColumnData(prev => applySnapshot(prev, snapshot, requestedAt))
         setLastUpdate(new Date())
       }
     } catch (error) {
@@ -101,6 +76,20 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
       setIsLoading(false)
     }
   }, [dashboard.id, dashboard.slug])
+
+  /**
+   * Passthrough för konsumenter som fortfarande behöver manipulera kolumndata
+   * direkt (t.ex. useDashboardStream). Signaturen är en funktion för att
+   * undvika att React-setState:s värde-form skapar inaktuella closures.
+   */
+  const updateColumnData = useCallback((updater: (prev: ColumnData) => ColumnData) => {
+    setColumnData(updater)
+  }, [])
+
+  /** Punktuppdaterar ett enskilt item (t.ex. trafikkamerabild klar). */
+  const patchItem = useCallback((columnId: string, dbId: string, item: NewsItem) => {
+    setColumnData(prev => applyPatch(prev, columnId, dbId, item))
+  }, [])
 
   const loadArchivedColumns = useCallback(async () => {
     try {
@@ -133,15 +122,6 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
     await fetchColumnData()
   }, [fetchColumnData])
 
-  const updateColumnData = useCallback((updater: React.SetStateAction<ColumnData>) => {
-    setColumnData(prev => {
-      const newValue = typeof updater === 'function' ? updater(prev) : updater
-      columnDataRef.current = newValue
-      setLastUpdate(new Date())
-      return newValue
-    })
-  }, [])
-
   useEffect(() => {
     if (dashboard?.id) {
       loadArchivedColumns()
@@ -169,5 +149,6 @@ export function useDashboardData({ dashboard }: UseDashboardDataProps): UseDashb
     loadAllDashboards,
     refreshAllColumns,
     updateColumnData,
+    patchItem,
   }
 }
