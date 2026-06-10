@@ -1,9 +1,9 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
-import { memo } from 'react'
+import { memo, useState, useEffect } from 'react'
 import { MapPin } from 'lucide-react'
 import { getPriority, timeAgo } from '@/lib/design-system'
 import { getCategory } from '@/lib/categories'
-import { isUrl, getHostname, isNewsItemNew } from '@/lib/time-utils'
+import { isUrl, getHostname, isNewsItemNew, NEW_WINDOW_MS } from '@/lib/time-utils'
 
 interface NewsItemProps {
   item: NewsItemType
@@ -20,8 +20,20 @@ interface NewsItemProps {
 
 function NewsItem({ item, onSelect }: NewsItemProps) {
   const onClick = onSelect ? () => onSelect(item) : undefined
-  // isNew beräknas vid render baserat på createdInDb-tidsstämpeln
-  const isNew = isNewsItemNew(item.createdInDb)
+  // Initialt värde beräknas direkt; sedan rensar en timer badgen när fönstret
+  // löper ut. Memo + stabil objektidentitet gör annars att kortet aldrig
+  // re-renderas och "NY"-badgen fastnar i evighet på tysta kolumner.
+  const [isNew, setIsNew] = useState(() => isNewsItemNew(item.createdInDb))
+
+  useEffect(() => {
+    if (!isNew) return
+    // Rendera om när nyhets-fönstret löper ut — memo + stabil objektidentitet
+    // gör att kortet annars aldrig re-renderas och badgen fastnar.
+    const created = Date.parse(item.createdInDb ?? item.timestamp)
+    const remaining = Math.max(0, created + NEW_WINDOW_MS - Date.now())
+    const timer = setTimeout(() => setIsNew(false), remaining)
+    return () => clearTimeout(timer)
+  }, [isNew, item.createdInDb, item.timestamp])
 
   const priority = getPriority(item.newsValue)
   const isEmph = item.newsValue >= 4

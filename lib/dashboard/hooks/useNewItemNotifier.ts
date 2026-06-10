@@ -19,6 +19,10 @@ export function useNewItemNotifier({ columnData, onNewItems }: UseNewItemNotifie
   onNewItemsRef.current = onNewItems
 
   useEffect(() => {
+    // Vänta på första icke-tomma state — annars konsumeras den tysta
+    // första körningen av initial-{} och sidladdning replay:ar notiser.
+    if (seenRef.current === null && Object.keys(columnData).length === 0) return
+
     const isFirstRun = seenRef.current === null
     const seen = seenRef.current ?? (seenRef.current = new Set<string>())
 
