@@ -18,37 +18,33 @@ interface UseDesktopNotificationsReturn {
 }
 
 /**
- * Hook for managing desktop browser notifications using the Web Notifications API.
- * Currently optimized for Chrome on desktop.
+ * Hook för desktop-notiser via Web Notifications API.
+ * Stöder Chrome, Firefox, Safari och Edge på desktop via feature detection.
  */
 export function useDesktopNotifications(): UseDesktopNotificationsReturn {
   const [permission, setPermission] = useState<DesktopNotificationPermission>('default')
   const [isSupported, setIsSupported] = useState(false)
 
-  // Check for API support and initial permission on mount
+  // Kontrollera API-stöd och initialt tillstånd vid mount
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
       setIsSupported(false)
       setPermission('unsupported')
       return
     }
 
-    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor)
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-    if (!isChrome || isMobile) {
+    // Notification API utan Service Worker fungerar inte på mobil
+    // (Android Chrome kräver SW, iOS kräver installerad PWA) — desktop
+    // Chrome/Firefox/Safari/Edge stöds alla via feature detection.
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (isMobile) {
       setIsSupported(false)
       setPermission('unsupported')
       return
     }
 
-    if ('Notification' in window) {
-      setIsSupported(true)
-      setPermission(Notification.permission)
-    } else {
-      setIsSupported(false)
-      setPermission('unsupported')
-    }
+    setIsSupported(true)
+    setPermission(Notification.permission)
   }, [])
 
   const requestPermission = useCallback(async (): Promise<NotificationPermission> => {
