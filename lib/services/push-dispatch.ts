@@ -55,6 +55,8 @@ export function selectPushTargets(
 }
 
 export async function dispatchPushForItems(columnIds: string[], items: NewsItem[]): Promise<void> {
+  // Utan databas finns inga prenumerationer — hoppa tyst (in-memory-dev/tester).
+  if (!process.env.DATABASE_URL) return
   if (!ensureVapid()) return
 
   try {
