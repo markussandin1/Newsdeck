@@ -229,13 +229,25 @@ export async function appendColumnDataBatch(columnData: Record<string, NewsItem[
 }
 
 /**
+ * Bygger unnest-paren för deleteReplacedSourceItems.
+ * Max ett par per source-id (sista vinner) — annars raderar batch-dubbletter
+ * varandras nyinsatta rader (varje rad matchar den andres unnest-par).
+ * Exporterad för enhetstester.
+ */
+export function buildReplacedSourcePairs(items: NewsItem[]): NewsItem[] {
+  return Array.from(
+    new Map(items.filter(i => i.id && i.dbId).map(i => [i.id, i])).values(),
+  )
+}
+
+/**
  * Raderar column_data-rader i kolumnen vars news_item har samma source_id
  * som ett nyinsatt item men ett annat db_id — d.v.s. föregångare till
  * ompostade events. unnest-paren (source_id, keep_db_id) gör det till en
  * enda query oavsett batchstorlek.
  */
 export async function deleteReplacedSourceItems(columnId: string, items: NewsItem[]) {
-  const pairs = items.filter(i => i.id && i.dbId)
+  const pairs = buildReplacedSourcePairs(items)
   if (pairs.length === 0) return
 
   const pool = getPool()
