@@ -63,25 +63,35 @@ export function useDesktopNotifications(): UseDesktopNotificationsReturn {
   const showNotification = useCallback((content: NotificationContent): Notification | null => {
     if (!isSupported || permission !== 'granted') return null
 
-    try {
-      const notification = new Notification(content.title, {
-        body: content.body,
-        icon: content.icon || '/newsdeck-icon.svg',
-        badge: '/newsdeck-icon.svg',
-        tag: content.tag || 'newsdeck-notification',
-        requireInteraction: false,
-        silent: false,
-        data: content.data,
-      })
+    const options: NotificationOptions = {
+      body: content.body,
+      icon: content.icon || '/newsdeck-icon.svg',
+      badge: '/newsdeck-icon.svg',
+      tag: content.tag || 'newsdeck-notification',
+      requireInteraction: false,
+      silent: false,
+      data: content.data,
+    }
 
+    // Via SW-registreringen om möjligt — överlever flikens throttling och
+    // ger klick-hantering i sw.js. Fallback till sid-kontextens Notification.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready
+        .then(reg => reg.showNotification(content.title, options))
+        .catch(error => {
+          clientLogger.error('desktopNotifications.swShow.failed', { error: String(error) })
+        })
+      return null
+    }
+
+    try {
+      const notification = new Notification(content.title, options)
       notification.onclick = () => {
         window.focus()
         notification.close()
       }
-
       return notification
     } catch (error) {
-      // Failure is usually system-level (Mac: System Settings → Notifications → Chrome)
       clientLogger.error('desktopNotifications.showNotification.failed', { error: String(error) })
       return null
     }
