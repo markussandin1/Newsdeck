@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Dashboard as DashboardType, NewsItem as NewsItemType } from '@/lib/types'
@@ -11,6 +11,7 @@ import { useNewItemNotifier } from '@/lib/dashboard/hooks/useNewItemNotifier'
 import { useColumnNotifications } from '@/lib/dashboard/hooks/useColumnNotifications'
 import { useNotificationSettings } from '@/lib/dashboard/hooks/useNotificationSettings'
 import { useDesktopNotifications } from '@/lib/dashboard/hooks/useDesktopNotifications'
+import { usePushSubscription } from '@/lib/dashboard/hooks/usePushSubscription'
 import { useDashboardLayout } from '@/lib/dashboard/hooks/useDashboardLayout'
 import { useColumnOperations } from '@/lib/dashboard/hooks/useColumnOperations'
 import { useClipboard } from '@/lib/dashboard/hooks/useClipboard'
@@ -72,6 +73,37 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
     requestPermission: requestDesktopPermission,
     showNotification: showDesktopNotification,
   } = useDesktopNotifications()
+
+  // Beräkna kolumn-IDs för push-prenumerationen: aktiva (ej arkiverade)
+  // kolumner där desktop-notiser inte är explicit avstängda (antingen explicit
+  // true, eller ej inställda alls vilket innebär att de ärver global default).
+  // Hoistats hit från NotificationSettingsModal så att re-sync-effekten i
+  // usePushSubscription körs kontinuerligt — inte bara när modalen är öppen.
+  const pushColumnIds = useMemo(() => {
+    return (dashboard?.columns || [])
+      .filter(col => !col.isArchived)
+      .filter(col => {
+        const colSetting = notificationSettings.columns[col.id]
+        // Ej inställd → ärver global default
+        if (!colSetting) return notificationSettings.global.defaultDesktopEnabled
+        return colSetting.desktopEnabled !== false
+      })
+      .map(col => col.id)
+  }, [dashboard?.columns, notificationSettings.columns, notificationSettings.global.defaultDesktopEnabled])
+
+  // usePushSubscription monteras ovillkorligt här (inte inne i modalen) så att
+  // re-sync av push_subscriptions.column_ids sker direkt när kolumnlistan eller
+  // tröskeln ändras, oavsett om inställningsmodalen är öppen.
+  const {
+    isSupported: isPushSupported,
+    isSubscribed: isPushSubscribed,
+    isBusy: isPushBusy,
+    subscribe: subscribePush,
+    unsubscribe: unsubscribePush,
+  } = usePushSubscription({
+    columnIds: pushColumnIds,
+    newsValueThreshold: notificationSettings.global.newsValueThreshold,
+  })
 
   const {
     showAudioPrompt,
@@ -622,6 +654,11 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
           settings={notificationSettings}
           desktopPermission={desktopPermission}
           activeColumns={activeColumns}
+          isPushSupported={isPushSupported}
+          isPushSubscribed={isPushSubscribed}
+          isPushBusy={isPushBusy}
+          onSubscribePush={subscribePush}
+          onUnsubscribePush={unsubscribePush}
           onClose={() => setIsNotificationSettingsOpen(false)}
           onUpdateGlobal={updateGlobalSettings}
           onRequestDesktopPermission={requestDesktopPermission}

@@ -112,8 +112,8 @@ export function useDashboardStream({
       lastMessageAtRef.current = Date.now()
 
       // Vid återanslutning (inte första gången): hämta in allt vi missade
-      // under tiden anslutningen var nere. eventQueue rensar dessutom items
-      // äldre än 5 min server-side, så utan refetch är nattens events borta.
+      // under tiden anslutningen var nere. SSE har ingen replay-buffer —
+      // refetch via onReconnect är det enda sättet att täcka missade events.
       if (!isInitialConnectionRef.current) {
         onReconnectRef.current?.()
       }

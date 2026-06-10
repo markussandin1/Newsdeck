@@ -1,16 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, BellOff, BellRing, Volume2, VolumeX, Monitor, X, Check, AlertTriangle } from 'lucide-react';
 import type { NotificationSettings, DesktopNotificationPermission } from '@/lib/dashboard/types';
 import type { DashboardColumn } from '@/lib/types';
-import { usePushSubscription } from '@/lib/dashboard/hooks/usePushSubscription';
 
 interface NotificationSettingsModalProps {
   settings: NotificationSettings;
   desktopPermission: DesktopNotificationPermission;
   activeColumns: DashboardColumn[];
+  // Push-state hoistats till DashboardView så att re-sync sker kontinuerligt.
+  isPushSupported: boolean;
+  isPushSubscribed: boolean;
+  isPushBusy: boolean;
+  onSubscribePush: () => void;
+  onUnsubscribePush: () => void;
   onClose: () => void;
   onUpdateGlobal: (updates: Partial<NotificationSettings['global']>) => void;
   onRequestDesktopPermission: () => Promise<NotificationPermission>;
@@ -29,6 +34,11 @@ export function NotificationSettingsModal({
   settings,
   desktopPermission,
   activeColumns,
+  isPushSupported,
+  isPushSubscribed,
+  isPushBusy,
+  onSubscribePush,
+  onUnsubscribePush,
   onClose,
   onUpdateGlobal,
   onRequestDesktopPermission,
@@ -37,30 +47,9 @@ export function NotificationSettingsModal({
   const [mounted, setMounted] = useState(false);
   const [requestingPermission, setRequestingPermission] = useState(false);
 
-  // Beräkna kolumn-IDs för push-prenumerationen: kolumner där desktop-notiser
-  // inte är explicit avstängda (antingen explicit true, eller ej inställda alls
-  // vilket innebär att de ärver global default).
-  const pushColumnIds = useMemo(() => {
-    return activeColumns
-      .filter(col => {
-        const colSetting = settings.columns[col.id]
-        // Ej inställd → ärver global default
-        if (!colSetting) return settings.global.defaultDesktopEnabled
-        return colSetting.desktopEnabled !== false
-      })
-      .map(col => col.id)
-  }, [activeColumns, settings.columns, settings.global.defaultDesktopEnabled])
-
-  const {
-    isSupported: isPushSupported,
-    isSubscribed: isPushSubscribed,
-    isBusy: isPushBusy,
-    subscribe: subscribePush,
-    unsubscribe: unsubscribePush,
-  } = usePushSubscription({
-    columnIds: pushColumnIds,
-    newsValueThreshold: settings.global.newsValueThreshold,
-  })
+  // activeColumns används inte direkt i renderingen men är kvar i props
+  // för framtida per-kolumn-inställningar (linter-silence).
+  void activeColumns;
 
   useEffect(() => {
     setMounted(true);
@@ -301,7 +290,7 @@ export function NotificationSettingsModal({
               </div>
             </div>
             <button
-              onClick={isPushSubscribed ? unsubscribePush : subscribePush}
+              onClick={isPushSubscribed ? onUnsubscribePush : onSubscribePush}
               disabled={isPushBusy || !isPushSupported}
               className={`nd-toggle ${isPushSubscribed ? 'nd-on' : ''}`}
               role="switch"

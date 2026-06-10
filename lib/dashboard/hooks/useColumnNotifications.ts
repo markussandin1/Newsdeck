@@ -126,7 +126,10 @@ export function useColumnNotifications({
       showDesktopNotification({
         title: topItem.title,
         body,
-        tag: `newsdeck-${columnId}-${topItem.dbId}`,
+        // Samma tag som push-dispatch använder (newsdeck-push-<dbId>) så att
+        // OS:et koalescerar in-page SSE-notisen med push-notisen till en enda
+        // — om fliken är öppen OCH push-prenumererad visas inte dubbletter.
+        tag: `newsdeck-push-${topItem.dbId}`,
         data: { columnId, itemId: topItem.dbId },
       })
     }
