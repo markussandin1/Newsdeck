@@ -1,6 +1,6 @@
 import { NewsItem as NewsItemType } from '@/lib/types'
 import { memo, useState, useEffect } from 'react'
-import { MapPin } from 'lucide-react'
+import { MapPin, ExternalLink } from 'lucide-react'
 import { getPriority, timeAgo } from '@/lib/design-system'
 import { getCategory } from '@/lib/categories'
 import { isUrl, getHostname, isNewsItemNew, NEW_WINDOW_MS } from '@/lib/time-utils'
@@ -66,7 +66,21 @@ function NewsItem({ item, onSelect }: NewsItemProps) {
     >
       <span className="nd-ribbon" aria-hidden />
       <header className="nd-meta">
-        <span className="nd-src">{resolvedSource}</span>
+        {sourceUrl ? (
+          <a
+            className="nd-src nd-src-link"
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title={sourceUrl}
+          >
+            {resolvedSource}
+            <ExternalLink size={9} aria-hidden />
+          </a>
+        ) : (
+          <span className="nd-src">{resolvedSource}</span>
+        )}
         <span className="nd-dot" aria-hidden>·</span>
         <time className="nd-tm">{timeAgo(item.createdInDb || item.timestamp)}</time>
         {isNew && <span className="nd-new">NY</span>}
