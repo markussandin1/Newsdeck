@@ -45,6 +45,7 @@ import {
   getNewsItemsPaginated as newsItemsGetPaginated,
   getNewsItemsByWorkflow as newsItemsByWorkflow,
   getNewsItemsByWorkflows as newsItemsByWorkflows,
+  getNewsItemsByDbIds as newsItemsByDbIds,
   getUniqueWorkflowIds as newsItemsUniqueWorkflowIds,
   getUniqueSources as newsItemsUniqueSources,
   getUniqueMunicipalities as newsItemsUniqueMunicipalities,
@@ -64,6 +65,7 @@ export const persistentDb = {
   deleteNewsItem: newsItemsDelete,
   getNewsItemsByWorkflow: newsItemsByWorkflow,
   getNewsItemsByWorkflows: newsItemsByWorkflows,
+  getNewsItemsByDbIds: newsItemsByDbIds,
   getNewsItemsPaginated: newsItemsGetPaginated,
 
   // Dashboards (P2-1 steg 6 — implementation i lib/db/dashboards.ts)
