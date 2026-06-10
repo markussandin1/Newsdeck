@@ -621,6 +621,7 @@ export default function DashboardView({ dashboard, onDashboardUpdate }: Dashboar
         <NotificationSettingsModal
           settings={notificationSettings}
           desktopPermission={desktopPermission}
+          activeColumns={activeColumns}
           onClose={() => setIsNotificationSettingsOpen(false)}
           onUpdateGlobal={updateGlobalSettings}
           onRequestDesktopPermission={requestDesktopPermission}
