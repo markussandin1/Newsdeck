@@ -229,6 +229,37 @@ export async function appendColumnDataBatch(columnData: Record<string, NewsItem[
 }
 
 /**
+ * Raderar column_data-rader i kolumnen vars news_item har samma source_id
+ * som ett nyinsatt item men ett annat db_id — d.v.s. föregångare till
+ * ompostade events. unnest-paren (source_id, keep_db_id) gör det till en
+ * enda query oavsett batchstorlek.
+ */
+export async function deleteReplacedSourceItems(columnId: string, items: NewsItem[]) {
+  const pairs = items.filter(i => i.id && i.dbId)
+  if (pairs.length === 0) return
+
+  const pool = getPool()
+  try {
+    const result = await pool.query(
+      `DELETE FROM column_data cd
+      USING news_items ni,
+            unnest($2::text[], $3::uuid[]) AS r(source_id, keep_db_id)
+      WHERE cd.news_item_db_id = ni.db_id
+        AND cd.column_id = $1
+        AND ni.source_id = r.source_id
+        AND cd.news_item_db_id <> r.keep_db_id`,
+      [columnId, pairs.map(i => i.id), pairs.map(i => i.dbId)],
+    )
+    if (result.rowCount && result.rowCount > 0) {
+      logger.info('db.deleteReplacedSourceItems', { columnId, deleted: result.rowCount })
+    }
+  } catch (error) {
+    logger.error('db.deleteReplacedSourceItems.error', { error, columnId })
+    throw error
+  }
+}
+
+/**
  * Synkar column_data från news_items för en kolumn. P2-15: använder
  * workflow_id-index istället för full table scan.
  */

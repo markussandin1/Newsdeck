@@ -35,6 +35,7 @@ import {
   setColumnDataBatch as columnDataSetBatch,
   appendColumnDataBatch as columnDataAppendBatch,
   syncColumnDataFromGeneral as columnDataSyncFromGeneral,
+  deleteReplacedSourceItems as columnDataDeleteReplacedSourceItems,
 } from './db/column-data'
 import {
   addNewsItem as newsItemsAdd,
@@ -89,6 +90,7 @@ export const persistentDb = {
   getColumnDataBatch: columnDataGetBatch,
   setColumnDataBatch: columnDataSetBatch,
   appendColumnDataBatch: columnDataAppendBatch,
+  deleteReplacedSourceItems: columnDataDeleteReplacedSourceItems,
 
   // Admin distincts (P2-1 steg 4)
   getUniqueWorkflowIds: newsItemsUniqueWorkflowIds,

@@ -22,6 +22,8 @@ export interface IngestionDb {
   getColumnDataBatch: (columnIds: string[]) => Promise<Record<string, NewsItem[]>>
   setColumnDataBatch: (columnData: Record<string, NewsItem[]>) => Promise<void>
   appendColumnDataBatch: (columnData: Record<string, NewsItem[]>) => Promise<void>
+  // Source-dedup: rensar föregångare till ompostade events ur column_data
+  deleteReplacedSourceItems: (columnId: string, items: NewsItem[]) => Promise<void>
 }
 
 interface NormalisedPayload {
@@ -308,6 +310,15 @@ export const ingestNewsItems = async (
   }
 
   await db.appendColumnDataBatch(updatedColumnData)
+
+  // Source-dedup: ompostade events (samma source-id i samma kolumn) ska bara
+  // synas en gång — radera föregångarnas column_data-rader. news_items rörs
+  // inte (source of truth/historik). Klientens applyLive gör samma ersättning
+  // live; detta håller reload-vyn konsistent.
+  const dedupable = insertedItems.filter(item => item.id)
+  if (dedupable.length > 0) {
+    await db.deleteReplacedSourceItems(columnId, dedupable)
+  }
 
   const columnIdsArray = Array.from(matchingColumns)
   await broadcastNewsItems(columnIdsArray, insertedItems)

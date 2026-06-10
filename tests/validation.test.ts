@@ -38,7 +38,10 @@ const createMockDb = (): {
     },
     appendColumnDataBatch: async (columnData) => {
       appendColumnDataBatchCalls.push(columnData)
-    }
+    },
+    deleteReplacedSourceItems: async (_columnId, _items) => {
+      // no-op i validationstest
+    },
   }
 
   return { db, setColumnDataCalls, setColumnDataBatchCalls, appendColumnDataBatchCalls, addNewsItemsCalls }
