@@ -45,12 +45,32 @@ export async function upsertPushSubscription(sub: {
   }
 }
 
-export async function deletePushSubscription(endpoint: string): Promise<void> {
+/**
+ * User-scopad DELETE — används av API-routen /api/push/subscribe (DELETE).
+ * Kräver att endpoint tillhör rätt användare för att förhindra att en
+ * inloggad användare avregistrerar en annan användares enhet.
+ */
+export async function deletePushSubscription(endpoint: string, userId: string): Promise<void> {
+  const pool = getPool()
+  try {
+    await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2', [endpoint, userId])
+  } catch (error) {
+    logger.error('db.deletePushSubscription.error', { error })
+    throw error
+  }
+}
+
+/**
+ * Oskopat DELETE — används ENDAST av server-side cleanup för döda prenumerationer
+ * (t.ex. när push-leveransen misslyckas med 410 Gone). Anropas aldrig från
+ * användarinitierade API-routes.
+ */
+export async function deletePushSubscriptionByEndpoint(endpoint: string): Promise<void> {
   const pool = getPool()
   try {
     await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint])
   } catch (error) {
-    logger.error('db.deletePushSubscription.error', { error })
+    logger.error('db.deletePushSubscriptionByEndpoint.error', { error })
     throw error
   }
 }

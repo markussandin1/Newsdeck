@@ -23,6 +23,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://mock:mock@localhost:5432/mock"
 
+# NEXT_PUBLIC_* inlines vid build-tid — måste finnas som ARG/ENV innan npm run build
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
+
 # Build Next.js
 RUN npm run build
 

@@ -8,6 +8,7 @@ import {
 import {
   upsertPushSubscription as pushSubsUpsert,
   deletePushSubscription as pushSubsDelete,
+  deletePushSubscriptionByEndpoint as pushSubsDeleteByEndpoint,
   getPushSubscriptionsForColumns as pushSubsForColumns,
 } from './db/push-subscriptions'
 import {
@@ -162,6 +163,7 @@ export const persistentDb = {
   // Web Push-prenumerationer (Fas 4c i realtime-v2-planen)
   upsertPushSubscription: pushSubsUpsert,
   deletePushSubscription: pushSubsDelete,
+  deletePushSubscriptionByEndpoint: pushSubsDeleteByEndpoint,
   getPushSubscriptionsForColumns: pushSubsForColumns,
 
   // API request logging — sanerad metadata, aldrig payload. Skickas till

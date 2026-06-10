@@ -51,7 +51,7 @@ export async function DELETE(request: NextRequest) {
     if (!endpoint) {
       return NextResponse.json({ error: 'endpoint is required' }, { status: 400 })
     }
-    await db.deletePushSubscription(endpoint)
+    await db.deletePushSubscription(endpoint, session.user.email)
     return NextResponse.json({ success: true })
   } catch (error) {
     logger.error('api.push.unsubscribe.error', { error })

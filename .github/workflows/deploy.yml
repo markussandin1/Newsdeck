@@ -57,6 +57,10 @@ jobs:
             ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:latest
           cache-from: type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:latest
           cache-to: type=inline
+          # NEXT_PUBLIC_* inlines vid build-tid och måste skickas som build-arg.
+          # Skapa hemligheten VAPID_PUBLIC_KEY i GitHub → repo Settings → Secrets and variables → Actions.
+          build-args: |
+            NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
 
       - name: Deploy to Cloud Run
         run: |

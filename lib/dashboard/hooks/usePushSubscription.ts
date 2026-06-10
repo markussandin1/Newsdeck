@@ -5,10 +5,10 @@ import { clientLogger } from '@/lib/logger.client'
  * Konverterar VAPID-nyckeln från URL-safe base64 till Uint8Array
  * som PushManager.subscribe() förväntar sig.
  */
-function urlBase64ToUint8Array(base64: string): Uint8Array {
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4)
   const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'))
-  return Uint8Array.from(Array.from(raw, c => c.charCodeAt(0)))
+  return new Uint8Array(Array.from(raw, c => c.charCodeAt(0)))
 }
 
 interface UsePushSubscriptionProps {
@@ -92,8 +92,7 @@ export function usePushSubscription({ columnIds, newsValueThreshold }: UsePushSu
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!) as any,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
       })
 
       const res = await fetch('/api/push/subscribe', {
