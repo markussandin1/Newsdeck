@@ -32,9 +32,17 @@ self.addEventListener('notificationclick', (event) => {
   const url = (event.notification.data && event.notification.data.url) || '/'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      const existing = clients.find((c) => 'focus' in c)
+      // Föredra en flik som redan visar målet, sedan en synlig flik —
+      // annars fokuseras en godtycklig bakgrundsflik vid flera öppna fönster.
+      const focusable = clients.filter((c) => 'focus' in c)
+      const existing =
+        focusable.find((c) => c.url && new URL(c.url).pathname === url) ||
+        focusable.find((c) => c.visibilityState === 'visible') ||
+        focusable[0]
       if (existing) {
-        existing.navigate(url)
+        if (new URL(existing.url).pathname !== url) {
+          existing.navigate(url).catch(() => {})
+        }
         return existing.focus()
       }
       return self.clients.openWindow(url)
